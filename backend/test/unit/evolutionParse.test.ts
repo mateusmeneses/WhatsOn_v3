@@ -90,6 +90,24 @@ describe("parseEvolutionWebhook", () => {
     expect(withSenderPn).toMatchObject({ remoteNumber: "5511966665555" });
   });
 
+  it("keeps the LID user part when no real number is available", () => {
+    const [event] = parseEvolutionWebhook(
+      upsert({ key: { remoteJid: "123456789012345@lid", fromMe: false, id: "L3" }, message: { conversation: "oi" } }),
+    );
+    expect(event).toMatchObject({ remoteNumber: "123456789012345", isGroup: false });
+  });
+
+  it("falls back to now when messageTimestamp is a Long-like object", () => {
+    const [event] = parseEvolutionWebhook(
+      upsert({
+        key: { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "T1" },
+        message: { conversation: "oi" },
+        messageTimestamp: { low: 1, high: 0 },
+      }),
+    );
+    expect(Number.isFinite((event as { timestamp: number }).timestamp)).toBe(true);
+  });
+
   it("ignores reactions, protocol messages, status broadcasts and garbage", () => {
     const key = { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "R1" };
     expect(parseEvolutionWebhook(upsert({ key, message: { reactionMessage: { text: "👍" } } }))).toEqual([]);

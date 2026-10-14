@@ -13,7 +13,7 @@ const ACKS: Record<string, Ack> = {
   ERROR: "failed",
 };
 
-const STATES: Record<string, ConnectionStatus> = { open: "connected", connecting: "qrcode", close: "disconnected" };
+export const EVOLUTION_STATES: Record<string, ConnectionStatus> = { open: "connected", connecting: "qrcode", close: "disconnected" };
 
 const jidUser = (jid: string) => jid.split("@")[0].split(":")[0];
 
@@ -92,7 +92,7 @@ function parseMessage(instanceName: string, d: Json): InboundMessage[] {
       body: content.body,
       media: content.media,
       quotedProviderMessageId: content.quotedId,
-      timestamp: Number(d.messageTimestamp ?? Math.floor(Date.now() / 1000)),
+      timestamp: Number.isFinite(Number(d.messageTimestamp)) && d.messageTimestamp != null ? Number(d.messageTimestamp) : Math.floor(Date.now() / 1000),
     },
   ];
 }
@@ -118,7 +118,7 @@ export function parseEvolutionWebhook(payload: unknown): InboundEvent[] {
     case "messages.update":
       return items.flatMap((d) => parseAck(instanceName, d));
     case "connection.update": {
-      const state = STATES[String(p.data?.state ?? "")];
+      const state = EVOLUTION_STATES[String(p.data?.state ?? "")];
       if (!state) return [];
       const wuid = p.data?.wuid;
       return [

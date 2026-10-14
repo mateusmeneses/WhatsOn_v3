@@ -4,9 +4,8 @@ import { ConnectionStatus } from "../../../models";
 import { AppError } from "../../../shared/errors/AppError";
 import { logger } from "../../../shared/logger";
 import { InboundEvent, OutboundMedia, SendResult, WhatsAppProvider } from "../provider";
-import { parseEvolutionWebhook } from "./parseWebhook";
+import { EVOLUTION_STATES, parseEvolutionWebhook } from "./parseWebhook";
 
-const STATES: Record<string, ConnectionStatus> = { open: "connected", connecting: "qrcode", close: "disconnected" };
 const WEBHOOK_EVENTS = ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"];
 
 export class EvolutionProvider implements WhatsAppProvider {
@@ -67,7 +66,7 @@ export class EvolutionProvider implements WhatsAppProvider {
       () => this.http.get(`/instance/connectionState/${instanceName}`),
       true,
     );
-    return STATES[data?.instance?.state ?? ""] ?? "disconnected";
+    return EVOLUTION_STATES[data?.instance?.state ?? ""] ?? "disconnected";
   }
 
   async sendText(instanceName: string, number: string, text: string, quotedProviderMessageId?: string): Promise<SendResult> {
