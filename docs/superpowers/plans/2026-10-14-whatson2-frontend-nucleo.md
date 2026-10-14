@@ -2056,7 +2056,7 @@ git commit -m "feat(frontend): provider de tempo real com reconexão e salas de 
 
 Regras de visibilidade (espelham o backend após a revisão final): supervisor/admin veem todos os tickets do status; agente vê `pending` atribuído a ele ou sem atendente em uma das suas filas ou sem fila; `open`/`closed` só os dele; `bot` nunca.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `frontend/src/test/factories.ts`:
 
@@ -2247,12 +2247,12 @@ describe("useTicketRealtime", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/tickets`
 Expected: FAIL com `Failed to resolve import "./visibility"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/users/usersApi.ts`:
 
@@ -2450,12 +2450,12 @@ export function useTicketRealtime(): void {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
