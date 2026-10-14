@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import {
   BookUser,
   Bot,
@@ -43,14 +42,12 @@ export function navItemsFor(profile: Profile): NavItem[] {
 export function Sidebar() {
   const user = useAuth((s) => s.user);
   const clear = useAuth((s) => s.clear);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   if (!user) return null;
 
   async function onLogout() {
     await logout();
-    clear();
-    queryClient.clear();
+    clear(); // useSessionReset (App) limpa o cache ao trocar de usuário
     navigate("/login", { replace: true });
   }
 

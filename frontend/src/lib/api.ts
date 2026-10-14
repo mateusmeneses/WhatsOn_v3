@@ -12,31 +12,40 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-let refreshing: Promise<string | null> | null = null;
+let refreshing: { generation: number; promise: Promise<string | null> } | null = null;
 
-/** Renova o access token usando o refresh token salvo. Chamadas simultâneas compartilham a mesma renovação. */
+/**
+ * Renova o access token usando o refresh token salvo. Chamadas simultâneas compartilham a mesma renovação.
+ * Se a sessão mudar durante a requisição (logout ou outro usuário), o resultado é descartado.
+ */
 export function refreshAccessToken(): Promise<string | null> {
-  if (!refreshing) {
-    refreshing = (async () => {
+  const generation = useAuth.getState().generation;
+  if (refreshing && refreshing.generation === generation) return refreshing.promise;
+  const current: { generation: number; promise: Promise<string | null> } = {
+    generation,
+    promise: (async () => {
       const refreshToken = refreshTokenStorage.get();
       if (!refreshToken) {
         useAuth.getState().clear();
         return null;
       }
+      const stale = () => useAuth.getState().generation !== generation;
       try {
         const { data } = await axios.post<AuthResponse>(`${API_URL}/api/auth/refresh`, { refreshToken });
+        if (stale()) return null;
         useAuth.getState().setSession(data);
         return data.accessToken;
       } catch (err) {
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-        if (status === 401 || status === 403) useAuth.getState().clear();
+        if ((status === 401 || status === 403) && !stale()) useAuth.getState().clear();
         return null;
       }
     })().finally(() => {
-      refreshing = null;
-    });
-  }
-  return refreshing;
+      if (refreshing === current) refreshing = null;
+    }),
+  };
+  refreshing = current;
+  return current.promise;
 }
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };

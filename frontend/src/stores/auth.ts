@@ -30,6 +30,8 @@ export const refreshTokenStorage = {
 interface AuthState {
   accessToken: string | null;
   user: PublicUser | null;
+  /** Incrementa a cada troca de sessão (logout ou outro usuário); renovações em voo de uma geração antiga são descartadas. */
+  generation: number;
   setSession(response: AuthResponse): void;
   setAccessToken(token: string): void;
   clear(): void;
@@ -38,13 +40,18 @@ interface AuthState {
 export const useAuth = create<AuthState>((set) => ({
   accessToken: null,
   user: null,
+  generation: 0,
   setSession: (response) => {
     refreshTokenStorage.set(response.refreshToken);
-    set({ accessToken: response.accessToken, user: response.user });
+    set((s) => ({
+      accessToken: response.accessToken,
+      user: response.user,
+      generation: s.user && s.user.id !== response.user.id ? s.generation + 1 : s.generation,
+    }));
   },
   setAccessToken: (token) => set({ accessToken: token }),
   clear: () => {
     refreshTokenStorage.clear();
-    set({ accessToken: null, user: null });
+    set((s) => ({ accessToken: null, user: null, generation: s.generation + 1 }));
   },
 }));
