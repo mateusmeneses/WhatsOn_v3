@@ -94,4 +94,43 @@ describe("users API", () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("CANNOT_DELETE_SELF");
   });
+
+  it("returns 404 on PUT/DELETE of a user from another company", async () => {
+    const { admin } = await setup();
+    const other = await createCompany();
+    const foreign = await createUser(other.id);
+    const put = await request(app).put(`/api/users/${foreign.id}`).set("Authorization", bearer(admin)).send({ name: "X" });
+    expect(put.status).toBe(404);
+    const del = await request(app).delete(`/api/users/${foreign.id}`).set("Authorization", bearer(admin));
+    expect(del.status).toBe(404);
+  });
+
+  it("deletes a user with 204", async () => {
+    const { company, admin } = await setup();
+    const agent = await createUser(company.id);
+    await request(app).delete(`/api/users/${agent.id}`).set("Authorization", bearer(admin)).expect(204);
+    const list = await request(app).get("/api/users").set("Authorization", bearer(admin));
+    expect(list.body.map((u: { id: number }) => u.id)).not.toContain(agent.id);
+  });
+
+  it("rejects PUT with another user's e-mail but allows keeping its own", async () => {
+    const { company, admin } = await setup();
+    const a = await createUser(company.id, { email: "a1@test.local" });
+    await createUser(company.id, { email: "b1@test.local" });
+    const clash = await request(app).put(`/api/users/${a.id}`).set("Authorization", bearer(admin)).send({ email: "b1@test.local" });
+    expect(clash.status).toBe(409);
+    expect(clash.body.error.code).toBe("EMAIL_IN_USE");
+    const same = await request(app).put(`/api/users/${a.id}`).set("Authorization", bearer(admin)).send({ email: "a1@test.local" });
+    expect(same.status).toBe(200);
+  });
+
+  it("protects the last admin from demotion and allows it when another exists", async () => {
+    const { company, admin } = await setup();
+    const res = await request(app).put(`/api/users/${admin.id}`).set("Authorization", bearer(admin)).send({ profile: "agent" });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("LAST_ADMIN");
+    const second = await createUser(company.id, { profile: "admin" });
+    const ok = await request(app).put(`/api/users/${second.id}`).set("Authorization", bearer(admin)).send({ profile: "agent" });
+    expect(ok.status).toBe(200);
+  });
 });

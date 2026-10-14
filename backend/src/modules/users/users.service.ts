@@ -1,4 +1,6 @@
 import bcrypt from "bcryptjs";
+import { UniqueConstraintError } from "sequelize";
+import { sequelize } from "../../database/sequelize";
 import { Profile, User } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { AuthContext } from "../auth/auth.types";
@@ -28,9 +30,18 @@ export async function getUserOr404(companyId: number, id: number): Promise<User>
   return user;
 }
 
+const emailInUse = () => new AppError("EMAIL_IN_USE", 409, "E-mail já cadastrado");
+const lastAdmin = () => new AppError("LAST_ADMIN", 409, "A empresa precisa de pelo menos um administrador");
+
+async function assertNotLastAdmin(user: User): Promise<void> {
+  if (user.profile !== "admin") return;
+  const admins = await User.count({ where: { companyId: user.companyId, profile: "admin" } });
+  if (admins <= 1) throw lastAdmin();
+}
+
 async function assertEmailFree(email: string, exceptId?: number): Promise<void> {
   const existing = await User.findOne({ where: { email } });
-  if (existing && existing.id !== exceptId) throw new AppError("EMAIL_IN_USE", 409, "E-mail já cadastrado");
+  if (existing && existing.id !== exceptId) throw emailInUse();
 }
 
 export async function listUsers(companyId: number): Promise<UserView[]> {
@@ -42,15 +53,21 @@ export async function createUser(companyId: number, input: UserInput): Promise<U
   const email = input.email.trim().toLowerCase();
   await assertEmailFree(email);
   await assertQueuesBelong(companyId, input.queueIds ?? []);
-  const user = await User.create({
-    companyId,
-    name: input.name,
-    email,
-    profile: input.profile,
-    passwordHash: await bcrypt.hash(input.password, 10),
-  });
-  await setUserQueues(user.id, input.queueIds ?? []);
-  return view(user);
+  const passwordHash = await bcrypt.hash(input.password, 10);
+  try {
+    const user = await sequelize.transaction(async (t) => {
+      const created = await User.create(
+        { companyId, name: input.name, email, profile: input.profile, passwordHash },
+        { transaction: t },
+      );
+      await setUserQueues(created.id, input.queueIds ?? [], t);
+      return created;
+    });
+    return view(user);
+  } catch (err) {
+    if (err instanceof UniqueConstraintError) throw emailInUse();
+    throw err;
+  }
 }
 
 export async function updateUser(companyId: number, id: number, input: Partial<UserInput>): Promise<UserView> {
@@ -67,13 +84,22 @@ export async function updateUser(companyId: number, id: number, input: Partial<U
     patch.tokenVersion = user.tokenVersion + 1;
   }
   if (input.queueIds !== undefined) await assertQueuesBelong(companyId, input.queueIds);
-  await user.update(patch);
-  if (input.queueIds !== undefined) await setUserQueues(user.id, input.queueIds);
+  if (input.profile !== undefined && input.profile !== "admin") await assertNotLastAdmin(user);
+  try {
+    await sequelize.transaction(async (t) => {
+      await user.update(patch, { transaction: t });
+      if (input.queueIds !== undefined) await setUserQueues(user.id, input.queueIds, t);
+    });
+  } catch (err) {
+    if (err instanceof UniqueConstraintError) throw emailInUse();
+    throw err;
+  }
   return view(user);
 }
 
 export async function deleteUser(auth: AuthContext, id: number): Promise<void> {
   if (id === auth.userId) throw new AppError("CANNOT_DELETE_SELF", 400, "Você não pode excluir a si mesmo");
   const user = await getUserOr404(auth.companyId, id);
+  await assertNotLastAdmin(user);
   await user.destroy();
 }
