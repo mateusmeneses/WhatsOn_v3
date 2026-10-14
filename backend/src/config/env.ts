@@ -34,5 +34,35 @@ const schema = z.object({
   SEED_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
 });
 
+/** Valores de exemplo (.env.example da raiz e do backend) que nunca podem ir para produção. */
+export const PLACEHOLDER_SECRETS = new Set([
+  "troque-esta-chave",
+  "troque-por-uma-string-longa-aleatoria",
+  "troque-por-outra-string-longa-aleatoria",
+  "dev-access-secret-change-me-123",
+  "dev-refresh-secret-change-me-123",
+]);
+
+type ProductionEnvInput = Pick<
+  z.infer<typeof schema>,
+  "NODE_ENV" | "JWT_SECRET" | "JWT_REFRESH_SECRET" | "EVOLUTION_API_KEY" | "SEED_ADMIN_PASSWORD"
+>;
+
+/** Em produção recusa segredos de exemplo/curtos e a senha padrão do admin. */
+export function validateProductionEnv(input: ProductionEnvInput): void {
+  if (input.NODE_ENV !== "production") return;
+  const problems: string[] = [];
+  for (const key of ["JWT_SECRET", "JWT_REFRESH_SECRET", "EVOLUTION_API_KEY"] as const) {
+    const value = input[key];
+    if (PLACEHOLDER_SECRETS.has(value)) problems.push(`${key} está com o valor de exemplo`);
+    else if (value.length < 32) problems.push(`${key} deve ter pelo menos 32 caracteres`);
+  }
+  if (input.SEED_ADMIN_PASSWORD === "admin123") problems.push("SEED_ADMIN_PASSWORD não pode ser \"admin123\"");
+  if (problems.length) {
+    throw new Error(`Configuração insegura para produção: ${problems.join("; ")}. Ajuste o arquivo .env.`);
+  }
+}
+
 export const env = schema.parse(process.env);
+validateProductionEnv(env);
 export type Env = typeof env;

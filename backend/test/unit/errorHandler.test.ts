@@ -1,12 +1,14 @@
 import "express-async-errors";
 import express from "express";
+import multer from "multer";
 import request from "supertest";
 import { z } from "zod";
 import { AppError } from "../../src/shared/errors/AppError";
 import { errorHandler } from "../../src/shared/errors/errorHandler";
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "1kb" }));
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 } });
 app.get("/app-error", () => {
   throw new AppError("TEAPOT", 418, "Sou um bule");
 });
@@ -17,6 +19,9 @@ app.get("/boom", async () => {
   throw new Error("detalhe secreto");
 });
 app.post("/json", (_req, res) => {
+  res.json({ ok: true });
+});
+app.post("/upload", upload.single("file"), (_req, res) => {
   res.json({ ok: true });
 });
 app.use(errorHandler);
@@ -45,5 +50,20 @@ describe("errorHandler", () => {
     const res = await request(app).post("/json").set("Content-Type", "application/json").send("{ruim");
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INVALID_JSON");
+  });
+
+  it("answers 413 PAYLOAD_TOO_LARGE for oversized JSON bodies", async () => {
+    const res = await request(app)
+      .post("/json")
+      .set("Content-Type", "application/json")
+      .send(JSON.stringify({ big: "x".repeat(4096) }));
+    expect(res.status).toBe(413);
+    expect(res.body).toEqual({ error: { code: "PAYLOAD_TOO_LARGE", message: "Conteúdo da requisição muito grande" } });
+  });
+
+  it("translates multer errors to pt-BR", async () => {
+    const res = await request(app).post("/upload").attach("file", Buffer.from("grande demais"), "a.txt");
+    expect(res.status).toBe(400);
+    expect(res.body).toEqual({ error: { code: "UPLOAD_ERROR", message: "Arquivo maior que 16 MB" } });
   });
 });

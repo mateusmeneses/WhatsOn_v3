@@ -24,11 +24,20 @@ const EXTENSIONS: Record<string, string> = {
   "application/pdf": "pdf",
 };
 
-function extensionFor(mime: string, name?: string | null): string {
-  const known = EXTENSIONS[mime];
-  if (known) return known;
-  const fromName = name ? path.extname(name).slice(1).replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase() : "";
-  return fromName || "bin";
+/** Extensão vem só da allowlist de MIME; nunca do nome enviado pelo cliente. */
+function extensionFor(mime: string): string {
+  return EXTENSIONS[mime] ?? "bin";
+}
+
+/** Extensões servidas inline (imagem/áudio/vídeo); o resto vai como anexo. */
+const INLINE_EXTENSIONS = new Set(
+  Object.entries(EXTENSIONS)
+    .filter(([mime]) => /^(image|audio|video)\//.test(mime))
+    .map(([, ext]) => ext),
+);
+
+export function isInlineMediaFile(filePath: string): boolean {
+  return INLINE_EXTENSIONS.has(path.extname(filePath).slice(1).toLowerCase());
 }
 
 export async function saveBuffer(
@@ -38,7 +47,7 @@ export async function saveBuffer(
   name: string | null = null,
 ): Promise<StoredMedia> {
   const baseMime = mime.split(";")[0].trim().toLowerCase() || "application/octet-stream";
-  const fileName = `${randomUUID()}.${extensionFor(baseMime, name)}`;
+  const fileName = `${randomUUID()}.${extensionFor(baseMime)}`;
   const dir = path.resolve(env.MEDIA_DIR, String(companyId));
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), buffer);

@@ -30,6 +30,33 @@ describe("media storage", () => {
     expect(served.body.toString()).toBe("conteudo");
   });
 
+  it("never takes the extension from the client file name and serves non-media as a sandboxed attachment", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const res = await request(app)
+      .post("/api/media")
+      .set("Authorization", bearer(agent))
+      .attach("file", Buffer.from("<script>alert(1)</script>"), { filename: "x.html", contentType: "text/html" });
+    expect(res.status).toBe(201);
+    expect(res.body.url).toMatch(new RegExp(`^/media/${company.id}/[a-f0-9-]+\.bin$`));
+    expect(res.body.name).toBe("x.html");
+
+    const served = await request(app).get(res.body.url);
+    expect(served.status).toBe(200);
+    expect(served.headers["content-disposition"]).toBe("attachment");
+    expect(served.headers["content-security-policy"]).toBe("sandbox");
+    expect(served.headers["x-content-type-options"]).toBe("nosniff");
+    expect(served.headers["content-type"]).not.toMatch(/html/);
+  });
+
+  it("serves images inline (no attachment) but still sandboxed", async () => {
+    const stored = await saveBase64(9, Buffer.from("png").toString("base64"), "image/png", "foto.png");
+    const served = await request(app).get(stored.url);
+    expect(served.status).toBe(200);
+    expect(served.headers["content-disposition"]).toBeUndefined();
+    expect(served.headers["content-security-policy"]).toBe("sandbox");
+  });
+
   it("requires a file", async () => {
     const company = await createCompany();
     const agent = await createUser(company.id);
