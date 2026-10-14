@@ -206,7 +206,7 @@ export async function runBot(ticket: Ticket, input: string | null): Promise<void
         await moveToPending(ticket, effect.queueId, effect.userId);
         break;
       case "close":
-        await closeTicketInternal(ticket, { userId: null, event: "closed", sendClosingMessage: false });
+        await closeTicketInternal(ticket, { userId: null, event: "closed", sendClosingMessage: false, onlyFromBot: true });
         break;
     }
   }

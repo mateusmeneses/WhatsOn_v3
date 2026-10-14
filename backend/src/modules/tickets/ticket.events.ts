@@ -14,6 +14,10 @@ export async function emitTicket(
   const ticket = await Ticket.findByPk(ticketId, { include: TICKET_INCLUDE });
   if (!ticket) return;
   const targets = new Set<string>([rooms.supervisors(ticket.companyId)]);
+  // Pendente sem fila nem atendente: todo agente da empresa pode vê-lo (visibility.ts).
+  if (ticket.status === "pending" && ticket.queueId === null && ticket.userId === null) {
+    targets.add(rooms.company(ticket.companyId));
+  }
   for (const side of [ticket, prev]) {
     if (!side) continue;
     if (side.queueId) targets.add(rooms.queue(side.queueId));

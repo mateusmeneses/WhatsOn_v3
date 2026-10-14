@@ -9,7 +9,7 @@ import { assertQueuesBelong } from "../queues/queues.service";
 import { userQueueIds } from "../users/userQueues";
 import { getUserOr404 } from "../users/users.service";
 import { emitTicket, TICKET_INCLUDE } from "./ticket.events";
-import { canView, visibilityWhere } from "./visibility";
+import { agentQueueEligible, canView, visibilityWhere } from "./visibility";
 
 export async function logTicket(
   ticket: Ticket,
@@ -73,6 +73,8 @@ export async function canJoinTicket(auth: AuthContext, ticketId: number): Promis
   }
 }
 
+const ticketClosed = () => new AppError("TICKET_CLOSED", 409, "Atendimento já finalizado");
+
 function assertCanHandle(auth: AuthContext, ticket: Ticket): void {
   if (auth.profile === "agent" && ticket.userId !== auth.userId) {
     throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
@@ -84,7 +86,7 @@ export async function acceptTicket(auth: AuthContext, id: number) {
   if (!ticket) throw notFound("Ticket");
   if (auth.profile === "agent") {
     const queueIds = await userQueueIds(auth.userId);
-    const eligible = ticket.userId === auth.userId || (ticket.queueId !== null && queueIds.includes(ticket.queueId));
+    const eligible = ticket.userId === auth.userId || agentQueueEligible(queueIds, ticket.queueId);
     if (!eligible) throw new AppError("FORBIDDEN", 403, "Sem acesso a este ticket");
   }
   const [updated] = await Ticket.update(
@@ -113,14 +115,19 @@ export async function acceptTicket(auth: AuthContext, id: number) {
 
 export async function transferTicket(auth: AuthContext, id: number, input: { queueId?: number; userId?: number }) {
   const ticket = await getVisibleTicket(auth, id);
-  if (ticket.status === "closed") throw new AppError("TICKET_CLOSED", 409, "Atendimento finalizado");
+  if (ticket.status === "closed") throw ticketClosed();
   assertCanHandle(auth, ticket);
   if (input.queueId) await assertQueuesBelong(auth.companyId, [input.queueId]);
   if (input.userId) await getUserOr404(auth.companyId, input.userId);
 
   const prev = { queueId: ticket.queueId, userId: ticket.userId };
   const queueId = input.queueId ?? ticket.queueId;
-  await ticket.update({ status: "pending", queueId, userId: input.userId ?? null, chatbotNodeId: null, chatbotAttempts: 0 });
+  const [updated] = await Ticket.update(
+    { status: "pending", queueId, userId: input.userId ?? null, chatbotNodeId: null, chatbotAttempts: 0 },
+    { where: { id: ticket.id, status: { [Op.ne]: "closed" } } },
+  );
+  if (updated === 0) throw ticketClosed();
+  await ticket.reload();
   await cancelBotTimeout(ticket.id);
   await logTicket(ticket, "transferred", { userId: auth.userId, fromQueueId: prev.queueId, toQueueId: queueId });
   await emitTicket(ticket.id, prev);
@@ -129,9 +136,10 @@ export async function transferTicket(auth: AuthContext, id: number, input: { que
 
 export async function closeTicket(auth: AuthContext, id: number) {
   const ticket = await getVisibleTicket(auth, id);
-  if (ticket.status === "closed") throw new AppError("TICKET_CLOSED", 409, "Atendimento já finalizado");
+  if (ticket.status === "closed") throw ticketClosed();
   assertCanHandle(auth, ticket);
-  await closeTicketInternal(ticket, { userId: auth.userId, event: "closed", sendClosingMessage: true });
+  const closed = await closeTicketInternal(ticket, { userId: auth.userId, event: "closed", sendClosingMessage: true });
+  if (!closed) throw ticketClosed();
   return loadTicket(id);
 }
 
@@ -144,26 +152,46 @@ export async function markTicketRead(auth: AuthContext, id: number) {
   return loadTicket(id);
 }
 
-/** Usado pelo chatbot: tira o ticket do bot e coloca na fila (ou com o atendente). */
-export async function moveToPending(ticket: Ticket, queueId: number | null, userId: number | null): Promise<void> {
+/**
+ * Usado pelo chatbot: tira o ticket do bot e coloca na fila (ou com o atendente).
+ * Condicional ao status "bot": se o ticket já saiu do bot (assumido, fechado), não faz nada.
+ */
+export async function moveToPending(ticket: Ticket, queueId: number | null, userId: number | null): Promise<boolean> {
   const prev = { queueId: ticket.queueId, userId: ticket.userId };
-  await ticket.update({ status: "pending", queueId, userId, chatbotNodeId: null, chatbotAttempts: 0 });
+  const [updated] = await Ticket.update(
+    { status: "pending", queueId, userId, chatbotNodeId: null, chatbotAttempts: 0 },
+    { where: { id: ticket.id, status: "bot" } },
+  );
+  if (updated === 0) return false;
+  await ticket.reload();
   await cancelBotTimeout(ticket.id);
   await logTicket(ticket, "transferred", { fromQueueId: prev.queueId, toQueueId: queueId });
   await emitTicket(ticket.id, prev);
+  return true;
 }
 
+/**
+ * Fecha só se ninguém fechou antes (bot_timeout: só se ainda estiver no bot). Devolve se este chamado fechou;
+ * mensagem de encerramento, log e evento só acontecem nesse caso.
+ */
 export async function closeTicketInternal(
   ticket: Ticket,
-  opts: { userId: number | null; event: "closed" | "bot_timeout"; sendClosingMessage: boolean },
-): Promise<void> {
+  opts: { userId: number | null; event: "closed" | "bot_timeout"; sendClosingMessage: boolean; onlyFromBot?: boolean },
+): Promise<boolean> {
+  const prev = { queueId: ticket.queueId, userId: ticket.userId };
+  const status = opts.event === "bot_timeout" || opts.onlyFromBot ? "bot" : { [Op.ne]: "closed" };
+  const [updated] = await Ticket.update(
+    { status: "closed", closedAt: new Date(), chatbotNodeId: null, chatbotAttempts: 0, unreadCount: 0 },
+    { where: { id: ticket.id, status } },
+  );
+  if (updated === 0) return false;
+  await ticket.reload();
   if (opts.sendClosingMessage) {
     const connection = await Connection.findByPk(ticket.connectionId);
     if (connection?.closingMessage) await createOutgoingMessage(ticket, { body: connection.closingMessage, isBot: true });
   }
-  const prev = { queueId: ticket.queueId, userId: ticket.userId };
-  await ticket.update({ status: "closed", closedAt: new Date(), chatbotNodeId: null, chatbotAttempts: 0, unreadCount: 0 });
   await cancelBotTimeout(ticket.id);
   await logTicket(ticket, opts.event, { userId: opts.userId });
   await emitTicket(ticket.id, prev);
+  return true;
 }
