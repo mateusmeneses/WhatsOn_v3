@@ -5,6 +5,7 @@ import cors from "cors";
 import express, { Express } from "express";
 import helmet from "helmet";
 import { env } from "./config/env";
+import { webhookRoutes } from "./modules/inbound/webhook.routes";
 import { apiRoutes } from "./routes";
 import { errorHandler } from "./shared/errors/errorHandler";
 import { createHealthHandler, HealthCheck } from "./shared/health";
@@ -23,6 +24,7 @@ export function createApp(options: AppOptions = {}): Express {
 
   app.get("/health", createHealthHandler(options.healthChecks ?? {}));
   app.use("/media", express.static(path.resolve(env.MEDIA_DIR), { index: false }));
+  app.use("/webhooks", webhookRoutes);
   app.use("/api", apiRoutes);
 
   options.beforeErrorHandler?.(app);
