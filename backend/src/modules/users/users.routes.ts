@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { idParam } from "../../shared/http";
 import { currentAuth, isAuth, requireProfile } from "../auth/auth.middleware";
-import { createUser, deleteUser, listUsers, updateUser } from "./users.service";
+import { createUser, deleteUser, listUserOptions, listUsers, updateUser } from "./users.service";
 
 const userSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -17,6 +17,11 @@ userRoutes.use(isAuth);
 
 userRoutes.get("/", requireProfile("admin", "supervisor"), async (req, res) => {
   res.json(await listUsers(currentAuth(req).companyId));
+});
+
+// Antes das rotas "/:id". Todo perfil autenticado (agentes precisam para transferir).
+userRoutes.get("/options", async (req, res) => {
+  res.json(await listUserOptions(currentAuth(req).companyId));
 });
 
 userRoutes.post("/", requireProfile("admin"), async (req, res) => {

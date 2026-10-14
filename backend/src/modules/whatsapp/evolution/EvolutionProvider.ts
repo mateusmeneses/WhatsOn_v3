@@ -8,6 +8,17 @@ import { EVOLUTION_STATES, parseEvolutionWebhook } from "./parseWebhook";
 
 const WEBHOOK_EVENTS = ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"];
 
+function truncate(data: unknown, max = 500): string | undefined {
+  if (data === undefined) return undefined;
+  let text: string;
+  try {
+    text = typeof data === "string" ? data : JSON.stringify(data);
+  } catch {
+    text = String(data);
+  }
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
 export class EvolutionProvider implements WhatsAppProvider {
   private readonly http: AxiosInstance;
 
@@ -19,9 +30,22 @@ export class EvolutionProvider implements WhatsAppProvider {
     try {
       return (await request()).data;
     } catch (err) {
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const isAxios = axios.isAxiosError(err);
+      const status = isAxios ? err.response?.status : undefined;
       if (allow404 && status === 404) return null;
-      logger.warn({ err: axios.isAxiosError(err) ? err.message : err, status }, "evolution request failed");
+      // Nunca logar o erro axios inteiro: ele carrega config.headers (apikey).
+      logger.warn(
+        isAxios
+          ? {
+              err: err.message,
+              status,
+              method: err.config?.method?.toUpperCase(),
+              path: err.config?.url,
+              response: truncate(err.response?.data),
+            }
+          : { err, status },
+        "evolution request failed",
+      );
       throw new AppError("PROVIDER_ERROR", 502, `Falha na Evolution API${status ? ` (${status})` : ""}`);
     }
   }

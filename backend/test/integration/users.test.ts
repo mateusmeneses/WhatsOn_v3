@@ -16,6 +16,24 @@ describe("users API", () => {
     return { company, admin, queue };
   }
 
+  it("lists user options of the caller's company for every profile", async () => {
+    const { company, admin, queue } = await setup();
+    const agent = await createUser(company.id, { name: "Agente", queueIds: [queue.id] });
+    const other = await createCompany();
+    await createUser(other.id, { name: "Estranho" });
+    const res = await request(app).get("/api/users/options").set("Authorization", bearer(agent));
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body).toEqual(
+      expect.arrayContaining([
+        { id: admin.id, name: admin.name, queueIds: [] },
+        { id: agent.id, name: "Agente", queueIds: [queue.id] },
+      ]),
+    );
+    expect(Object.keys(res.body[0]).sort()).toEqual(["id", "name", "queueIds"]);
+    expect((await request(app).get("/api/users/options")).status).toBe(401);
+  });
+
   it("creates an agent linked to queues and lets them log in", async () => {
     const { admin, queue } = await setup();
     const res = await request(app)

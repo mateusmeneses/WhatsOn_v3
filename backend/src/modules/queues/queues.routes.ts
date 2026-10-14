@@ -4,7 +4,8 @@ import { idParam } from "../../shared/http";
 import { currentAuth, isAuth, requireProfile } from "../auth/auth.middleware";
 import { createQueue, deleteQueue, listQueues, updateQueue } from "./queues.service";
 
-const RANGE = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
+/** Fim pode ser "24:00" (meia-noite do dia seguinte, exclusivo). */
+const RANGE = /^([01]\d|2[0-3]):[0-5]\d-(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 
 export const scheduleSchema = z.record(
   z.enum(["0", "1", "2", "3", "4", "5", "6"]),

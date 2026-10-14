@@ -39,10 +39,27 @@ describe("queues API", () => {
     expect(res.status).toBe(403);
   });
 
+  it("accepts 24:00 as a range end", async () => {
+    const company = await createCompany();
+    const admin = await createUser(company.id, { profile: "admin" });
+    const res = await request(app)
+      .post("/api/queues")
+      .set("Authorization", bearer(admin))
+      .send({ name: "Noturno", schedule: { "1": ["18:00-24:00"] } });
+    expect(res.status).toBe(201);
+    expect(res.body.schedule).toEqual({ "1": ["18:00-24:00"] });
+  });
+
   it("rejects malformed or inverted schedule ranges", async () => {
     const company = await createCompany();
     const admin = await createUser(company.id, { profile: "admin" });
-    for (const schedule of [{ "1": ["8h-12h"] }, { "1": ["12:00-08:00"] }, { "9": ["08:00-12:00"] }]) {
+    for (const schedule of [
+      { "1": ["8h-12h"] },
+      { "1": ["12:00-08:00"] },
+      { "9": ["08:00-12:00"] },
+      { "1": ["24:00-24:00"] },
+      { "1": ["18:00-24:30"] },
+    ]) {
       const res = await request(app)
         .post("/api/queues")
         .set("Authorization", bearer(admin))

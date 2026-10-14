@@ -19,7 +19,7 @@ function localParts(now: Date, timeZone: string): { day: WeekDay; minutes: numbe
   return { day: WEEKDAYS[get("weekday")], minutes: Number(get("hour")) * 60 + Number(get("minute")) };
 }
 
-/** Schedule vazio = sempre aberto. Intervalos são [início, fim). */
+/** Schedule vazio = sempre aberto. Intervalos são [início, fim); fim "24:00" = 1440 minutos. */
 export function isOpen(schedule: WeekSchedule | null | undefined, now: Date, timeZone: string): boolean {
   if (!schedule || Object.keys(schedule).length === 0) return true;
   const { day, minutes } = localParts(now, timeZone);

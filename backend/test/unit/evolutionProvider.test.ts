@@ -1,5 +1,6 @@
 import nock from "nock";
 import { EvolutionProvider } from "../../src/modules/whatsapp/evolution/EvolutionProvider";
+import { logger } from "../../src/shared/logger";
 
 const BASE = "http://evolution.test";
 const provider = new EvolutionProvider(BASE, "key-123");
@@ -97,6 +98,22 @@ describe("EvolutionProvider", () => {
   it("wraps failures in a PROVIDER_ERROR AppError", async () => {
     api().post("/message/sendText/inst").reply(500, { error: "boom" });
     await expect(provider.sendText("inst", "5511988887777", "x")).rejects.toMatchObject({ code: "PROVIDER_ERROR", status: 502 });
+  });
+
+  it("logs the response body (truncated) and request path, never the apikey", async () => {
+    const warn = jest.spyOn(logger, "warn").mockImplementation(() => undefined);
+    try {
+      api().post("/message/sendText/inst").reply(400, { response: { message: ["número inexistente"] }, pad: "x".repeat(1000) });
+      await expect(provider.sendText("inst", "5511988887777", "x")).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
+      expect(warn).toHaveBeenCalledTimes(1);
+      const [fields] = warn.mock.calls[0] as unknown as [Record<string, unknown>];
+      expect(fields).toMatchObject({ status: 400, method: "POST", path: "/message/sendText/inst" });
+      expect(fields.response).toContain("número inexistente");
+      expect((fields.response as string).length).toBeLessThanOrEqual(501);
+      expect(JSON.stringify(fields)).not.toContain("key-123");
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("pings the API root", async () => {

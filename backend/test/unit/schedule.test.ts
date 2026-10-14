@@ -37,4 +37,11 @@ describe("isOpen", () => {
     expect(isOpen({ "1": ["22:00-23:59"] }, lateMonday, TZ)).toBe(true);
     expect(isOpen({ "2": ["00:00-23:59"] }, lateMonday, TZ)).toBe(false);
   });
+
+  it("accepts 24:00 as the end of the day", () => {
+    // 02:59 UTC de terça = 23:59 de segunda em São Paulo
+    expect(isOpen({ "1": ["18:00-24:00"] }, mondayAt(26, 59), TZ)).toBe(true);
+    // 03:00 UTC de terça = 00:00 de terça em São Paulo
+    expect(isOpen({ "1": ["18:00-24:00"] }, mondayAt(27), TZ)).toBe(false);
+  });
 });

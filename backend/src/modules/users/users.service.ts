@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { UniqueConstraintError } from "sequelize";
 import { sequelize } from "../../database/sequelize";
-import { Profile, User } from "../../models";
+import { Profile, User, UserQueue } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { AuthContext } from "../auth/auth.types";
 import { PublicUser, toPublicUser } from "../auth/auth.service";
@@ -47,6 +47,25 @@ async function assertEmailFree(email: string, exceptId?: number): Promise<void> 
 export async function listUsers(companyId: number): Promise<UserView[]> {
   const users = await User.findAll({ where: { companyId }, order: [["name", "ASC"]] });
   return Promise.all(users.map(view));
+}
+
+export interface UserOption {
+  id: number;
+  name: string;
+  queueIds: number[];
+}
+
+/** Lista enxuta (sem e-mail/perfil) para seletores de transferência, disponível a todos os perfis. */
+export async function listUserOptions(companyId: number): Promise<UserOption[]> {
+  const users = await User.findAll({ where: { companyId }, attributes: ["id", "name"], order: [["name", "ASC"]] });
+  const links = users.length
+    ? await UserQueue.findAll({ where: { userId: users.map((u) => u.id) }, order: [["queueId", "ASC"]] })
+    : [];
+  return users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    queueIds: links.filter((l) => l.userId === u.id).map((l) => l.queueId),
+  }));
 }
 
 export async function createUser(companyId: number, input: UserInput): Promise<UserView> {
