@@ -656,7 +656,7 @@ git commit -m "chore(frontend): scaffold Vite + Tailwind com tokens Clean SaaS e
   - `formatTime(iso)`, `formatPhone(number)`, `initials(name)`, `mediaSrc(url)`.
   - `useDebounced<T>(value: T, delayMs?: number): T`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `frontend/src/lib/api.test.ts`:
 
@@ -762,12 +762,12 @@ describe("format helpers", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/lib`
 Expected: FAIL com `Failed to resolve import "@/stores/auth"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/types/api.ts`:
 
@@ -1149,12 +1149,12 @@ api.defaults.adapter = offline;
 axios.defaults.adapter = offline;
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
