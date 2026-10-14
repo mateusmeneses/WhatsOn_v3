@@ -9,7 +9,7 @@ import { emitter } from "../../src/modules/realtime/socket";
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createConnection, createTicket, createUser, scenario } from "../helpers/factories";
+import { createCompany, createConnection, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 
 const app = createApp();
@@ -115,5 +115,73 @@ describe("connections", () => {
     fake.state = "disconnected";
     await checkConnectionsHealth();
     expect((await Connection.findByPk(connection.id))!.status).toBe("disconnected");
+  });
+
+  it("disconnects a connected connection and emits an alert", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { status: "connected" });
+    const spy = jest.spyOn(emitter, "toSupervisors");
+    const res = await request(app).post(`/api/connections/${connection.id}/disconnect`).set("Authorization", bearer(user));
+    expect(res.status).toBe(200);
+    expect((await Connection.findByPk(connection.id))!.status).toBe("disconnected");
+    expect(spy).toHaveBeenCalledWith(company.id, "connection:alert", { connectionId: connection.id, name: connection.name });
+    spy.mockRestore();
+  });
+
+  it("moves the default flag on update", async () => {
+    const { company, user } = await admin();
+    const previous = await createConnection(company.id, { isDefault: true });
+    const other = await createConnection(company.id, { isDefault: false });
+    const res = await request(app)
+      .put(`/api/connections/${other.id}`)
+      .set("Authorization", bearer(user))
+      .send({ isDefault: true });
+    expect(res.status).toBe(200);
+    expect((await Connection.findByPk(other.id))!.isDefault).toBe(true);
+    expect((await Connection.findByPk(previous.id))!.isDefault).toBe(false);
+  });
+
+  it("rejects a default queue from another company", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id);
+    const otherQueue = await createQueue((await createCompany()).id);
+    const res = await request(app)
+      .put(`/api/connections/${connection.id}`)
+      .set("Authorization", bearer(user))
+      .send({ defaultQueueId: otherQueue.id });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_QUEUE");
+  });
+
+  it("refuses a QR code for an already connected connection", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { status: "connected" });
+    const res = await request(app).get(`/api/connections/${connection.id}/qrcode`).set("Authorization", bearer(user));
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("ALREADY_CONNECTED");
+  });
+
+  it("does not let an admin touch another company's connection", async () => {
+    const { user } = await admin();
+    const other = await createCompany();
+    const foreign = await createConnection(other.id, { name: "Original" });
+    const put = await request(app)
+      .put(`/api/connections/${foreign.id}`)
+      .set("Authorization", bearer(user))
+      .send({ name: "Hacked" });
+    expect(put.status).toBe(404);
+    const del = await request(app).delete(`/api/connections/${foreign.id}`).set("Authorization", bearer(user));
+    expect(del.status).toBe(404);
+    expect((await Connection.findByPk(foreign.id))!.name).toBe("Original");
+  });
+
+  it("does not alert when a non-connected instance becomes disconnected", async () => {
+    const { company } = await admin();
+    const connection = await createConnection(company.id, { status: "qrcode" });
+    const spy = jest.spyOn(emitter, "toSupervisors");
+    await applyConnectionUpdate(connection, "disconnected");
+    expect(spy).toHaveBeenCalledWith(company.id, "connection:update", expect.anything());
+    expect(spy).not.toHaveBeenCalledWith(company.id, "connection:alert", expect.anything());
+    spy.mockRestore();
   });
 });
