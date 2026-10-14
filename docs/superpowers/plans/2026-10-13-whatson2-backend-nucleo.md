@@ -3197,7 +3197,7 @@ export interface WhatsAppProvider {
   - `getProvider(): WhatsAppProvider`, `setProvider(p: WhatsAppProvider | null): void`.
   - Teste: `class FakeProvider` com `sent`, `instances`, `state`, `failNext(method, times?)`, `reset()`, `texts()`.
 
-- [ ] **Step 1: Escrever fixtures e testes que falham**
+- [x] **Step 1: Escrever fixtures e testes que falham**
 
 `backend/test/fixtures/evolution.ts`:
 
@@ -3497,12 +3497,12 @@ describe("EvolutionProvider", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/unit/evolutionParse.test.ts test/unit/evolutionProvider.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/whatsapp/evolution/parseWebhook'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/whatsapp/provider.ts`: exatamente o bloco de tipos da seção **Interfaces** acima, com o import:
 
@@ -3889,12 +3889,12 @@ export class FakeProvider implements WhatsAppProvider {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
