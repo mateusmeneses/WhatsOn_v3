@@ -2039,7 +2039,7 @@ git commit -m "feat(frontend): provider de tempo real com reconexão e salas de 
 ### Task 5: Dados de tickets — API, visibilidade e cache em tempo real
 
 **Files:**
-- Create: `frontend/src/features/users/usersApi.ts` (só as opções de usuário; a Task 11 completa)
+- Create: `frontend/src/features/users/usersApi.ts` (só as opções de usuário; a Task 11 completa) e `frontend/src/features/users/useUserOptions.ts`
 - Create: `frontend/src/features/tickets/{ticketsApi.ts,visibility.ts,ticketCache.ts,useTickets.ts}`
 - Create: `frontend/src/test/factories.ts`
 - Test: `frontend/src/features/tickets/visibility.test.ts`, `frontend/src/features/tickets/ticketCache.test.ts`, `frontend/src/features/tickets/useTickets.test.tsx`
@@ -2257,7 +2257,6 @@ Expected: FAIL com `Failed to resolve import "./visibility"`.
 `frontend/src/features/users/usersApi.ts`:
 
 ```ts
-import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { UserOption } from "@/types/api";
 
@@ -2270,6 +2269,13 @@ export async function fetchUserOptions(): Promise<UserOption[]> {
   const { data } = await api.get<UserOption[]>("/users/options");
   return data;
 }
+```
+
+`frontend/src/features/users/useUserOptions.ts` (hook em arquivo próprio para que `vi.mock` de `fetchUserOptions` nos testes seja efetivo — chamadas internas do mesmo módulo não passam pelo mock):
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { fetchUserOptions, userKeys } from "./usersApi";
 
 export function useUserOptions() {
   return useQuery({ queryKey: userKeys.options, queryFn: fetchUserOptions, staleTime: 60_000 });
@@ -2389,7 +2395,7 @@ export function applyTicketUpdate(queryClient: QueryClient, ticket: Ticket, view
 ```ts
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
-import { useUserOptions } from "@/features/users/usersApi";
+import { useUserOptions } from "@/features/users/useUserOptions";
 import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
 import type { Ticket, TicketStatus } from "@/types/api";
@@ -3236,7 +3242,7 @@ git commit -m "feat(frontend): chat com envio otimista, mídia, acks e reenvio"
 ### Task 7: Ações do ticket — aceitar, transferir e finalizar
 
 **Files:**
-- Create: `frontend/src/features/queues/queuesApi.ts` (só leitura; a Task 10 completa)
+- Create: `frontend/src/features/queues/queuesApi.ts` (só leitura; a Task 10 completa) e `frontend/src/features/queues/useQueues.ts`
 - Create: `frontend/src/features/tickets/{TicketActions.tsx,TransferDialog.tsx}`
 - Modify: `frontend/src/features/chat/ChatPanel.tsx` (passar `actions` ao `ChatHeader`)
 - Test: `frontend/src/features/tickets/TicketActions.test.tsx`
@@ -3380,7 +3386,6 @@ Expected: FAIL com `Failed to resolve import "@/features/queues/queuesApi"`.
 `frontend/src/features/queues/queuesApi.ts`:
 
 ```ts
-import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { Queue } from "@/types/api";
 
@@ -3390,6 +3395,13 @@ export async function fetchQueues(): Promise<Queue[]> {
   const { data } = await api.get<Queue[]>("/queues");
   return data;
 }
+```
+
+`frontend/src/features/queues/useQueues.ts` (hook separado para os mocks de `fetchQueues` funcionarem nos testes):
+
+```ts
+import { useQuery } from "@tanstack/react-query";
+import { fetchQueues, queueKeys } from "./queuesApi";
 
 export function useQueues() {
   return useQuery({ queryKey: queueKeys.all, queryFn: fetchQueues, staleTime: 60_000 });
@@ -3407,8 +3419,8 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Tabs } from "@/components/ui/tabs";
-import { useQueues } from "@/features/queues/queuesApi";
-import { useUserOptions } from "@/features/users/usersApi";
+import { useQueues } from "@/features/queues/useQueues";
+import { useUserOptions } from "@/features/users/useUserOptions";
 import { errorMessage } from "@/lib/apiError";
 import { useAuth } from "@/stores/auth";
 import type { Ticket } from "@/types/api";
@@ -4603,7 +4615,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
 import type { Queue } from "@/types/api";
 import { QueueDialog } from "./QueueDialog";
-import { deleteQueue, queueKeys, useQueues } from "./queuesApi";
+import { deleteQueue, queueKeys } from "./queuesApi";
+import { useQueues } from "./useQueues";
 import { describeSchedule } from "./schedule";
 
 export function QueuesPage() {
@@ -4885,7 +4898,7 @@ import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
-import { useQueues } from "@/features/queues/queuesApi";
+import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
 import type { Profile, UserView } from "@/types/api";
 import { createUser, PROFILE_LABEL, updateUser, userKeys, type UserInput } from "./usersApi";
@@ -5010,7 +5023,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { useQueues } from "@/features/queues/queuesApi";
+import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
 import { useAuth } from "@/stores/auth";
 import type { UserView } from "@/types/api";
@@ -5147,7 +5160,7 @@ git commit -m "feat(frontend): gestão de usuários com perfis e filas"
 ### Task 12: Conexões WhatsApp — QR code, status ao vivo e alertas
 
 **Files:**
-- Create: `frontend/src/features/connections/{connectionsApi.ts,ConnectionDialog.tsx,QrCodeDialog.tsx,ConnectionsPage.tsx,ConnectionAlerts.tsx}`
+- Create: `frontend/src/features/connections/{connectionsApi.ts,useConnections.ts,ConnectionDialog.tsx,QrCodeDialog.tsx,ConnectionsPage.tsx,ConnectionAlerts.tsx}`
 - Modify: `frontend/src/components/layout/AppShell.tsx` (renderizar `ConnectionAlerts`), `frontend/src/app/routes.tsx` (rota `/conexoes`, só admin)
 - Test: `frontend/src/features/connections/ConnectionsPage.test.tsx`
 
@@ -5286,9 +5299,7 @@ Expected: FAIL com `Failed to resolve import "./ConnectionAlerts"`.
 `frontend/src/features/connections/connectionsApi.ts`:
 
 ```ts
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import type { Connection, ConnectionStatus } from "@/types/api";
 
 export const connectionKeys = { all: ["connections"] as const };
@@ -5341,6 +5352,15 @@ export async function disconnectConnection(id: number): Promise<Connection> {
   const { data } = await api.post<Connection>(`/connections/${id}/disconnect`);
   return data;
 }
+```
+
+`frontend/src/features/connections/useConnections.ts` (hooks separados para os mocks de `fetchConnections` funcionarem nos testes):
+
+```ts
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
+import type { Connection } from "@/types/api";
+import { connectionKeys, fetchConnections } from "./connectionsApi";
 
 export function useConnections() {
   return useQuery({ queryKey: connectionKeys.all, queryFn: fetchConnections });
@@ -5381,7 +5401,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
 import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import type { Connection } from "@/types/api";
-import { fetchQrCode, useConnections } from "./connectionsApi";
+import { fetchQrCode } from "./connectionsApi";
+import { useConnections } from "./useConnections";
 
 export function QrCodeDialog({ connection, onClose }: { connection: Connection; onClose: () => void }) {
   const qrQuery = useQuery({
@@ -5440,7 +5461,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useQueues } from "@/features/queues/queuesApi";
+import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
 import type { Connection } from "@/types/api";
 import {
@@ -5593,14 +5614,8 @@ import { errorMessage } from "@/lib/apiError";
 import { formatPhone } from "@/lib/format";
 import type { Connection, ConnectionStatus } from "@/types/api";
 import { ConnectionDialog } from "./ConnectionDialog";
-import {
-  connectionKeys,
-  deleteConnection,
-  disconnectConnection,
-  STATUS_LABEL,
-  useConnectionRealtime,
-  useConnections,
-} from "./connectionsApi";
+import { connectionKeys, deleteConnection, disconnectConnection, STATUS_LABEL } from "./connectionsApi";
+import { useConnectionRealtime, useConnections } from "./useConnections";
 import { QrCodeDialog } from "./QrCodeDialog";
 
 const STATUS_TONE: Record<ConnectionStatus, "success" | "warning" | "neutral"> = {
@@ -6274,8 +6289,8 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { uploadMedia } from "@/features/chat/messagesApi";
-import { useQueues } from "@/features/queues/queuesApi";
-import { useUserOptions } from "@/features/users/usersApi";
+import { useQueues } from "@/features/queues/useQueues";
+import { useUserOptions } from "@/features/users/useUserOptions";
 import { errorMessage } from "@/lib/apiError";
 import type { BotAction, ChatbotNode, StoredMedia } from "@/types/api";
 import { chatbotKeys, createNode, updateNode } from "./chatbotApi";
@@ -6476,8 +6491,8 @@ import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useQueues } from "@/features/queues/queuesApi";
-import { useUserOptions } from "@/features/users/usersApi";
+import { useQueues } from "@/features/queues/useQueues";
+import { useUserOptions } from "@/features/users/useUserOptions";
 import { errorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/cn";
 import type { BotEffect, BotState } from "@/types/api";
@@ -6605,7 +6620,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { useConnections } from "@/features/connections/connectionsApi";
+import { useConnections } from "@/features/connections/useConnections";
 import { errorMessage } from "@/lib/apiError";
 import { chatbotKeys, createNode, deleteNode, fetchNodes, reorderChildren } from "./chatbotApi";
 import { NodeForm, type NodeFormTarget } from "./NodeForm";
