@@ -3254,7 +3254,7 @@ git commit -m "feat(frontend): chat com envio otimista, mídia, acks e reenvio"
   - `TicketActions({ ticket })`: "Aceitar" (status `pending`); "Transferir" e "Finalizar" (status ≠ `closed` e usuário é supervisor/admin ou o atendente do ticket). Finalizar pede confirmação (`window.confirm("Finalizar este atendimento?")`). Depois de transferir, se o ticket deixou de ser visível para o usuário, volta para `/atendimento`.
   - `TransferDialog({ ticket, open, onOpenChange, onTransferred(ticket) })` com abas "Para uma fila" / "Para um atendente".
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/tickets/TicketActions.test.tsx`:
 
@@ -3376,12 +3376,12 @@ describe("TicketActions", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/tickets/TicketActions.test.tsx`
 Expected: FAIL com `Failed to resolve import "@/features/queues/queuesApi"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/queues/queuesApi.ts`:
 
@@ -3604,12 +3604,12 @@ import { TicketActions } from "@/features/tickets/TicketActions";
       <ChatHeader ticket={ticket} actions={<TicketActions ticket={ticket} />} />
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS (o `ChatPanel.test.tsx` continua passando: a ação "Aceitar" aparece no ticket pendente e o diálogo de transferência só é montado quando aberto).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
