@@ -46,12 +46,17 @@ async function main(): Promise<void> {
       process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
     force.unref();
-    await closeSocket(); // fecha também o servidor HTTP
-    await Promise.all(workers.map((w) => w.close())); // espera os jobs em andamento
-    await closeQueues();
-    await closeRedis();
-    await sequelize.close();
-    process.exit(0);
+    try {
+      await closeSocket(); // fecha também o servidor HTTP
+      await Promise.all(workers.map((w) => w.close())); // espera os jobs em andamento
+      await closeQueues();
+      await closeRedis();
+      await sequelize.close();
+      process.exit(0);
+    } catch (err) {
+      logger.error({ err }, "erro no encerramento");
+      process.exit(1);
+    }
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));

@@ -1,5 +1,6 @@
 import { Processor, Queue, Worker, WorkerOptions } from "bullmq";
 import IORedis from "ioredis";
+import { logger } from "../shared/logger";
 import { createRedis, getRedis } from "../shared/redis";
 
 export const QueueNames = {
@@ -31,6 +32,7 @@ export function getQueue(name: string): Queue {
         removeOnFail: false,
       },
     });
+    queue.on("error", (err) => logger.error({ queue: name, err }, "queue error"));
     queues.set(name, queue);
   }
   return queue;

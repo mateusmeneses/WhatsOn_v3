@@ -6,13 +6,19 @@ import { sequelize } from "./sequelize";
 /** Instalação nova: cria a empresa demo e o admin inicial. Não faz nada se já existir algum usuário. */
 export async function seed(): Promise<{ created: boolean }> {
   if ((await User.count()) > 0) return { created: false };
-  const company = await Company.create({ name: "Empresa Demo" });
-  await User.create({
-    companyId: company.id,
-    name: "Administrador",
-    email: env.SEED_ADMIN_EMAIL.toLowerCase(),
-    profile: "admin",
-    passwordHash: await bcrypt.hash(env.SEED_ADMIN_PASSWORD, 10),
+  const passwordHash = await bcrypt.hash(env.SEED_ADMIN_PASSWORD, 10);
+  await sequelize.transaction(async (transaction) => {
+    const company = await Company.create({ name: "Empresa Demo" }, { transaction });
+    await User.create(
+      {
+        companyId: company.id,
+        name: "Administrador",
+        email: env.SEED_ADMIN_EMAIL.toLowerCase(),
+        profile: "admin",
+        passwordHash,
+      },
+      { transaction },
+    );
   });
   return { created: true };
 }
