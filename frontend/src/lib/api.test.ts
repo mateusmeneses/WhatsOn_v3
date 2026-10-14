@@ -56,6 +56,30 @@ describe("api client", () => {
     expect(refreshTokenStorage.get()).toBeNull();
   });
 
+  it("keeps the session when the refresh fails with a network error", async () => {
+    useAuth.setState({ accessToken: "old", user });
+    refreshTokenStorage.set("r1");
+    apiMock.onGet("/tickets").reply(401, {});
+    rawMock.onPost("/api/auth/refresh").networkError();
+
+    await expect(api.get("/tickets")).rejects.toBeDefined();
+    expect(refreshTokenStorage.get()).toBe("r1");
+    expect(useAuth.getState().user).toEqual(user);
+  });
+
+  it("refreshes and retries a 401 on /auth/me", async () => {
+    useAuth.setState({ accessToken: "old", user });
+    refreshTokenStorage.set("r1");
+    apiMock
+      .onGet("/auth/me")
+      .reply((config) => (config.headers?.Authorization === "Bearer new" ? [200, { ok: true }] : [401, {}]));
+    rawMock.onPost("/api/auth/refresh").reply(200, { accessToken: "new", refreshToken: "r2", user });
+
+    const { data } = await api.get("/auth/me");
+    expect(data).toEqual({ ok: true });
+    expect(rawMock.history.post).toHaveLength(1);
+  });
+
   it("does not try to refresh failed auth calls", async () => {
     apiMock.onPost("/auth/login").reply(401, { error: { code: "INVALID_CREDENTIALS", message: "E-mail ou senha inválidos" } });
     await expect(api.post("/auth/login", {})).rejects.toBeDefined();

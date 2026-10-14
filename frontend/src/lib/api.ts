@@ -19,13 +19,17 @@ export function refreshAccessToken(): Promise<string | null> {
   if (!refreshing) {
     refreshing = (async () => {
       const refreshToken = refreshTokenStorage.get();
-      if (!refreshToken) return null;
+      if (!refreshToken) {
+        useAuth.getState().clear();
+        return null;
+      }
       try {
         const { data } = await axios.post<AuthResponse>(`${API_URL}/api/auth/refresh`, { refreshToken });
         useAuth.getState().setSession(data);
         return data.accessToken;
-      } catch {
-        useAuth.getState().clear();
+      } catch (err) {
+        const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+        if (status === 401 || status === 403) useAuth.getState().clear();
         return null;
       }
     })().finally(() => {
@@ -41,7 +45,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const original = error.config as RetriableConfig | undefined;
-    const isAuthCall = original?.url?.startsWith("/auth/") ?? false;
+    const isAuthCall = original?.url === "/auth/login" || original?.url === "/auth/refresh";
     if (error.response?.status === 401 && original && !original._retried && !isAuthCall) {
       original._retried = true;
       const token = await refreshAccessToken();
