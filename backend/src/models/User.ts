@@ -4,6 +4,8 @@ export type Profile = "admin" | "supervisor" | "agent";
 
 @Table({ tableName: "users" })
 export class User extends Model {
+  declare id: number;
+
   @Column({ type: DataType.INTEGER, allowNull: false })
   companyId!: number;
 
