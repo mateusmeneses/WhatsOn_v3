@@ -6809,7 +6809,7 @@ git commit -m "feat(frontend): editor do chatbot com árvore reordenável e simu
   - `SettingsPage` em `/configuracoes`: campos "Nome da empresa" e "Fuso horário", botão "Salvar".
   - Imagem Docker do frontend (Nginx) servindo o build e fazendo proxy de `/api/`, `/media/` e `/socket.io/` para `backend:4000`; publicada em `http://localhost:3000`.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/settings/SettingsPage.test.tsx`:
 
@@ -6848,12 +6848,12 @@ describe("SettingsPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/settings`
 Expected: FAIL com `Failed to resolve import "./companyApi"`.
 
-- [ ] **Step 3: Implementar a página**
+- [x] **Step 3: Implementar a página**
 
 `frontend/src/features/settings/companyApi.ts`:
 
@@ -6992,12 +6992,12 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
         />
 ```
 
-- [ ] **Step 4: Rodar testes, typecheck e build**
+- [x] **Step 4: Rodar testes, typecheck e build**
 
 Run: `npm test && npm run typecheck && npm run build`
 Expected: todos os testes PASS; `dist/` gerado sem erros.
 
-- [ ] **Step 5: Docker do frontend**
+- [x] **Step 5: Docker do frontend**
 
 `frontend/.dockerignore`:
 
@@ -7098,7 +7098,7 @@ Para desenvolvimento com recarga automática: `cd frontend && npm run dev` (http
 7. Desconecte o aparelho pelo celular: aparece o aviso "A conexão ... caiu".
 ```
 
-- [ ] **Step 6: Subir e verificar**
+- [x] **Step 6: Subir e verificar**
 
 Run (na raiz): `docker compose up -d --build frontend`
 Expected: container `frontend` em execução.
@@ -7114,7 +7114,7 @@ Expected: `200` (fallback do SPA).
 
 Observação: o `.env` local da raiz pode ainda ter `FRONTEND_URL=http://localhost:5173`; com o Nginx servindo tudo na mesma origem isso não afeta o uso, mas atualize para `http://localhost:3000` para manter o CORS do backend coerente.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend docker-compose.yml .env.example docs/smoke-test.md
