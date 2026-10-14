@@ -109,7 +109,7 @@ backend/
   - `createApp(options?: { healthChecks?: Record<string, HealthCheck>; beforeErrorHandler?: (app: Express) => void }): Express`.
   - `apiRoutes: Router` em `src/routes.ts`.
 
-- [ ] **Step 1: Infra Docker (Postgres + Redis)**
+- [x] **Step 1: Infra Docker (Postgres + Redis)**
 
 `docker-compose.yml`:
 
@@ -184,7 +184,7 @@ backend/public/media/
 coverage/
 ```
 
-- [ ] **Step 2: Subir a infra e conferir**
+- [x] **Step 2: Subir a infra e conferir**
 
 Run: `docker compose up -d postgres redis && docker compose ps`
 Expected: `postgres` e `redis` com status `healthy`.
@@ -192,7 +192,7 @@ Expected: `postgres` e `redis` com status `healthy`.
 Run: `docker compose exec postgres psql -U whatson -l`
 Expected: lista contém `evolution`, `whatson`, `whatson_test`.
 
-- [ ] **Step 3: Criar o projeto Node e instalar dependências**
+- [x] **Step 3: Criar o projeto Node e instalar dependências**
 
 Run (em `backend/`):
 
@@ -206,7 +206,7 @@ npm i -D typescript@5 tsx@4 jest@29 ts-jest@29 @types/jest@29 supertest@7 @types
 
 Expected: instalação sem erros.
 
-- [ ] **Step 4: Configuração TypeScript, Jest e env**
+- [x] **Step 4: Configuração TypeScript, Jest e env**
 
 `backend/tsconfig.json`:
 
@@ -301,7 +301,7 @@ INBOUND_SHARDS=2
 OUTBOUND_SHARDS=2
 ```
 
-- [ ] **Step 5: Escrever os testes que falham**
+- [x] **Step 5: Escrever os testes que falham**
 
 `backend/test/unit/health.test.ts`:
 
@@ -400,12 +400,12 @@ describe("errorHandler", () => {
 });
 ```
 
-- [ ] **Step 6: Rodar e ver falhar**
+- [x] **Step 6: Rodar e ver falhar**
 
 Run (em `backend/`): `npx jest test/unit`
 Expected: FAIL com `Cannot find module '../../src/shared/health'`.
 
-- [ ] **Step 7: Implementar**
+- [x] **Step 7: Implementar**
 
 `backend/src/config/env.ts`:
 
@@ -606,12 +606,12 @@ export function createApp(options: AppOptions = {}): Express {
 }
 ```
 
-- [ ] **Step 8: Rodar testes e typecheck**
+- [x] **Step 8: Rodar testes e typecheck**
 
 Run: `npx jest test/unit && npm run typecheck`
 Expected: 7 testes PASS; `tsc` sem erros.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add .gitignore docker-compose.yml docker .env.example backend
