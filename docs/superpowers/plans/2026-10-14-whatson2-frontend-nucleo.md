@@ -1727,7 +1727,7 @@ git commit -m "feat(frontend): login, rotas protegidas e barra lateral por perfi
   - Comportamento: no 2º `ready` em diante (reconexão), invalida todas as queries; erro de conexão `UNAUTHENTICATED` dispara `refreshAccessToken()`.
   - Teste: `FakeSocket` com `on`, `off`, `emit` (registra em `emitted`; ack `true` para `ticket:join`), `disconnect`, `serverEmit(event, payload?)`; `socket.io-client` mockado globalmente em `setup.ts` (`io` retorna um novo `FakeSocket`); `renderWithProviders(ui, { socket })` envolve o ui em `RealtimeContext.Provider`.
 
-- [ ] **Step 1: Infra de teste**
+- [x] **Step 1: Infra de teste**
 
 `frontend/src/test/fakeSocket.ts`:
 
@@ -1820,7 +1820,7 @@ import { RealtimeContext } from "@/realtime/RealtimeProvider";
 import type { FakeSocket } from "./fakeSocket";
 ```
 
-- [ ] **Step 2: Escrever o teste que falha**
+- [x] **Step 2: Escrever o teste que falha**
 
 `frontend/src/realtime/RealtimeProvider.test.tsx`:
 
@@ -1905,12 +1905,12 @@ describe("RealtimeProvider", () => {
 });
 ```
 
-- [ ] **Step 3: Rodar e ver falhar**
+- [x] **Step 3: Rodar e ver falhar**
 
 Run: `npx vitest run src/realtime`
 Expected: FAIL com `Failed to resolve import "./RealtimeProvider"`.
 
-- [ ] **Step 4: Implementar**
+- [x] **Step 4: Implementar**
 
 `frontend/src/realtime/socket.ts`:
 
@@ -2022,12 +2022,12 @@ export function AppShell() {
 }
 ```
 
-- [ ] **Step 5: Rodar e ver passar**
+- [x] **Step 5: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS (incluindo os testes da Task 3, agora com o socket mockado).
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend
