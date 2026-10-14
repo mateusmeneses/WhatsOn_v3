@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute, RequireProfile } from "@/components/layout/ProtectedRoute";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { QueuesPage } from "@/features/queues/QueuesPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
@@ -27,6 +28,14 @@ export function AppRoutes() {
           element={
             <RequireProfile profiles={["admin"]}>
               <QueuesPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="conexoes"
+          element={
+            <RequireProfile profiles={["admin"]}>
+              <ConnectionsPage />
             </RequireProfile>
           }
         />
