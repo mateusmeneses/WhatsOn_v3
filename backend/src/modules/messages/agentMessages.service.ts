@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import { Message } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { paginate } from "../../shared/http";
+import { logger } from "../../shared/logger";
 import { AuthContext } from "../auth/auth.types";
 import { resolveMediaPath, StoredMedia } from "../media/media.storage";
 import { emitMessage } from "../tickets/ticket.events";
@@ -47,10 +48,20 @@ export async function sendAgentMessage(
 export async function resendMessage(auth: AuthContext, messageId: number) {
   const message = await Message.findOne({ where: { id: messageId, companyId: auth.companyId } });
   if (!message) throw notFound("Mensagem");
-  await getVisibleTicket(auth, message.ticketId);
-  if (message.ack !== "failed") throw new AppError("MESSAGE_NOT_FAILED", 409, "Só mensagens com falha podem ser reenviadas");
-  await message.update({ ack: "pending" });
+  const ticket = await getVisibleTicket(auth, message.ticketId);
+  if (auth.profile === "agent" && ticket.userId !== auth.userId) {
+    throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
+  }
+  const [updated] = await Message.update({ ack: "pending" }, { where: { id: messageId, ack: "failed" } });
+  if (updated === 0) throw new AppError("MESSAGE_NOT_FAILED", 409, "Só mensagens com falha podem ser reenviadas");
+  await message.reload();
   emitMessage(message, "message:update");
-  await enqueueOutbound(message.id, message.ticketId);
+  try {
+    await enqueueOutbound(message.id, message.ticketId);
+  } catch (err) {
+    logger.error({ err, messageId: message.id }, "failed to enqueue resend");
+    await message.update({ ack: "failed" });
+    emitMessage(message, "message:update");
+  }
   return message;
 }

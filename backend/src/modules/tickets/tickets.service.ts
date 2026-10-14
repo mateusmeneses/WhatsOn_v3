@@ -80,7 +80,13 @@ function assertCanHandle(auth: AuthContext, ticket: Ticket): void {
 }
 
 export async function acceptTicket(auth: AuthContext, id: number) {
-  const ticket = await getVisibleTicket(auth, id);
+  const ticket = await Ticket.findOne({ where: { id, companyId: auth.companyId } });
+  if (!ticket) throw notFound("Ticket");
+  if (auth.profile === "agent") {
+    const queueIds = await userQueueIds(auth.userId);
+    const eligible = ticket.userId === auth.userId || (ticket.queueId !== null && queueIds.includes(ticket.queueId));
+    if (!eligible) throw new AppError("FORBIDDEN", 403, "Sem acesso a este ticket");
+  }
   const [updated] = await Ticket.update(
     { status: "open", userId: auth.userId },
     {
@@ -94,8 +100,11 @@ export async function acceptTicket(auth: AuthContext, id: number) {
   );
   if (updated === 0) {
     const current = await Ticket.findByPk(id, { include: [{ model: User, attributes: ["id", "name"] }] });
-    const by = current?.user ? ` por ${current.user.name}` : "";
-    throw new AppError("TICKET_ALREADY_ACCEPTED", 409, `Este atendimento já foi aceito${by}`);
+    if (current && current.userId !== null && current.userId !== auth.userId) {
+      const by = current.user ? ` por ${current.user.name}` : "";
+      throw new AppError("TICKET_ALREADY_ACCEPTED", 409, `Este atendimento já foi aceito${by}`);
+    }
+    throw new AppError("TICKET_NOT_PENDING", 409, "Este atendimento não está aguardando atendimento");
   }
   await logTicket(ticket, "accepted", { userId: auth.userId });
   await emitTicket(id, { queueId: ticket.queueId, userId: ticket.userId });

@@ -71,6 +71,26 @@ describe("tickets", () => {
     expect(await TicketLog.count({ where: { ticketId: ticket.id, event: "accepted" } })).toBe(1);
   });
 
+  it("answers 409 to a sequential second accept by another agent of the queue", async () => {
+    const w = await world();
+    const ticket = await w.ticketFor({ status: "pending", queueId: w.queueA.id });
+    const first = await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.agentA));
+    expect(first.status).toBe(200);
+    const second = await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.agentA2));
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe("TICKET_ALREADY_ACCEPTED");
+  });
+
+  it("answers 409 TICKET_NOT_PENDING when a supervisor accepts a bot or closed ticket", async () => {
+    const w = await world();
+    for (const status of ["bot", "closed"]) {
+      const ticket = await w.ticketFor({ status });
+      const res = await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.supervisor));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("TICKET_NOT_PENDING");
+    }
+  });
+
   it("forbids accepting a ticket from another queue", async () => {
     const w = await world();
     const ticket = await w.ticketFor({ status: "pending", queueId: w.queueB.id });

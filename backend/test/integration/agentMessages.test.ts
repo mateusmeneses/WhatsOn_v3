@@ -1,9 +1,11 @@
+import { Queue } from "bullmq";
 import request from "supertest";
 import { createApp } from "../../src/app";
 import { saveBuffer } from "../../src/modules/media/media.storage";
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
+import { Message } from "../../src/models";
 import { createMessage, createTicket, createUser, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 import { resetRedis } from "../helpers/redis";
@@ -103,5 +105,19 @@ describe("agent messages", () => {
 
     const again = await request(app).post(`/api/messages/${failed.id}/resend`).set("Authorization", bearer(agent));
     expect(again.status).toBe(409);
+  });
+
+  it("keeps the message failed when re-enqueue fails", async () => {
+    const { agent, ticket } = await setup();
+    const failed = await createMessage(ticket, { fromMe: true, ack: "failed", body: "x" });
+    const spy = jest.spyOn(Queue.prototype, "add").mockRejectedValueOnce(new Error("redis down"));
+    try {
+      const res = await request(app).post(`/api/messages/${failed.id}/resend`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(200);
+      expect(res.body.ack).toBe("failed");
+      expect((await Message.findByPk(failed.id))?.ack).toBe("failed");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
