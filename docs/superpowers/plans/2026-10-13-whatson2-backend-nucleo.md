@@ -3919,7 +3919,7 @@ git commit -m "feat(whatsapp): interface WhatsAppProvider e implementação Evol
   - Evento servidor → cliente `ready` depois que o socket entrou nas salas; cliente → servidor `ticket:join` (ticketId, ack?(ok: boolean)) e `ticket:leave` (ticketId).
   - `TICKET_INCLUDE` (includes padrão do ticket), `emitTicket(ticketId: number, prev?: { queueId: number | null; userId: number | null }): Promise<void>` → evento `ticket:update` com o ticket completo; `emitMessage(message: Message, event: "message:new" | "message:update"): void`; `emitMessageDeleted(message: Message): void` → evento `message:delete` `{ id, ticketId }`.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/integration/realtime.test.ts`:
 
@@ -4041,12 +4041,12 @@ describe("realtime", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/realtime.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/realtime/socket'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/realtime/socket.ts`:
 
@@ -4169,12 +4169,12 @@ export function emitMessageDeleted(message: Message): void {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
