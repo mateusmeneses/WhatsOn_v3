@@ -2,7 +2,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
+import type { Socket } from "socket.io-client";
+import { RealtimeContext } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
+import type { FakeSocket } from "./fakeSocket";
 import type { PublicUser } from "@/types/api";
 
 export function createTestQueryClient(): QueryClient {
@@ -26,11 +29,20 @@ export function setTestUser(partial: Partial<PublicUser> = {}): PublicUser {
 
 export function renderWithProviders(
   ui: ReactElement,
-  { route = "/", queryClient = createTestQueryClient() }: { route?: string; queryClient?: QueryClient } = {},
+  {
+    route = "/",
+    queryClient = createTestQueryClient(),
+    socket,
+  }: { route?: string; queryClient?: QueryClient; socket?: FakeSocket } = {},
 ) {
+  const content = socket ? (
+    <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1 }}>{ui}</RealtimeContext.Provider>
+  ) : (
+    ui
+  );
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{content}</MemoryRouter>
     </QueryClientProvider>,
   );
   return { ...result, queryClient };
