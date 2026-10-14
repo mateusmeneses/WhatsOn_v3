@@ -6,15 +6,20 @@ import { RealtimeContext } from "@/realtime/RealtimeProvider";
 import { FakeSocket } from "@/test/fakeSocket";
 import { makeTicket } from "@/test/factories";
 import { createTestQueryClient, setTestUser } from "@/test/utils";
-import { api } from "@/lib/api";
+import { fetchUserOptions } from "@/features/users/usersApi";
 import { ticketKeys } from "./ticketsApi";
 import type { TicketPages } from "./ticketCache";
 import { useTicketRealtime, useViewer } from "./useTickets";
 
+vi.mock("@/features/users/usersApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/users/usersApi")>()),
+  fetchUserOptions: vi.fn(),
+}));
+
 describe("useTicketRealtime", () => {
   it("applies ticket:update events to the cached lists using the agent's queues", async () => {
     setTestUser({ id: 1, profile: "agent" });
-    vi.spyOn(api, "get").mockResolvedValue({ data: [{ id: 1, name: "Ana", queueIds: [10] }] });
+    vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10] }]);
     const qc = createTestQueryClient();
     qc.setQueryData(ticketKeys.list("pending", ""), { pages: [{ items: [], hasMore: false }], pageParams: [1] });
     const socket = new FakeSocket();

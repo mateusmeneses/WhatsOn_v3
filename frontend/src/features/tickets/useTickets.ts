@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
-import { useUserOptions } from "@/features/users/usersApi";
+import { useUserOptions } from "@/features/users/useUserOptions";
 import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
 import type { Ticket, TicketStatus } from "@/types/api";
