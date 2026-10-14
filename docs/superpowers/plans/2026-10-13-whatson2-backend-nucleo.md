@@ -6970,7 +6970,7 @@ git commit -m "feat(inbound): webhook da Evolution, filas por contato, tickets e
   - `mountBullBoard(app: Express): void` (em `/admin/queues`, com basic auth; só monta se `BULL_BOARD_USER` e `BULL_BOARD_PASS` existirem).
   - Processo `node dist/server.js`: roda migrations, seed, HTTP + Socket.io, workers e graceful shutdown.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/integration/seed.test.ts`:
 
@@ -7008,12 +7008,12 @@ describe("seed", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/seed.test.ts`
 Expected: FAIL com `Cannot find module '../../src/database/seed'`.
 
-- [ ] **Step 3: Implementar seed, workers, painel e servidor**
+- [x] **Step 3: Implementar seed, workers, painel e servidor**
 
 `backend/src/database/seed.ts`:
 
@@ -7183,12 +7183,12 @@ main().catch((err) => {
 });
 ```
 
-- [ ] **Step 4: Rodar testes e build**
+- [x] **Step 4: Rodar testes e build**
 
 Run: `npx jest && npm run typecheck && npm run build`
 Expected: todos os testes PASS; `dist/server.js` gerado.
 
-- [ ] **Step 5: Docker do backend e compose completo**
+- [x] **Step 5: Docker do backend e compose completo**
 
 `backend/.dockerignore`:
 
@@ -7297,7 +7297,7 @@ Antes de subir, confirme que a tag da Evolution existe:
 Run: `docker pull evoapicloud/evolution-api:v2.3.0`
 Expected: download concluído. Se a tag não existir, use a v2.x estável mais recente publicada em `evoapicloud/evolution-api` no Docker Hub e atualize o compose.
 
-- [ ] **Step 6: Subir tudo e verificar**
+- [x] **Step 6: Subir tudo e verificar**
 
 Run (na raiz): `cp .env.example .env` (edite os segredos) e depois `docker compose up -d --build`
 Expected: `postgres`, `redis`, `evolution` e `backend` em execução (`docker compose ps`).
@@ -7308,7 +7308,7 @@ Expected: `{"status":"ok","checks":{"database":"ok","redis":"ok","evolution":"ok
 Run: `curl -s -X POST http://localhost:4000/api/auth/login -H "Content-Type: application/json" -d "{\"email\":\"admin@whatson.local\",\"password\":\"admin123\"}"`
 Expected: JSON com `accessToken`, `refreshToken` e `user.profile = "admin"`.
 
-- [ ] **Step 7: Roteiro de smoke test com a Evolution real**
+- [x] **Step 7: Roteiro de smoke test com a Evolution real**
 
 `docs/smoke-test.md`:
 
@@ -7341,7 +7341,7 @@ Pré-requisito: `docker compose up -d --build` rodando e um celular com WhatsApp
 13. **Painel de filas**: abra `http://localhost:4000/admin/queues` (usuário/senha do `.env`) e confirme que não há jobs falhos.
 ````
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add backend docker-compose.yml docs/smoke-test.md
