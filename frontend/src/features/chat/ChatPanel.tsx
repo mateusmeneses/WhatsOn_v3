@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Spinner } from "@/components/ui/spinner";
 import { markTicketRead } from "@/features/tickets/ticketsApi";
 import { useApplyTicket, useTicket } from "@/features/tickets/useTickets";
@@ -8,6 +8,7 @@ import { useAuth } from "@/stores/auth";
 import type { PublicUser, StoredMedia, Ticket } from "@/types/api";
 import { ChatHeader } from "./ChatHeader";
 import { Composer } from "./Composer";
+import { useTicketLocalMessages } from "./localMessages";
 import { MessageList } from "./MessageList";
 import { createTempMessage, flattenMessages, type ChatMessage } from "./messageCache";
 import { useMessageRealtime, useMessages, useResendMessage, useSendMessage } from "./useMessages";
@@ -43,7 +44,12 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   const messagesQuery = useMessages(ticket.id);
   const send = useSendMessage(ticket);
   const resend = useResendMessage(ticket.id);
-  const messages = flattenMessages(messagesQuery.data);
+  const localMessages = useTicketLocalMessages(ticket.id);
+  const messages = useMemo(() => {
+    const server = flattenMessages(messagesQuery.data);
+    const ids = new Set(server.map((m) => m.id));
+    return [...server, ...localMessages.filter((m) => !ids.has(m.id))];
+  }, [messagesQuery.data, localMessages]);
   const canReply = ticket.status === "open" && (user.profile !== "agent" || ticket.userId === user.id);
 
   useEffect(() => {
@@ -72,7 +78,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   return (
     <div className="flex h-full flex-col">
       <ChatHeader ticket={ticket} />
-      {messagesQuery.isLoading ? (
+      {messagesQuery.isLoading && messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center bg-background">
           <Spinner />
         </div>

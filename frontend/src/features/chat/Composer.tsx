@@ -48,25 +48,27 @@ export function Composer({ onSend }: { onSend: (body: string, media: StoredMedia
         size="icon"
         aria-label="Anexar arquivo"
         loading={uploading}
+        disabled={uploading}
         onClick={() => fileRef.current?.click()}
       >
         {!uploading && <Paperclip className="h-5 w-5" aria-hidden />}
       </Button>
       <Textarea
         aria-label="Mensagem"
+        disabled={uploading}
         rows={1}
         value={text}
         placeholder="Digite uma mensagem…"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
+          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit();
           }
         }}
         className="max-h-40 min-h-10 flex-1 resize-none"
       />
-      <Button type="submit" size="icon" aria-label="Enviar" disabled={!text.trim()}>
+      <Button type="submit" size="icon" aria-label="Enviar" disabled={uploading || !text.trim()}>
         <Send className="h-4 w-4" aria-hidden />
       </Button>
     </form>

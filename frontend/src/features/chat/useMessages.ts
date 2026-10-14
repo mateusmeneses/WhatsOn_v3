@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { errorMessage } from "@/lib/apiError";
 import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import type { Message, Page, StoredMedia, Ticket } from "@/types/api";
+import { useLocalMessages } from "./localMessages";
 import { removeMessage, upsertMessage, type ChatMessage, type MessagePages } from "./messageCache";
 import { fetchMessages, messageKeys, resendMessage, sendMessage } from "./messagesApi";
 
@@ -41,14 +42,17 @@ export interface SendVariables {
 
 export function useSendMessage(ticket: Ticket) {
   const update = useUpdateMessages(ticket.id);
+  const local = useLocalMessages.getState;
   return useMutation({
     mutationFn: ({ body, media }: SendVariables) =>
       sendMessage(ticket.id, { ...(body ? { body } : {}), ...(media ? { media } : {}) }),
-    onMutate: ({ temp }) => update((data) => upsertMessage(data, temp)),
-    onSuccess: (message, { temp }) =>
-      update((data) => upsertMessage(removeMessage(data, (m) => m.tempId === temp.tempId), message)),
+    onMutate: ({ temp }) => local().add(ticket.id, temp),
+    onSuccess: (message, { temp }) => {
+      local().remove(ticket.id, temp.tempId!);
+      update((data) => upsertMessage(removeMessage(data, (m) => m.tempId === temp.tempId), message));
+    },
     onError: (err, { temp }) => {
-      update((data) => upsertMessage(data, { ...temp, ack: "failed", localFailed: true }));
+      local().update(ticket.id, temp.tempId!, { ack: "failed", localFailed: true });
       toast.error(errorMessage(err));
     },
   });

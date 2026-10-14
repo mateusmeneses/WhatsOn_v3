@@ -7,6 +7,7 @@ import { FakeSocket } from "@/test/fakeSocket";
 import { makeMessage, makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import type { Message } from "@/types/api";
+import { useLocalMessages } from "./localMessages";
 import { ChatPanel } from "./ChatPanel";
 import { fetchMessages, sendMessage } from "./messagesApi";
 
@@ -49,13 +50,14 @@ function setup(ticketPartial = {}) {
   vi.mocked(markTicketRead).mockResolvedValue(makeTicket({ status: "open", userId: 1 }));
   vi.mocked(fetchMessages).mockResolvedValue({ items: [makeMessage({ id: 1, body: "Bom dia" })], hasMore: false });
   const socket = new FakeSocket();
-  renderWithProviders(<ChatPanel ticketId={1} />, { socket });
-  return { socket };
+  const { queryClient } = renderWithProviders(<ChatPanel ticketId={1} />, { socket });
+  return { socket, queryClient };
 }
 
 describe("ChatPanel", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useLocalMessages.setState({ byTicket: {} });
   });
 
   it("shows the conversation and joins the ticket room", async () => {
@@ -112,5 +114,37 @@ describe("ChatPanel", () => {
     setup({ status: "pending", userId: null });
     expect(await screen.findByText("Aceite o atendimento para responder.")).toBeInTheDocument();
     expect(screen.queryByLabelText("Mensagem")).not.toBeInTheDocument();
+  });
+
+  it("keeps a failed bubble after the messages query is refetched", async () => {
+    const { queryClient } = setup();
+    await screen.findByText("Bom dia");
+    vi.mocked(sendMessage).mockRejectedValueOnce(networkError());
+    await userEvent.type(screen.getByLabelText("Mensagem"), "Teste{Enter}");
+    expect(await screen.findByText("Não enviada")).toBeInTheDocument();
+
+    const callsBefore = vi.mocked(fetchMessages).mock.calls.length;
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+    expect(vi.mocked(fetchMessages).mock.calls.length).toBeGreaterThan(callsBefore);
+    expect(screen.getByText("Não enviada")).toBeInTheDocument();
+    expect(screen.getByText("Teste")).toBeInTheDocument();
+  });
+
+  it("shows the temporary bubble when sending before the first page loads", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10] }]);
+    vi.mocked(fetchTicket).mockResolvedValue(makeTicket({ status: "open", userId: 1 }));
+    const first = deferred<{ items: Message[]; hasMore: boolean }>();
+    vi.mocked(fetchMessages).mockReturnValue(first.promise);
+    vi.mocked(sendMessage).mockReturnValue(new Promise(() => undefined));
+    renderWithProviders(<ChatPanel ticketId={1} />, { socket: new FakeSocket() });
+
+    await userEvent.type(await screen.findByLabelText("Mensagem"), "Cedo{Enter}");
+    expect(screen.getByText("Cedo")).toBeInTheDocument();
+    await act(async () => first.resolve({ items: [makeMessage({ id: 1, body: "Bom dia" })], hasMore: false }));
+    expect(await screen.findByText("Bom dia")).toBeInTheDocument();
+    expect(screen.getByText("Cedo")).toBeInTheDocument();
   });
 });
