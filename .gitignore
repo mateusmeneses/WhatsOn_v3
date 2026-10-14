@@ -3,3 +3,7 @@ dist/
 .env
 .superpowers/
 *.log
+
+backend/tmp/
+backend/public/media/
+coverage/
