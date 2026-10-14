@@ -2,10 +2,10 @@ import http from "node:http";
 import { AddressInfo } from "node:net";
 import { io as ioc, Socket } from "socket.io-client";
 import { closeSocket, emitter, initSocket, rooms } from "../../src/modules/realtime/socket";
-import { emitTicket } from "../../src/modules/tickets/ticket.events";
+import { emitMessage, emitMessageDeleted, emitTicket } from "../../src/modules/tickets/ticket.events";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createQueue, createTicket, createUser, scenario } from "../helpers/factories";
+import { createCompany, createMessage, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
 
 let server: http.Server;
 let port: number;
@@ -110,6 +110,41 @@ describe("realtime", () => {
     expect(deniedAck).toBe(false);
     const silent = noEvent(socket, "message:new");
     emitter.toRooms([rooms.ticket(999)], "message:new", { id: 2 });
+    await silent;
+  });
+
+  it("isolates companies", async () => {
+    const { company, connection, contact } = await scenario();
+    const other = await createCompany();
+    const supB = await createUser(other.id, { profile: "supervisor" });
+    const sB = await connect(bearer(supB).slice(7));
+    const silent = Promise.all([noEvent(sB, "c:x"), noEvent(sB, "s:x"), noEvent(sB, "ticket:update")]);
+    emitter.toCompany(company.id, "c:x", {});
+    emitter.toSupervisors(company.id, "s:x", {});
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id });
+    await emitTicket(ticket.id);
+    await silent;
+  });
+
+  it("emits message events to joined ticket room and stops after leave", async () => {
+    const { company, connection, contact } = await scenario();
+    const agent = await createUser(company.id);
+    const socket = await connect(bearer(agent).slice(7));
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id });
+    const message = await createMessage(ticket);
+    await new Promise((resolve) => socket.emit("ticket:join", ticket.id, resolve));
+
+    const gotNew = nextEvent(socket, "message:new");
+    emitMessage(message, "message:new");
+    expect(await gotNew).toEqual(JSON.parse(JSON.stringify(message.toJSON())));
+    const gotDel = nextEvent(socket, "message:delete");
+    emitMessageDeleted(message);
+    await expect(gotDel).resolves.toEqual({ id: message.id, ticketId: ticket.id });
+
+    socket.emit("ticket:leave", ticket.id);
+    await new Promise((r) => setTimeout(r, 100));
+    const silent = noEvent(socket, "message:new");
+    emitMessage(message, "message:new");
     await silent;
   });
 });

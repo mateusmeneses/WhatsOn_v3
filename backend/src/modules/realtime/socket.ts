@@ -41,11 +41,20 @@ export function initSocket(server: http.Server, deps: SocketDeps): Server {
       for (const queueId of await userQueueIds(auth.userId)) socket.join(rooms.queue(queueId));
     } catch (err) {
       logger.error({ err, userId: auth.userId }, "socket room setup failed");
+      socket.disconnect(true);
+      return;
     }
 
     socket.on("ticket:join", async (ticketId: unknown, ack?: (ok: boolean) => void) => {
       const id = Number(ticketId);
-      const ok = Number.isInteger(id) && (await deps.canJoinTicket(auth, id).catch(() => false));
+      let ok = false;
+      if (Number.isInteger(id) && id > 0) {
+        try {
+          ok = await deps.canJoinTicket(auth, id);
+        } catch (err) {
+          logger.warn({ err, userId: auth.userId, ticketId: id }, "socket ticket:join check failed");
+        }
+      }
       if (ok) socket.join(rooms.ticket(id));
       if (typeof ack === "function") ack(ok);
     });
