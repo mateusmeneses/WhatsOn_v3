@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { authRoutes } from "./modules/auth/auth.routes";
+import { chatbotRoutes } from "./modules/chatbot/chatbot.routes";
 import { companyRoutes } from "./modules/companies/companies.routes";
 import { connectionRoutes } from "./modules/connections/connections.routes";
 import { contactRoutes } from "./modules/contacts/contacts.routes";
@@ -17,6 +18,7 @@ apiRoutes.use("/company", companyRoutes);
 apiRoutes.use("/users", userRoutes);
 apiRoutes.use("/contacts", contactRoutes);
 apiRoutes.use("/media", mediaRoutes);
+apiRoutes.use(chatbotRoutes);
 apiRoutes.use("/connections", connectionRoutes);
 apiRoutes.use("/tickets", ticketRoutes);
 apiRoutes.use(messageRoutes);
