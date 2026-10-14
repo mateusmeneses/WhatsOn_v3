@@ -1,4 +1,4 @@
-import { Job } from "bullmq";
+import { Job, Queue } from "bullmq";
 import { env } from "../../src/config/env";
 import { Message } from "../../src/models";
 import { saveBuffer } from "../../src/modules/media/media.storage";
@@ -114,5 +114,38 @@ describe("outgoing messages", () => {
     await applyAck(connection.id, "P1", "delivered");
     expect((await message.reload()).ack).toBe("read");
     await applyAck(connection.id, "UNKNOWN", "read");
+  });
+
+  it("does not throw nor resend when persisting after a successful send fails", async () => {
+    const { ticket } = await openTicket();
+    const message = await createOutgoingMessage(ticket, { body: "x" });
+    const original = Message.update.bind(Message) as (...a: unknown[]) => Promise<unknown>;
+    let failures = 0;
+    const spy = jest.spyOn(Message, "update").mockImplementation(((values: Record<string, unknown>, opts: unknown) => {
+      if (values.providerMessageId && failures < 3) {
+        failures++;
+        return Promise.reject(new Error("db down"));
+      }
+      return original(values, opts);
+    }) as never);
+    try {
+      await expect(processOutboundJob(job(message.id))).resolves.toBeUndefined();
+      expect(fake.sent).toHaveLength(1);
+      expect(failures).toBe(3);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("marks the message failed when enqueueing fails", async () => {
+    const { ticket } = await openTicket();
+    const spy = jest.spyOn(Queue.prototype, "add").mockRejectedValueOnce(new Error("redis down"));
+    try {
+      const message = await createOutgoingMessage(ticket, { body: "x" });
+      expect((await message.reload()).ack).toBe("failed");
+      expect((await Message.findByPk(message.id))!.ack).toBe("failed");
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

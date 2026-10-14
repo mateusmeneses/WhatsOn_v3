@@ -7,6 +7,7 @@ import { readMediaBase64 } from "../media/media.storage";
 import { emitMessage, emitMessageDeleted } from "../tickets/ticket.events";
 import { OutboundMediaType } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
+import { logger } from "../../shared/logger";
 
 export interface OutboundJob {
   messageId: number;
@@ -41,6 +42,7 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
   if (!message || message.providerMessageId || message.ack !== "pending") return;
   const { contact, connection } = message.ticket!;
 
+  let providerMessageId: string;
   try {
     const provider = getProvider();
     let result;
@@ -61,7 +63,7 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
         quoted?.providerMessageId ?? undefined,
       );
     }
-    await markSent(message, result.providerMessageId);
+    providerMessageId = result.providerMessageId;
   } catch (err) {
     const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
     if (finalAttempt) {
@@ -71,4 +73,16 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
     }
     throw err;
   }
+
+  // Já enviado: nunca lançar daqui, pois um retry reenviaria ao cliente.
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await markSent(message, providerMessageId);
+      return;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  logger.error({ err: lastErr, messageId: message.id, providerMessageId }, "failed to persist sent message");
 }

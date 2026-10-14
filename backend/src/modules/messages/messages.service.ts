@@ -1,6 +1,7 @@
 import { Ack, Message, MessageType, Ticket } from "../../models";
 import { mediaTypeFromMime, StoredMedia } from "../media/media.storage";
 import { emitMessage, emitTicket } from "../tickets/ticket.events";
+import { logger } from "../../shared/logger";
 import { enqueueOutbound } from "./outbound";
 
 export interface OutgoingInput {
@@ -45,7 +46,14 @@ export async function createOutgoingMessage(ticket: Ticket, input: OutgoingInput
   await ticket.update({ lastMessage: previewOf(message), lastMessageAt: new Date() });
   emitMessage(message, "message:new");
   await emitTicket(ticket.id);
-  await enqueueOutbound(message.id, ticket.id);
+  try {
+    await enqueueOutbound(message.id, ticket.id);
+  } catch (err) {
+    logger.error({ err, messageId: message.id }, "failed to enqueue outbound message");
+    await Message.update({ ack: "failed" }, { where: { id: message.id } });
+    await message.reload();
+    emitMessage(message, "message:update");
+  }
   return message;
 }
 
