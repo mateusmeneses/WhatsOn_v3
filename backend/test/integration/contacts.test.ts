@@ -1,0 +1,49 @@
+import request from "supertest";
+import { createApp } from "../../src/app";
+import { bearer } from "../helpers/auth";
+import { resetDb } from "../helpers/db";
+import { createCompany, createContact, createUser } from "../helpers/factories";
+
+const app = createApp();
+
+describe("contacts API", () => {
+  beforeEach(resetDb);
+
+  it("lists and searches by name or number", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    await createContact(company.id, { name: "Maria Souza", number: "5511988887777" });
+    await createContact(company.id, { name: "João Lima", number: "5521977776666" });
+
+    const all = await request(app).get("/api/contacts").set("Authorization", bearer(agent));
+    expect(all.body.items).toHaveLength(2);
+    expect(all.body.hasMore).toBe(false);
+
+    const byName = await request(app).get("/api/contacts?search=maria").set("Authorization", bearer(agent));
+    expect(byName.body.items.map((c: { name: string }) => c.name)).toEqual(["Maria Souza"]);
+
+    const byNumber = await request(app).get("/api/contacts?search=219777").set("Authorization", bearer(agent));
+    expect(byNumber.body.items.map((c: { name: string }) => c.name)).toEqual(["João Lima"]);
+  });
+
+  it("renames a contact", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const contact = await createContact(company.id);
+    const res = await request(app)
+      .put(`/api/contacts/${contact.id}`)
+      .set("Authorization", bearer(agent))
+      .send({ name: "Cliente VIP" });
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe("Cliente VIP");
+  });
+
+  it("hides contacts of other companies", async () => {
+    const company = await createCompany();
+    const other = await createCompany();
+    const agent = await createUser(company.id);
+    const foreign = await createContact(other.id);
+    const res = await request(app).get(`/api/contacts/${foreign.id}`).set("Authorization", bearer(agent));
+    expect(res.status).toBe(404);
+  });
+});
