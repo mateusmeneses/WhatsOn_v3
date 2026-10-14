@@ -1,0 +1,134 @@
+import { randomBytes } from "node:crypto";
+import { Op } from "sequelize";
+import { env } from "../../config/env";
+import { Connection, ConnectionStatus, Ticket } from "../../models";
+import { AppError, notFound } from "../../shared/errors/AppError";
+import { logger } from "../../shared/logger";
+import { assertQueuesBelong } from "../queues/queues.service";
+import { emitter } from "../realtime/socket";
+import { getProvider } from "../whatsapp/registry";
+
+export interface ConnectionInput {
+  name: string;
+  isDefault?: boolean;
+  defaultQueueId?: number | null;
+  outOfHoursMessage?: string;
+  closingMessage?: string;
+  transferMessage?: string;
+  botTimeoutMinutes?: number;
+}
+
+export function publicConnection(c: Connection): Record<string, unknown> {
+  const { webhookToken: _hidden, ...rest } = c.toJSON() as Record<string, unknown>;
+  return rest;
+}
+
+export function webhookUrl(c: Connection): string {
+  return `${env.BACKEND_PUBLIC_URL}/webhooks/evolution/${c.webhookToken}`;
+}
+
+export function listConnections(companyId: number) {
+  return Connection.findAll({ where: { companyId }, order: [["name", "ASC"]] });
+}
+
+export async function getConnectionOr404(companyId: number, id: number): Promise<Connection> {
+  const connection = await Connection.findOne({ where: { id, companyId } });
+  if (!connection) throw notFound("Conexão");
+  return connection;
+}
+
+async function makeOnlyDefault(connection: Connection): Promise<void> {
+  await Connection.update(
+    { isDefault: false },
+    { where: { companyId: connection.companyId, id: { [Op.ne]: connection.id } } },
+  );
+}
+
+export async function createConnection(companyId: number, input: ConnectionInput): Promise<Connection> {
+  if (input.defaultQueueId) await assertQueuesBelong(companyId, [input.defaultQueueId]);
+  const isFirst = (await Connection.count({ where: { companyId } })) === 0;
+  const connection = await Connection.create({
+    companyId,
+    ...input,
+    isDefault: input.isDefault ?? isFirst,
+    instanceName: `wo_${companyId}_${randomBytes(4).toString("hex")}`,
+    webhookToken: randomBytes(24).toString("hex"),
+    status: "disconnected",
+  });
+  try {
+    await getProvider().createInstance(connection.instanceName, webhookUrl(connection));
+  } catch (err) {
+    await connection.destroy();
+    throw err;
+  }
+  await connection.update({ status: "qrcode" });
+  if (connection.isDefault) await makeOnlyDefault(connection);
+  return connection;
+}
+
+export async function updateConnection(companyId: number, id: number, input: Partial<ConnectionInput>) {
+  const connection = await getConnectionOr404(companyId, id);
+  if (input.defaultQueueId) await assertQueuesBelong(companyId, [input.defaultQueueId]);
+  await connection.update(input);
+  if (input.isDefault) await makeOnlyDefault(connection);
+  return connection;
+}
+
+export async function deleteConnection(companyId: number, id: number): Promise<void> {
+  const connection = await getConnectionOr404(companyId, id);
+  if ((await Ticket.count({ where: { connectionId: id } })) > 0) {
+    throw new AppError(
+      "CONNECTION_HAS_TICKETS",
+      409,
+      "Esta conexão possui atendimentos registrados; desconecte-a em vez de excluir",
+    );
+  }
+  await getProvider().deleteInstance(connection.instanceName);
+  await connection.destroy();
+}
+
+export async function getConnectionQrCode(companyId: number, id: number): Promise<{ qr: string | null }> {
+  const connection = await getConnectionOr404(companyId, id);
+  if (connection.status === "connected") throw new AppError("ALREADY_CONNECTED", 409, "Conexão já está ativa");
+  const qr = await getProvider().getQrCode(connection.instanceName);
+  if (connection.status !== "qrcode") await connection.update({ status: "qrcode" });
+  return { qr };
+}
+
+export async function disconnectConnection(companyId: number, id: number): Promise<Connection> {
+  const connection = await getConnectionOr404(companyId, id);
+  await getProvider().logout(connection.instanceName);
+  await applyConnectionUpdate(connection, "disconnected");
+  return connection;
+}
+
+export async function applyConnectionUpdate(
+  connection: Connection,
+  state: ConnectionStatus,
+  number?: string,
+): Promise<void> {
+  const previous = connection.status;
+  if (previous === state && (!number || number === connection.number)) return;
+  await connection.update({ status: state, ...(number ? { number } : {}) });
+  emitter.toSupervisors(connection.companyId, "connection:update", publicConnection(connection));
+  if (previous === "connected" && state === "disconnected") {
+    emitter.toSupervisors(connection.companyId, "connection:alert", { connectionId: connection.id, name: connection.name });
+  }
+}
+
+export async function applyQrCode(connection: Connection, qr: string): Promise<void> {
+  if (connection.status !== "qrcode") await applyConnectionUpdate(connection, "qrcode");
+  emitter.toSupervisors(connection.companyId, "connection:qrcode", { connectionId: connection.id, qr });
+}
+
+export async function checkConnectionsHealth(): Promise<void> {
+  const connections = await Connection.findAll();
+  for (const connection of connections) {
+    try {
+      const state = await getProvider().getConnectionState(connection.instanceName);
+      await applyConnectionUpdate(connection, state);
+    } catch (err) {
+      logger.warn({ err, connectionId: connection.id }, "connection health check failed");
+    }
+  }
+}
