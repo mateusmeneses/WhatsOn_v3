@@ -95,4 +95,58 @@ describe("RealtimeProvider", () => {
     await act(async () => socket.serverEmit("connect_error", new Error("UNAUTHENTICATED")));
     expect(refreshAccessToken).toHaveBeenCalled();
   });
+
+  describe("reconnection", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("keeps retrying with backoff when the token cannot be renewed", async () => {
+      vi.mocked(refreshAccessToken).mockResolvedValue(null);
+      const { socket } = renderProvider();
+      const connect = vi.spyOn(socket, "connect");
+      await act(async () => socket.serverEmit("connect_error", new Error("UNAUTHENTICATED")));
+      expect(refreshAccessToken).toHaveBeenCalled();
+      expect(connect).not.toHaveBeenCalled();
+      await act(async () => vi.advanceTimersByTime(2_000));
+      expect(connect).toHaveBeenCalledTimes(1);
+
+      socket.connected = false;
+      await act(async () => socket.serverEmit("connect_error", new Error("UNAUTHENTICATED")));
+      await act(async () => vi.advanceTimersByTime(4_999));
+      expect(connect).toHaveBeenCalledTimes(1);
+      await act(async () => vi.advanceTimersByTime(1));
+      expect(connect).toHaveBeenCalledTimes(2);
+    });
+
+    it("retries other connection errors and leaves automatic retries to socket.io", async () => {
+      const { socket } = renderProvider();
+      const connect = vi.spyOn(socket, "connect");
+      socket.active = true;
+      act(() => socket.serverEmit("connect_error", new Error("xhr poll error")));
+      await act(async () => vi.advanceTimersByTime(60_000));
+      expect(connect).not.toHaveBeenCalled();
+
+      socket.active = false;
+      act(() => socket.serverEmit("connect_error", new Error("SERVER_DOWN")));
+      await act(async () => vi.advanceTimersByTime(2_000));
+      expect(connect).toHaveBeenCalledTimes(1);
+    });
+
+    it("never reconnects after unmount", async () => {
+      let resolveRefresh!: (token: string | null) => void;
+      vi.mocked(refreshAccessToken).mockReturnValueOnce(new Promise((resolve) => (resolveRefresh = resolve)));
+      const { socket, unmount } = renderProvider();
+      const connect = vi.spyOn(socket, "connect");
+      act(() => socket.serverEmit("connect_error", new Error("SERVER_DOWN")));
+      act(() => socket.serverEmit("connect_error", new Error("UNAUTHENTICATED")));
+      unmount();
+      await act(async () => resolveRefresh("novo"));
+      await act(async () => vi.advanceTimersByTime(60_000));
+      expect(connect).not.toHaveBeenCalled();
+    });
+  });
 });

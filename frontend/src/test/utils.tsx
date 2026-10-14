@@ -36,7 +36,7 @@ export function renderWithProviders(
   }: { route?: string; queryClient?: QueryClient; socket?: FakeSocket } = {},
 ) {
   const content = socket ? (
-    <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1 }}>{ui}</RealtimeContext.Provider>
+    <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1, connected: true }}>{ui}</RealtimeContext.Provider>
   ) : (
     ui
   );

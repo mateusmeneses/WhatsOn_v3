@@ -25,7 +25,7 @@ describe("useTicketRealtime", () => {
     const socket = new FakeSocket();
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={qc}>
-        <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1 }}>{children}</RealtimeContext.Provider>
+        <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1, connected: true }}>{children}</RealtimeContext.Provider>
       </QueryClientProvider>
     );
 

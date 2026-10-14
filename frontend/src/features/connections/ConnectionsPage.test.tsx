@@ -103,7 +103,7 @@ describe("ConnectionAlerts", () => {
   it("warns when a connection drops", () => {
     const socket = new FakeSocket();
     render(
-      <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1 }}>
+      <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1, connected: true }}>
         <ConnectionAlerts />
       </RealtimeContext.Provider>,
     );

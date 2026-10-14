@@ -25,6 +25,8 @@ export class FakeSocket {
   }
 
   connected = false;
+  /** Como no socket.io: false quando o socket não vai reconectar sozinho. */
+  active = false;
 
   connect(): this {
     this.connected = true;

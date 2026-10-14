@@ -8,14 +8,19 @@ import { createSocket } from "./socket";
 interface RealtimeValue {
   socket: Socket | null;
   epoch: number;
+  /** true depois de `ready`; false após `disconnect`/`connect_error` até o próximo `ready`. */
+  connected: boolean;
 }
 
-export const RealtimeContext = createContext<RealtimeValue>({ socket: null, epoch: 0 });
+export const RealtimeContext = createContext<RealtimeValue>({ socket: null, epoch: 0, connected: false });
+
+/** Espera entre tentativas de reconexão manual (o socket.io desiste sozinho quando o servidor recusa a conexão). */
+export const RECONNECT_DELAYS = [2_000, 5_000, 10_000, 30_000];
 
 export function RealtimeProvider({ children }: { children: ReactNode }) {
   const token = useAuth((s) => s.accessToken);
   const queryClient = useQueryClient();
-  const [value, setValue] = useState<RealtimeValue>({ socket: null, epoch: 0 });
+  const [value, setValue] = useState<RealtimeValue>({ socket: null, epoch: 0, connected: false });
   const hadReady = useRef(false);
   const tokenRef = useRef(token);
   tokenRef.current = token;
@@ -24,29 +29,72 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!hasToken) return;
     hadReady.current = false;
+    let disposed = false;
+    let attempt = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     const socket = createSocket(() => tokenRef.current);
 
+    const canConnect = () => !disposed && Boolean(useAuth.getState().user) && !socket.connected;
+    const markDisconnected = () => {
+      if (!disposed) setValue((prev) => (prev.connected ? { ...prev, connected: false } : prev));
+    };
+    /** Agenda uma nova tentativa quando o socket.io não vai reconectar sozinho (socket inativo). */
+    const scheduleRetry = () => {
+      if (disposed || socket.active || retryTimer !== undefined) return;
+      const delay = RECONNECT_DELAYS[Math.min(attempt, RECONNECT_DELAYS.length - 1)]!;
+      attempt += 1;
+      retryTimer = setTimeout(() => {
+        retryTimer = undefined;
+        if (canConnect()) socket.connect();
+      }, delay);
+    };
+
     socket.on("ready", () => {
+      if (disposed) return;
       if (hadReady.current) void queryClient.invalidateQueries();
       hadReady.current = true;
-      setValue((prev) => ({ socket, epoch: prev.epoch + 1 }));
+      attempt = 0;
+      setValue((prev) => ({ socket, epoch: prev.epoch + 1, connected: true }));
+    });
+
+    socket.on("disconnect", () => {
+      markDisconnected();
+      scheduleRetry();
     });
 
     socket.on("connect_error", (err: Error) => {
+      markDisconnected();
+      if (disposed || socket.active) return;
       if (err.message === "UNAUTHENTICATED") {
         void refreshAccessToken().then((newToken) => {
-          if (newToken && !socket.connected) socket.connect();
+          // Reconecta na hora só na primeira recusa; depois segue o backoff (evita laço se o servidor seguir recusando).
+          if (newToken && attempt === 0 && canConnect()) {
+            attempt = 1;
+            socket.connect();
+          } else {
+            scheduleRetry();
+          }
         });
+      } else {
+        scheduleRetry();
       }
     });
 
     return () => {
+      disposed = true;
+      clearTimeout(retryTimer);
       socket.disconnect();
-      setValue({ socket: null, epoch: 0 });
+      setValue({ socket: null, epoch: 0, connected: false });
     };
   }, [hasToken, queryClient]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
+}
+
+/** true quando o socket já esteve pronto e caiu (para o aviso de reconexão). */
+export function useRealtimeReconnecting(): boolean {
+  const { epoch, connected } = useContext(RealtimeContext);
+  return epoch > 0 && !connected;
 }
 
 export function useSocket(): Socket | null {
