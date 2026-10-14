@@ -4202,7 +4202,7 @@ git commit -m "feat(realtime): socket.io com salas por empresa, fila, usuário e
   - `checkConnectionsHealth(): Promise<void>`, `processMaintenanceJob(job: Job): Promise<void>` (job `connection-health`).
   - Rotas: `GET /api/connections` (todos), `POST /api/connections`, `PUT/DELETE /api/connections/:id`, `GET /api/connections/:id/qrcode`, `POST /api/connections/:id/disconnect` (admin).
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/integration/connections.test.ts`:
 
@@ -4328,12 +4328,12 @@ describe("connections", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/connections.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/connections/connections.service'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/connections/connections.service.ts`:
 
@@ -4552,12 +4552,12 @@ import { connectionRoutes } from "./modules/connections/connections.routes";
 apiRoutes.use("/connections", connectionRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
