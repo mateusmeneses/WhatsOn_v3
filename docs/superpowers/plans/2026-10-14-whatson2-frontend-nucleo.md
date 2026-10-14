@@ -4200,7 +4200,7 @@ git commit -m "feat(frontend): página de contatos com busca, paginação e edi�
   - `ScheduleEditor({ value: WeekSchedule, onChange })`: interruptor "Sempre aberto"; por dia, caixa "Aberto" + faixas com campos de hora "Início"/"Fim" e botões "Adicionar horário"/"Remover horário".
   - `QueueDialog({ queue?: Queue; onClose })`, `QueuesPage` em `/filas`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `frontend/src/features/queues/schedule.test.ts`:
 
@@ -4327,12 +4327,12 @@ describe("QueuesPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/queues`
 Expected: FAIL com `Failed to resolve import "./schedule"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Acrescente em `frontend/src/features/queues/queuesApi.ts`:
 
@@ -4706,12 +4706,12 @@ import { QueuesPage } from "@/features/queues/QueuesPage";
 
 (Junte `RequireProfile` ao import existente de `ProtectedRoute`.)
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
