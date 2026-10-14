@@ -4603,7 +4603,7 @@ export function step(state: BotState, input: string | null, ctx: BotContext): St
 
 `input = null` significa mensagem não-texto (conta como inválida). `state.nodeId = null` (ou nó que não existe mais) = primeira interação: o bot envia o menu da raiz e ignora a entrada.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/unit/chatbotEngine.test.ts`:
 
@@ -4799,12 +4799,12 @@ describe("step", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/unit/chatbotEngine.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/chatbot/engine'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/chatbot/engine.ts`:
 
@@ -4938,12 +4938,12 @@ export function step(state: BotState, input: string | null, ctx: BotContext): St
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest test/unit/chatbotEngine.test.ts && npm run typecheck`
 Expected: 21 testes PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
