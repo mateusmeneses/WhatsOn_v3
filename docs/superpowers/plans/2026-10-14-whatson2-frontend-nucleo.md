@@ -5793,7 +5793,7 @@ git commit -m "feat(frontend): conexões com QR code, status ao vivo e alerta de
   - `ChatbotPage` em `/chatbot`: seletor "Conexão"; sem raiz → "Criar mensagem de boas-vindas" (cria raiz com mensagem "Olá! Escolha uma opção:"); árvore com "Adicionar opção", "Mover para cima/baixo", "Excluir {título}", arrastar para reordenar; formulário do nó; simulador.
   - `Simulator({ connectionId })`: campo "Mensagem do cliente", botão "Enviar" e "Reiniciar"; mostra bolhas do bot e avisos "Transferido para a fila X" / "Transferido para o atendente Y" / "Conversa encerrada".
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `frontend/src/features/chatbot/tree.test.ts`:
 
@@ -6014,12 +6014,12 @@ describe("ChatbotPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/chatbot`
 Expected: FAIL com `Failed to resolve import "./tree"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/chatbot/chatbotApi.ts`:
 
@@ -6780,12 +6780,12 @@ import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
         />
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
