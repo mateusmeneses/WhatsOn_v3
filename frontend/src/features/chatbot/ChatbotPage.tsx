@@ -39,7 +39,10 @@ export function ChatbotPage() {
   const onError = (err: unknown) => toast.error(errorMessage(err));
 
   const createRoot = useMutation({
-    mutationFn: () => createNode(connectionId!, { parentId: null, message: WELCOME }),
+    mutationFn: () => {
+      if (connectionId === null) return Promise.reject(new Error("Nenhuma conexão selecionada"));
+      return createNode(connectionId, { parentId: null, message: WELCOME });
+    },
     onSuccess: refresh,
     onError,
   });
@@ -94,7 +97,9 @@ export function ChatbotPage() {
         }
       />
       <div className="p-6">
-        {connections.isLoading || nodes.isLoading || (connectionId === null && Boolean(connections.data?.length)) ? (
+        {connections.isError ? (
+          <p className="text-sm text-danger">{errorMessage(connections.error)}</p>
+        ) : connections.isLoading || nodes.isLoading || (connectionId === null && Boolean(connections.data?.length)) ? (
           <Spinner />
         ) : connections.data?.length === 0 ? (
           <EmptyState icon={Bot} title="Nenhuma conexão" description="Crie uma conexão em Conexões para configurar o chatbot." />

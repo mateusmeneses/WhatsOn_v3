@@ -2,7 +2,7 @@ import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, us
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowDown, ArrowUp, GripVertical, Plus, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { ACTION_LABELS, canHaveChildren, moveByOffset, moveId, type TreeNode } from "./tree";
 
@@ -12,6 +12,16 @@ export interface NodeTreeHandlers {
   onAddChild: (parentId: number) => void;
   onDelete: (id: number, title: string) => void;
   onReorder: (parentId: number, ids: number[]) => void;
+}
+
+function selectOnKey(onSelect: () => void) {
+  return (e: KeyboardEvent<HTMLElement>) => {
+    if (e.target !== e.currentTarget) return;
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onSelect();
+    }
+  };
 }
 
 function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
@@ -44,13 +54,17 @@ function OptionRow({ item, siblingIds, parentId, handlers }: {
     <li ref={sortable.setNodeRef} style={style}>
       <div
         data-testid="bot-option"
+        role="button"
+        tabIndex={0}
+        aria-label={`Editar ${node.title}`}
         onClick={() => handlers.onSelect(node.id)}
+        onKeyDown={selectOnKey(() => handlers.onSelect(node.id))}
         className={cn(
           "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-background",
           handlers.selectedId === node.id && "bg-primary-soft hover:bg-primary-soft",
         )}
       >
-        <span {...sortable.attributes} {...sortable.listeners} aria-label={`Arrastar ${node.title}`} className="cursor-grab text-ink-muted">
+        <span {...sortable.attributes} {...sortable.listeners} onClick={(e) => e.stopPropagation()} aria-label={`Arrastar ${node.title}`} className="cursor-grab text-ink-muted">
           <GripVertical className="h-4 w-4" aria-hidden />
         </span>
         <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-primary px-1.5 text-xs font-bold text-white">
@@ -110,7 +124,11 @@ export function NodeTree({ tree, handlers }: { tree: TreeNode; handlers: NodeTre
   return (
     <div className="space-y-2">
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Editar mensagem de boas-vindas"
         onClick={() => handlers.onSelect(root.id)}
+        onKeyDown={selectOnKey(() => handlers.onSelect(root.id))}
         className={cn(
           "cursor-pointer rounded-lg border border-border bg-surface p-3",
           handlers.selectedId === root.id && "border-primary",

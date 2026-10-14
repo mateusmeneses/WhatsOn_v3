@@ -92,6 +92,23 @@ describe("ChatbotPage", () => {
     );
   });
 
+  it("shows the error when connections fail to load", async () => {
+    vi.mocked(fetchConnections).mockRejectedValue(new Error("Falha de rede"));
+    vi.mocked(fetchNodes).mockResolvedValue([]);
+    renderPage();
+    expect(await screen.findByText("Algo deu errado. Tente novamente.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Criar mensagem de boas-vindas" })).not.toBeInTheDocument();
+  });
+
+  it("opens the edit form with Enter on a focused option row", async () => {
+    vi.mocked(fetchNodes).mockResolvedValue(tree);
+    renderPage();
+    const row = await screen.findByRole("button", { name: "Editar Financeiro" });
+    row.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: 'Editar "Financeiro"' })).toBeInTheDocument();
+  });
+
   it("shows options in order and reorders them", async () => {
     vi.mocked(fetchNodes).mockResolvedValue(tree);
     vi.mocked(reorderChildren).mockResolvedValue([]);
