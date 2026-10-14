@@ -3,6 +3,7 @@ import { Connection, Contact, Message, MessageType, Ticket, TicketStatus } from 
 import { sequelize } from "../../database/sequelize";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { logger } from "../../shared/logger";
+import { retryInline } from "../../shared/retry";
 import { hasBot, runBot } from "../chatbot/chatbot.service";
 import { saveBase64, StoredMedia } from "../media/media.storage";
 import { previewOf } from "../messages/messages.service";
@@ -24,15 +25,27 @@ async function upsertContact(companyId: number, ev: InboundMessage): Promise<Con
   return contact;
 }
 
-/** Mensagem que nós enviamos e voltou como fromMe antes de gravarmos o id do WhatsApp. */
+const ECHO_MEDIA_TYPES: MessageType[] = ["document", "image", "video", "audio"];
+
+/**
+ * Mensagem que nós enviamos e voltou como fromMe antes de gravarmos o id do WhatsApp.
+ * Casa pelo tipo e pelo texto; para mídia também pelo nome do arquivo ou legenda vazia
+ * (o eco de um documento sem legenda traz o nome do arquivo como corpo). Mais antiga primeiro.
+ */
 async function matchPendingEcho(connectionId: number, contactId: number, ev: InboundMessage): Promise<boolean> {
+  const sameContent: Record<string | symbol, unknown>[] = [{ body: ev.body }];
+  if (ECHO_MEDIA_TYPES.includes(ev.type)) {
+    sameContent.push({ body: "" });
+    if (ev.media?.fileName) sameContent.push({ mediaName: ev.media.fileName });
+  }
   const candidate = await Message.findOne({
     where: {
       connectionId,
       fromMe: true,
       providerMessageId: null,
       ack: "pending",
-      body: ev.body,
+      type: ev.type,
+      [Op.or]: sameContent,
       createdAt: { [Op.gte]: new Date(Date.now() - ECHO_WINDOW_MS) },
     },
     include: [{ model: Ticket, where: { contactId }, attributes: [] }],
@@ -81,7 +94,7 @@ async function fetchMedia(
 ): Promise<{ media: StoredMedia | null; body: string }> {
   if (!MEDIA_TYPES.includes(ev.type)) return { media: null, body: ev.body };
   try {
-    const file = await getProvider().downloadMedia(connection.instanceName, ev.providerMessageId);
+    const file = await retryInline(() => getProvider().downloadMedia(connection.instanceName, ev.providerMessageId));
     const mime = file.mimetype || ev.media?.mimetype || "application/octet-stream";
     const media = await saveBase64(connection.companyId, file.base64, mime, ev.media?.fileName ?? null);
     return { media, body: ev.body };
@@ -141,7 +154,11 @@ export async function handleInboundMessage(
       );
       if (!ev.fromMe) await Ticket.increment("unreadCount", { by: 1, where: { id: ticket.id }, transaction });
       let took = false;
-      if (ev.fromMe) {
+      // Eco não reconciliado de uma mensagem nossa (bot) ainda pendente não pode tirar o ticket do bot.
+      const ownPending = ev.fromMe
+        ? await Message.count({ where: { ticketId: ticket.id, fromMe: true, ack: "pending" }, transaction })
+        : 0;
+      if (ev.fromMe && ownPending === 0) {
         const [n] = await Ticket.update(
           { status: "open", userId: null, chatbotNodeId: null, chatbotAttempts: 0 },
           { where: { id: ticket.id, status: "bot" }, transaction },

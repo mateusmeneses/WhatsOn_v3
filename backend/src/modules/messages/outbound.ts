@@ -8,6 +8,7 @@ import { emitMessage, emitMessageDeleted } from "../tickets/ticket.events";
 import { OutboundMediaType } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
 import { logger } from "../../shared/logger";
+import { retryInline } from "../../shared/retry";
 
 export interface OutboundJob {
   messageId: number;
@@ -28,13 +29,23 @@ async function markSent(message: Message, providerMessageId: string): Promise<vo
     await setSent(message.id, providerMessageId);
   } catch (err) {
     if (!(err instanceof UniqueConstraintError)) throw err;
-    // O eco (fromMe) chegou pelo webhook antes de gravarmos o id: ficamos com a nossa mensagem.
-    const echoes = await Message.findAll({
+    const conflicts = await Message.findAll({
       where: { connectionId: message.connectionId, providerMessageId, id: { [Op.ne]: message.id } },
     });
-    await Message.destroy({ where: { id: echoes.map((e) => e.id) } });
-    echoes.forEach(emitMessageDeleted);
-    await setSent(message.id, providerMessageId);
+    // Só apagamos o que parece eco gravado pelo webhook (fromMe, sem autor, não-bot).
+    const echoes = conflicts.filter((m) => m.fromMe && !m.isBot && m.sentByUserId === null);
+    if (echoes.length < conflicts.length) {
+      // O id já pertence a outra mensagem nossa: mantemos as duas; a nossa fica sem providerMessageId.
+      logger.warn(
+        { messageId: message.id, providerMessageId, conflictIds: conflicts.map((c) => c.id) },
+        "provider id already used by another sent message; keeping both",
+      );
+      await Message.update({ ack: "sent" }, { where: { id: message.id, ack: "pending" } });
+    } else {
+      await Message.destroy({ where: { id: echoes.map((e) => e.id) } });
+      echoes.forEach(emitMessageDeleted);
+      await setSent(message.id, providerMessageId);
+    }
   }
   await message.reload();
   emitMessage(message, "message:update");
@@ -47,28 +58,25 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
   if (!message || message.providerMessageId || message.ack !== "pending") return;
   const { contact, connection } = message.ticket!;
 
-  let providerMessageId: string;
-  try {
+  const send = async () => {
     const provider = getProvider();
-    let result;
     if (message.mediaUrl) {
-      result = await provider.sendMedia(connection!.instanceName, contact!.number, {
+      return provider.sendMedia(connection!.instanceName, contact!.number, {
         type: message.type as OutboundMediaType,
         base64: await readMediaBase64(message.companyId, message.mediaUrl),
         mimetype: message.mediaMime ?? "application/octet-stream",
         fileName: message.mediaName ?? undefined,
         caption: message.body || undefined,
       });
-    } else {
-      const quoted = message.quotedMessageId ? await Message.findByPk(message.quotedMessageId) : null;
-      result = await provider.sendText(
-        connection!.instanceName,
-        contact!.number,
-        message.body,
-        quoted?.providerMessageId ?? undefined,
-      );
     }
-    providerMessageId = result.providerMessageId;
+    const quoted = message.quotedMessageId ? await Message.findByPk(message.quotedMessageId) : null;
+    return provider.sendText(connection!.instanceName, contact!.number, message.body, quoted?.providerMessageId ?? undefined);
+  };
+
+  let providerMessageId: string;
+  try {
+    // Tentativas inline antes de devolver à fila: um retry da fila deixaria jobs seguintes do ticket passarem na frente.
+    providerMessageId = (await retryInline(send)).providerMessageId;
   } catch (err) {
     const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
     if (finalAttempt) {

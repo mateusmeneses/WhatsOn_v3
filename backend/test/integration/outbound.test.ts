@@ -7,7 +7,7 @@ import { OutboundJob, processOutboundJob } from "../../src/modules/messages/outb
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { getQueue, QueueNames, shardFor } from "../../src/queues";
 import { resetDb } from "../helpers/db";
-import { createMessage, createTicket, scenario } from "../helpers/factories";
+import { createMessage, createTicket, createUser, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 import { resetRedis } from "../helpers/redis";
 
@@ -76,15 +76,24 @@ describe("outgoing messages", () => {
   it("keeps the message pending and rethrows on a non-final failure", async () => {
     const { ticket } = await openTicket();
     const message = await createOutgoingMessage(ticket, { body: "x" });
-    fake.failNext("send");
+    fake.failNext("send", 3);
     await expect(processOutboundJob(job(message.id, 0))).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
     expect((await message.reload()).ack).toBe("pending");
+  });
+
+  it("retries a transient send failure inline within the same job and sends once", async () => {
+    const { ticket } = await openTicket();
+    const message = await createOutgoingMessage(ticket, { body: "x" });
+    fake.failNext("send", 1);
+    await expect(processOutboundJob(job(message.id, 0))).resolves.toBeUndefined();
+    expect(fake.texts()).toEqual(["x"]);
+    expect(await message.reload()).toMatchObject({ ack: "sent", providerMessageId: "fake-1" });
   });
 
   it("marks the message failed on the final attempt", async () => {
     const { ticket } = await openTicket();
     const message = await createOutgoingMessage(ticket, { body: "x" });
-    fake.failNext("send");
+    fake.failNext("send", 3);
     await expect(processOutboundJob(job(message.id, 4))).rejects.toBeDefined();
     expect((await message.reload()).ack).toBe("failed");
   });
@@ -104,6 +113,27 @@ describe("outgoing messages", () => {
     await processOutboundJob(job(message.id));
     expect(await Message.findByPk(echo.id)).toBeNull();
     expect((await message.reload()).providerMessageId).toBe("fake-1");
+  });
+
+  it("does not delete a conflicting message that was sent by an agent", async () => {
+    const { ticket, company } = await openTicket();
+    const agent = await createUser(company.id);
+    const message = await createOutgoingMessage(ticket, { body: "Olá" });
+    const other = await createMessage(ticket, {
+      fromMe: true, body: "Outra", providerMessageId: "fake-1", ack: "delivered", sentByUserId: agent.id,
+    });
+    await expect(processOutboundJob(job(message.id))).resolves.toBeUndefined();
+    expect(await Message.findByPk(other.id)).toMatchObject({ providerMessageId: "fake-1", ack: "delivered" });
+    expect(await message.reload()).toMatchObject({ providerMessageId: null, ack: "sent" });
+  });
+
+  it("does not delete a conflicting message that was sent by the bot", async () => {
+    const { ticket } = await openTicket();
+    const message = await createOutgoingMessage(ticket, { body: "Olá" });
+    const bot = await createMessage(ticket, { fromMe: true, body: "Menu", providerMessageId: "fake-1", ack: "sent", isBot: true });
+    await processOutboundJob(job(message.id));
+    expect(await Message.findByPk(bot.id)).not.toBeNull();
+    expect((await message.reload()).ack).toBe("sent");
   });
 
   it("applies acks only forward", async () => {

@@ -14,7 +14,8 @@ import { createNode, createTicket, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 import { resetRedis } from "../helpers/redis";
 import { waitFor } from "../helpers/waitFor";
-import { ackUpdate, connectionUpdate, imageMessage, textMessage, upsert } from "../fixtures/evolution";
+import { saveBuffer } from "../../src/modules/media/media.storage";
+import { ackUpdate, connectionUpdate, documentMessage, imageMessage, textMessage, upsert } from "../fixtures/evolution";
 
 const app = createApp();
 const fake = new FakeProvider();
@@ -124,6 +125,37 @@ describe("inbound pipeline", () => {
     expect(messages[0]).toMatchObject({ id: sent.id, providerMessageId: "ECHO1", ack: "sent" });
   });
 
+  it("reconciles the echo of a caption-less document sent by the bot and keeps the ticket in the bot", async () => {
+    const { company, connection, contact } = await scenario();
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "bot" });
+    const stored = await saveBuffer(company.id, Buffer.from("PDF"), "application/pdf", "manual.pdf");
+    const sent = await createOutgoingMessage(ticket, { media: stored, isBot: true });
+    await deliver(connection, documentMessage({ id: "DOCECHO", from: contact.number, fromMe: true, fileName: "manual.pdf" }));
+    const messages = await ticketMessages(ticket.id);
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({ id: sent.id, providerMessageId: "DOCECHO", ack: "sent", type: "document" });
+    expect((await ticket.reload()).status).toBe("bot");
+  });
+
+  it("does not reconcile an echo of a different type with the same text", async () => {
+    const { company, connection, contact } = await scenario();
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "open" });
+    const stored = await saveBuffer(company.id, Buffer.from("IMG"), "image/png", "a.png");
+    const image = await createOutgoingMessage(ticket, { body: "veja", media: stored });
+    await deliver(connection, textMessage({ id: "TXTECHO", from: contact.number, fromMe: true, text: "veja" }));
+    expect((await image.reload()).providerMessageId).toBeNull();
+    expect(await Message.count({ where: { ticketId: ticket.id, providerMessageId: "TXTECHO" } })).toBe(1);
+  });
+
+  it("does not take the ticket out of the bot while bot messages are still pending", async () => {
+    const { company, connection, contact } = await scenario();
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "bot" });
+    await createOutgoingMessage(ticket, { body: "*Menu*", isBot: true });
+    // Eco que não casa (ex.: WhatsApp alterou a formatação) e chega antes do id ser gravado.
+    await deliver(connection, textMessage({ id: "ODDECHO", from: contact.number, fromMe: true, text: "Menu" }));
+    expect((await ticket.reload()).status).toBe("bot");
+  });
+
   it("ignores group messages", async () => {
     const { connection } = await scenario();
     await deliver(connection, upsert({ key: { remoteJid: "120363000000@g.us", fromMe: false, id: "G1" }, message: { conversation: "oi" } }));
@@ -138,13 +170,22 @@ describe("inbound pipeline", () => {
     expect(message!.mediaUrl).toMatch(new RegExp(`^/media/${company.id}/`));
   });
 
+  it("retries a transient media download failure inline within the same job", async () => {
+    const { connection } = await scenario();
+    fake.failNext("downloadMedia", 1);
+    await expect(deliver(connection, imageMessage({ caption: "foto" }))).resolves.toBeUndefined();
+    const message = await Message.findOne();
+    expect(message).toMatchObject({ type: "image", body: "foto", mediaMime: "image/jpeg" });
+    expect(message!.mediaUrl).not.toBeNull();
+  });
+
   it("retries media download, then stores a placeholder on the final attempt", async () => {
     const { connection } = await scenario();
-    fake.failNext("downloadMedia");
+    fake.failNext("downloadMedia", 3);
     await expect(deliver(connection, imageMessage({ caption: "" }))).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
     expect(await Message.count()).toBe(0);
 
-    fake.failNext("downloadMedia");
+    fake.failNext("downloadMedia", 3);
     await deliver(connection, imageMessage({ caption: "" }), true);
     expect(await Message.findOne()).toMatchObject({ type: "image", body: "[mídia indisponível]", mediaUrl: null });
   });

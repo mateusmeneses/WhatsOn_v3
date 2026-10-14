@@ -24,6 +24,20 @@ export function imageMessage(opts: { id?: string; from?: string; caption?: strin
   });
 }
 
+export function documentMessage(
+  opts: { id?: string; from?: string; fromMe?: boolean; fileName?: string; caption?: string } = {},
+): Json {
+  return upsert({
+    key: { remoteJid: `${opts.from ?? "5511988887777"}@s.whatsapp.net`, fromMe: opts.fromMe ?? false, id: opts.id ?? "DOC1" },
+    pushName: "Maria",
+    message: {
+      documentMessage: { fileName: opts.fileName ?? "arquivo.pdf", mimetype: "application/pdf", ...(opts.caption ? { caption: opts.caption } : {}) },
+    },
+    messageType: "documentMessage",
+    messageTimestamp: 1760000000,
+  });
+}
+
 export function ackUpdate(id: string, status: string, from = "5511988887777"): Json {
   return {
     event: "messages.update",
