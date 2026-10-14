@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { markTicketRead } from "@/features/tickets/ticketsApi";
 import { useApplyTicket, useTicket } from "@/features/tickets/useTickets";
@@ -82,6 +83,13 @@ function ChatView({ ticket }: { ticket: Ticket }) {
       {messagesQuery.isLoading && messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center bg-background">
           <Spinner />
+        </div>
+      ) : messagesQuery.isError && messages.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-background p-6 text-center">
+          <p className="text-sm text-danger">{errorMessage(messagesQuery.error)}</p>
+          <Button variant="secondary" size="sm" loading={messagesQuery.isFetching} onClick={() => void messagesQuery.refetch()}>
+            Tentar novamente
+          </Button>
         </div>
       ) : (
         <MessageList

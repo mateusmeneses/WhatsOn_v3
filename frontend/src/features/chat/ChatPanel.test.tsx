@@ -147,4 +147,17 @@ describe("ChatPanel", () => {
     expect(await screen.findByText("Bom dia")).toBeInTheDocument();
     expect(screen.getByText("Cedo")).toBeInTheDocument();
   });
+
+  it("shows the error and retries when the messages fail to load", async () => {
+    setup();
+    vi.mocked(fetchMessages).mockReset();
+    vi.mocked(fetchMessages).mockRejectedValueOnce(networkError());
+    vi.mocked(fetchMessages).mockResolvedValueOnce({ items: [makeMessage({ id: 1, body: "Bom dia" })], hasMore: false });
+
+    expect(await screen.findByText("Sem conexão com o servidor. Verifique sua internet.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(await screen.findByText("Bom dia")).toBeInTheDocument();
+    expect(fetchMessages).toHaveBeenCalledTimes(2);
+  });
 });
