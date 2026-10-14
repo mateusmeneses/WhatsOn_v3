@@ -98,14 +98,14 @@ Login · Atendimento (lista de tickets + chat) · Contatos · Filas · Editor do
 
 ## 4. Modelo de dados
 
-Todas as tabelas, exceto `companies`, têm `companyId`, `createdAt` e `updatedAt`.
+Todas as tabelas, exceto `companies` e a tabela de junção `user_queues`, têm `companyId`, `createdAt` e `updatedAt`.
 
 | Tabela | Campos-chave |
 |---|---|
 | `companies` | `name`, `status`, `timezone` |
 | `users` | `name`, `email` (único global), `passwordHash`, `profile` (`admin`/`supervisor`/`agent`), `online` |
 | `user_queues` | `userId`, `queueId` |
-| `connections` | `name`, `instanceName` (único), `status` (`disconnected`/`qrcode`/`connected`), `number`, `webhookToken` (único), `isDefault`, `defaultQueueId`, `greetingMessage`, `outOfHoursMessage`, `closingMessage`, `transferMessage`, `chatbotRootId`, `botTimeoutMinutes` (padrão 30) |
+| `connections` | `name`, `instanceName` (único), `status` (`disconnected`/`qrcode`/`connected`), `number`, `webhookToken` (único), `isDefault`, `defaultQueueId`, `outOfHoursMessage`, `closingMessage`, `transferMessage`, `botTimeoutMinutes` (padrão 30). A saudação é a mensagem do nó raiz do chatbot |
 | `queues` | `name`, `color`, `schedule` (JSON: por dia da semana, lista de intervalos `HH:mm-HH:mm`; vazio = sempre aberto) |
 | `contacts` | `name`, `number` (único por empresa), `profilePicUrl`, `isGroup` |
 | `tickets` | `contactId`, `connectionId`, `queueId?`, `userId?`, `status` (`bot`/`pending`/`open`/`closed`), `chatbotNodeId?`, `chatbotAttempts`, `lastMessage`, `lastMessageAt`, `unreadCount`, `closedAt?` |
@@ -117,7 +117,8 @@ Restrições importantes:
 
 - Índice único `messages(connectionId, providerMessageId)`, que é a base da idempotência.
 - No máximo 1 ticket não-fechado por `(contactId, connectionId)`, garantido por índice único parcial `WHERE status <> 'closed'`.
-- `chatbot_nodes(parentId, key)` único.
+- `chatbot_nodes(parentId, key)` único entre nós não-raiz.
+- No máximo 1 nó raiz (`parentId IS NULL`) por conexão.
 
 ## 5. Ciclo do ticket
 
@@ -134,7 +135,7 @@ mensagem de contato sem ticket aberto
 Regras:
 
 - Mensagem recebida após `closed` cria ticket novo, que passa de novo pelo bot.
-- Conexão sem `chatbotRootId` → ticket nasce em `pending` na `defaultQueueId`.
+- Conexão sem nó raiz de chatbot → ticket nasce em `pending` na `defaultQueueId`.
 - Mensagem `fromMe` (enviada pelo celular) é registrada no ticket. Se o ticket estiver em `bot`, ele passa para `open` sem `userId` (atendido pelo "celular") e o bot para.
 - Aceitar: `UPDATE ... WHERE id = ? AND status = 'pending'`. Se 0 linhas forem afetadas, o atendente recebe um erro de conflito ("ticket já aceito").
 - Transferir: para outra fila (volta a `pending`) ou para outro atendente (`pending` com `userId` definido, visível apenas para ele).
@@ -152,7 +153,7 @@ Regras:
 
 ### Estrutura
 
-Árvore de `chatbot_nodes` por conexão. A mensagem do nó raiz é a saudação, e os filhos da raiz formam o menu principal.
+Árvore de `chatbot_nodes` por conexão. A raiz é o nó sem `parentId` (único por conexão); a mensagem dela é a saudação, e os filhos da raiz formam o menu principal. Só a raiz e nós `submenu` podem ter filhos.
 
 ### Montagem do menu
 
@@ -203,14 +204,17 @@ Mensagens não-texto (áudio, imagem) recebidas em `bot` contam como entrada inv
 
 - `POST /webhooks/evolution/:webhookToken`: valida o token, enfileira o payload bruto na fila `inbound` e responde `200`. Não faz nenhum acesso ao banco além do lookup do token (cacheado em memória/Redis).
 - **Idempotência**: insert com índice único `(connectionId, providerMessageId)`. Se o registro já existir, o evento é ignorado sem erro.
-- **Ordem por contato**: o worker obtém um lock no Redis por `connectionId:número` antes de processar. Jobs do mesmo contato nunca rodam em paralelo; contatos diferentes rodam em paralelo (concorrência configurável).
+- **Ordem por contato**: a entrada é dividida em `INBOUND_SHARDS` filas (`inbound-0..N`), cada uma com concorrência 1. O shard é escolhido por hash de `connectionId:número`, então eventos do mesmo contato (mensagens e acks) são processados em ordem FIFO, um de cada vez, e contatos diferentes rodam em paralelo em shards diferentes.
+- O webhook é configurado sem base64; o worker baixa a mídia com `downloadMedia`, mantendo os jobs pequenos no Redis.
 - Retry: 5 tentativas com backoff exponencial. Depois disso, o job vai para a dead-letter (jobs falhos retidos no BullMQ), visível no Bull Board (rota admin protegida), com ação de reprocessar.
 
 ### Saída
 
 - Mensagem do atendente: grava com `ack = pending` → emite via socket → enfileira em `outbound` → `EvolutionProvider.send*` → grava o `providerMessageId` retornado e `ack = sent` → os acks seguintes chegam por webhook.
 - Após esgotar os retries: `ack = failed`. A UI mostra ícone de erro e botão "reenviar", que cria um novo job.
-- O bot usa a mesma fila `outbound`.
+- O bot usa a mesma fila de saída.
+- A saída também é dividida em `OUTBOUND_SHARDS` filas (`outbound-0..N`, concorrência 1, shard por `ticketId`), garantindo que as mensagens de um ticket (ex.: resposta do bot seguida do menu) cheguem na ordem.
+- Eco: se o WhatsApp devolver como `fromMe` uma mensagem que nós mesmos enviamos antes de gravarmos o id, ela é reconciliada com a mensagem pendente (mesmo contato, mesmo texto, últimos 2 minutos) em vez de duplicar.
 
 ### Conexões
 
