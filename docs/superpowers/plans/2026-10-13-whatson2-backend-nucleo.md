@@ -5278,7 +5278,7 @@ git commit -m "feat(messages): envio via fila particionada por ticket, retries e
   - `listMessages(auth, ticketId, { before?: number; limit?: number })`, `sendAgentMessage(auth, ticketId, { body?, quotedMessageId?, media? })`, `resendMessage(auth, messageId)`.
   - Rotas: `GET /api/tickets?status=&search=&page=`, `GET /api/tickets/:id`, `POST /api/tickets/:id/accept|transfer|close|read`, `GET/POST /api/tickets/:ticketId/messages`, `POST /api/messages/:id/resend`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `backend/test/integration/tickets.test.ts`:
 
@@ -5527,12 +5527,12 @@ describe("agent messages", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/tickets.test.ts test/integration/agentMessages.test.ts`
 Expected: FAIL (rotas `/api/tickets` respondem 404).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/tickets/visibility.ts`:
 
@@ -5893,12 +5893,12 @@ apiRoutes.use("/tickets", ticketRoutes);
 apiRoutes.use(messageRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
