@@ -4734,7 +4734,7 @@ git commit -m "feat(frontend): filas com editor de horário de expediente"
   - `UsersPage` em `/usuarios`: tabela (Nome, E-mail, Perfil, Filas). Admin vê "Novo usuário", "Editar {nome}", "Excluir {nome}"; supervisor só consulta.
   - `UserDialog({ user?: UserView; onClose })`: campos Nome, E-mail, Senha (obrigatória ao criar, mínimo 6; opcional ao editar), Perfil (`admin` "Administrador", `supervisor` "Supervisor", `agent` "Atendente") e caixas por fila.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/users/UsersPage.test.tsx`:
 
@@ -4839,12 +4839,12 @@ describe("UsersPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/users`
 Expected: FAIL com `Failed to resolve import "./UsersPage"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 Acrescente em `frontend/src/features/users/usersApi.ts`:
 
@@ -5143,12 +5143,12 @@ import { UsersPage } from "@/features/users/UsersPage";
         />
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
