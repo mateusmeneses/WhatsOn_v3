@@ -2124,7 +2124,7 @@ git commit -m "feat(auth): login JWT, refresh, logout e controle por perfil"
   - `listQueues(companyId)`, `getQueueOr404(companyId, id)`, `createQueue(companyId, input)`, `updateQueue(companyId, id, input)`, `deleteQueue(companyId, id)`, `assertQueuesBelong(companyId: number, ids: number[]): Promise<void>` (lança `INVALID_QUEUE` 400).
   - Rotas: `GET/POST /api/queues`, `PUT/DELETE /api/queues/:id`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `backend/test/unit/schedule.test.ts`:
 
@@ -2246,12 +2246,12 @@ describe("queues API", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/unit/schedule.test.ts test/integration/queues.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/queues/schedule'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/shared/http.ts`:
 
@@ -2422,12 +2422,12 @@ import { queueRoutes } from "./modules/queues/queues.routes";
 apiRoutes.use("/queues", queueRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
