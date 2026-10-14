@@ -5924,7 +5924,7 @@ git commit -m "feat(tickets): visibilidade por perfil, aceitar/transferir/finali
   - `processBotTimeoutJob(job: Job<{ ticketId: number }>): Promise<void>`.
   - Rotas: `GET /api/connections/:connectionId/chatbot`, `POST /api/connections/:connectionId/chatbot/nodes`, `POST /api/connections/:connectionId/chatbot/simulate`, `PUT/DELETE /api/chatbot/nodes/:id`, `PUT /api/chatbot/nodes/:id/children-order`.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/integration/chatbot.test.ts`:
 
@@ -6114,12 +6114,12 @@ describe("runBot", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/chatbot.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/chatbot/botTimeout.worker'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/chatbot/chatbot.service.ts`:
 
@@ -6451,12 +6451,12 @@ import { chatbotRoutes } from "./modules/chatbot/chatbot.routes";
 apiRoutes.use(chatbotRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
