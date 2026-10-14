@@ -1,4 +1,5 @@
 import "express-async-errors";
+import "./database/sequelize";
 import path from "node:path";
 import cors from "cors";
 import express, { Express } from "express";

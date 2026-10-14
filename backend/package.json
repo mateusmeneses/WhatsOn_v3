@@ -14,7 +14,8 @@
     "typecheck": "tsc --noEmit",
     "migrate": "tsx src/database/cli.ts up",
     "migrate:down": "tsx src/database/cli.ts down",
-    "seed": "tsx src/database/seed.ts"
+    "seed": "tsx src/database/seed.ts",
+    "migrate:prod": "node dist/database/cli.js up"
   },
   "keywords": [],
   "author": "",
