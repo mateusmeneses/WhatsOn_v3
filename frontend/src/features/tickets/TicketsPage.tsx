@@ -22,7 +22,7 @@ export function TicketsPage() {
     { value: "pending", label: "Aguardando" },
     { value: "open", label: "Atendendo" },
     { value: "closed", label: "Finalizados" },
-    ...(user.profile !== "agent" ? [{ value: "bot" as const, label: "No bot" }] : []),
+    ...(user.profile !== "agent" ? [{ value: "bot" as const, label: "Bot" }] : []),
   ];
 
   return (

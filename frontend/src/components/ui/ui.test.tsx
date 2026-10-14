@@ -43,6 +43,14 @@ describe("ui primitives", () => {
     expect(onChange).toHaveBeenCalledWith("b");
   });
 
+  it("keeps tab labels on one line with compact text below lg", () => {
+    render(<Tabs value="a" onChange={vi.fn()} items={[{ value: "a", label: "Finalizados" }]} />);
+    const tab = screen.getByRole("tab", { name: "Finalizados" });
+    expect(tab.className).toContain("whitespace-nowrap");
+    expect(tab.className).toContain("text-xs");
+    expect(tab.className).toContain("lg:text-sm");
+  });
+
   it("applies the tone to badges", () => {
     render(<Badge tone="success">Conectado</Badge>);
     expect(screen.getByText("Conectado").className).toContain("text-success");

@@ -38,14 +38,14 @@ describe("TicketsPage", () => {
     const list = await screen.findByRole("list", { name: "Lista de atendimentos" });
     expect(within(list).getByText("Maria Souza")).toBeInTheDocument();
     expect(within(list).getByText("João Lima")).toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "No bot" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Bot" })).not.toBeInTheDocument();
     expect(screen.getByText("Selecione um atendimento")).toBeInTheDocument();
   });
 
   it("shows the bot tab to supervisors and loads the selected tab", async () => {
     setTestUser({ id: 2, profile: "supervisor" });
     renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
-    await userEvent.click(screen.getByRole("tab", { name: "No bot" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Bot" }));
     await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("bot", "", 1));
   });
 

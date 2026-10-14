@@ -29,7 +29,8 @@ export function Tabs<T extends string>({
             aria-selected={selected}
             onClick={() => onChange(item.value)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-ink-muted transition",
+              // flex-auto + nowrap: rótulos não quebram na coluna de 320px (tablet, 768px); texto maior a partir de lg.
+              "flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-1.5 text-xs font-medium text-ink-muted transition lg:px-2 lg:text-sm",
               selected && "bg-surface text-ink shadow-sm",
             )}
           >
