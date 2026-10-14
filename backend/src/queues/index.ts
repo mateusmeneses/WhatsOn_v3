@@ -19,6 +19,7 @@ export function shardFor(key: string, shards: number): number {
 
 const queues = new Map<string, Queue>();
 const workerConnections: IORedis[] = [];
+const workers = new Set<Worker>();
 
 export function getQueue(name: string): Queue {
   let queue = queues.get(name);
@@ -40,8 +41,13 @@ export function getQueue(name: string): Queue {
 
 export function createWorker<T>(name: string, processor: Processor<T>, opts: Partial<WorkerOptions> = {}): Worker<T> {
   const connection = createRedis();
+  connection.on("error", (err) => logger.error({ queue: name, err }, "worker connection error"));
   workerConnections.push(connection);
-  return new Worker<T>(name, processor, { ...opts, connection });
+  const worker = new Worker<T>(name, processor, { ...opts, connection });
+  worker.on("error", (err) => logger.error({ queue: name, err }, "worker error"));
+  workers.add(worker as Worker);
+  worker.on("closed", () => workers.delete(worker as Worker));
+  return worker;
 }
 
 export function allQueueNames(inboundShards: number, outboundShards: number): string[] {
@@ -54,8 +60,31 @@ export function allQueueNames(inboundShards: number, outboundShards: number): st
 }
 
 export async function closeQueues(): Promise<void> {
-  await Promise.all([...queues.values()].map((q) => q.close()));
+  // Workers primeiro: eles são donos das conexões; só depois as conexões são encerradas.
+  await Promise.all(
+    [...workers].map(async (w) => {
+      await w.waitUntilReady().catch(() => undefined);
+      await w.close().catch(() => undefined);
+    }),
+  );
+  workers.clear();
+  // Fechar uma Queue antes da conexão terminar de inicializar remove os listeners e deixa o erro de init sem tratamento.
+  await Promise.all(
+    [...queues.values()].map(async (q) => {
+      await q.waitUntilReady().catch(() => undefined);
+      await q.close().catch(() => undefined);
+    }),
+  );
   queues.clear();
-  await Promise.all(workerConnections.map((c) => c.quit().catch(() => undefined)));
+  await Promise.all(
+    workerConnections.map(async (c) => {
+      try {
+        if (c.status === "end") return;
+        await c.quit();
+      } catch {
+        c.disconnect();
+      }
+    }),
+  );
   workerConnections.length = 0;
 }

@@ -19,7 +19,6 @@ export function startWorkers(): Worker[] {
   workers.push(createWorker(QueueNames.maintenance, processMaintenanceJob, { concurrency: 1 }));
 
   for (const worker of workers) {
-    worker.on("error", (err) => logger.error({ queue: worker.name, err }, "worker error"));
     worker.on("failed", (job, err) =>
       logger.warn({ queue: worker.name, jobId: job?.id, attemptsMade: job?.attemptsMade, err: err.message }, "job failed"),
     );
