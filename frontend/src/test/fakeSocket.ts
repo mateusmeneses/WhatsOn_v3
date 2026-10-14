@@ -24,6 +24,13 @@ export class FakeSocket {
     return this;
   }
 
+  connected = false;
+
+  connect(): this {
+    this.connected = true;
+    return this;
+  }
+
   disconnect(): this {
     this.disconnected = true;
     return this;

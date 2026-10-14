@@ -3,6 +3,7 @@ import { act, render, screen } from "@testing-library/react";
 import { io } from "socket.io-client";
 import { useState } from "react";
 import { refreshAccessToken } from "@/lib/api";
+import { useAuth } from "@/stores/auth";
 import type { FakeSocket } from "@/test/fakeSocket";
 import { createTestQueryClient, setTestUser } from "@/test/utils";
 import { RealtimeProvider, useRealtimeEvent, useTicketRoom } from "./RealtimeProvider";
@@ -37,9 +38,28 @@ function renderProvider(ticketId: number | null = null) {
 }
 
 describe("RealtimeProvider", () => {
-  it("connects with the access token", () => {
+  beforeEach(() => {
+    vi.mocked(io).mockClear();
+  });
+
+  it("connects with an auth function that yields the access token", () => {
     renderProvider();
-    expect(io).toHaveBeenLastCalledWith(undefined, expect.objectContaining({ auth: { token: "test-token" } }));
+    const options = vi.mocked(io).mock.calls.at(-1)![1] as { auth: (cb: (data: object) => void) => void };
+    expect(typeof options.auth).toBe("function");
+    const cb = vi.fn();
+    options.auth(cb);
+    expect(cb).toHaveBeenCalledWith({ token: "test-token" });
+  });
+
+  it("keeps the same socket when the access token changes and uses the new token on reconnect", () => {
+    renderProvider();
+    expect(io).toHaveBeenCalledTimes(1);
+    const options = vi.mocked(io).mock.calls.at(-1)![1] as { auth: (cb: (data: object) => void) => void };
+    act(() => useAuth.setState({ accessToken: "new" }));
+    expect(io).toHaveBeenCalledTimes(1);
+    const cb = vi.fn();
+    options.auth(cb);
+    expect(cb).toHaveBeenCalledWith({ token: "new" });
   });
 
   it("delivers server events to subscribers after ready", () => {

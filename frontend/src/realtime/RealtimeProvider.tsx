@@ -17,10 +17,14 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [value, setValue] = useState<RealtimeValue>({ socket: null, epoch: 0 });
   const hadReady = useRef(false);
+  const tokenRef = useRef(token);
+  tokenRef.current = token;
+  const hasToken = Boolean(token);
 
   useEffect(() => {
-    if (!token) return;
-    const socket = createSocket(token);
+    if (!hasToken) return;
+    hadReady.current = false;
+    const socket = createSocket(() => tokenRef.current);
 
     socket.on("ready", () => {
       if (hadReady.current) void queryClient.invalidateQueries();
@@ -29,14 +33,18 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     });
 
     socket.on("connect_error", (err: Error) => {
-      if (err.message === "UNAUTHENTICATED") void refreshAccessToken();
+      if (err.message === "UNAUTHENTICATED") {
+        void refreshAccessToken().then((newToken) => {
+          if (newToken && !socket.connected) socket.connect();
+        });
+      }
     });
 
     return () => {
       socket.disconnect();
       setValue({ socket: null, epoch: 0 });
     };
-  }, [token, queryClient]);
+  }, [hasToken, queryClient]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }
