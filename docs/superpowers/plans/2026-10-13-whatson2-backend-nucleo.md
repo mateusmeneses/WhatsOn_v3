@@ -1778,7 +1778,7 @@ git commit -m "feat(db): models, migration inicial, filas BullMQ e harness de te
   - Rotas: `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, `GET /api/auth/me`.
   - Helper de teste: `bearer(user): string`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `backend/test/helpers/auth.ts`:
 
@@ -1886,12 +1886,12 @@ describe("auth", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/auth.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/auth/tokens'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/auth/auth.types.ts`:
 
@@ -2094,12 +2094,12 @@ export const apiRoutes = Router();
 apiRoutes.use("/auth", authRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS, sem erros de tipo.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
