@@ -642,7 +642,7 @@ git commit -m "chore: scaffold do backend e infra local (postgres, redis)"
   - `scheduleBotTimeout(ticketId: number, minutes: number): Promise<void>`, `cancelBotTimeout(ticketId: number): Promise<void>`, `botTimeoutJobId(ticketId: number): string`.
   - Helpers de teste: `resetDb()`, `resetRedis()`, `waitFor(fn, predicate, timeoutMs?)`, factories `createCompany`, `createUser`, `createQueue`, `createConnection`, `createContact`, `createTicket`, `createMessage`, `createNode`, `scenario()`.
 
-- [ ] **Step 1: Models**
+- [x] **Step 1: Models**
 
 `backend/src/models/Company.ts`:
 
@@ -1039,7 +1039,7 @@ export * from "./UserQueue";
 export const models = [Company, User, Queue, UserQueue, Connection, Contact, Ticket, Message, ChatbotNode, TicketLog];
 ```
 
-- [ ] **Step 2: Sequelize, migration e migrator**
+- [x] **Step 2: Sequelize, migration e migrator**
 
 `backend/src/database/sequelize.ts`:
 
@@ -1324,7 +1324,7 @@ Em `backend/src/app.ts`, adicione logo abaixo de `import "express-async-errors";
 import "./database/sequelize";
 ```
 
-- [ ] **Step 3: Redis e filas**
+- [x] **Step 3: Redis e filas**
 
 `backend/src/shared/redis.ts`:
 
@@ -1446,7 +1446,7 @@ export async function scheduleBotTimeout(ticketId: number, minutes: number): Pro
 }
 ```
 
-- [ ] **Step 4: Harness de testes**
+- [x] **Step 4: Harness de testes**
 
 `backend/jest.config.js` (substituir):
 
@@ -1646,7 +1646,7 @@ export async function scenario() {
 }
 ```
 
-- [ ] **Step 5: Escrever os testes que falham**
+- [x] **Step 5: Escrever os testes que falham**
 
 `backend/test/integration/constraints.test.ts`:
 
@@ -1741,7 +1741,7 @@ describe("bot timeout scheduling", () => {
 });
 ```
 
-- [ ] **Step 6: Rodar e ver falhar → implementar → passar**
+- [x] **Step 6: Rodar e ver falhar → implementar → passar**
 
 Os arquivos de implementação foram criados nos Steps 1–4. Se algum teste falhar, corrija antes de seguir.
 
@@ -1751,7 +1751,7 @@ Expected: todos PASS (unit da Task 1 + 8 novos). Se aparecer `Model not initiali
 Run: `npm run typecheck`
 Expected: sem erros.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add backend
