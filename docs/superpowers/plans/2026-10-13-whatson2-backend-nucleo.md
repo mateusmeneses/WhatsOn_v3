@@ -4967,7 +4967,7 @@ git commit -m "feat(chatbot): motor puro do menu numérico"
   - `applyAck(connectionId: number, providerMessageId: string, ack: Ack): Promise<void>` (só avança).
   - `interface OutboundJob { messageId: number }`, `enqueueOutbound(messageId: number, ticketId: number): Promise<void>`, `processOutboundJob(job: Job<OutboundJob>): Promise<void>`.
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `backend/test/integration/outbound.test.ts`:
 
@@ -5092,12 +5092,12 @@ describe("outgoing messages", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/outbound.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/messages/messages.service'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/messages/outbound.ts`:
 
@@ -5245,12 +5245,12 @@ export async function applyAck(connectionId: number, providerMessageId: string, 
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
