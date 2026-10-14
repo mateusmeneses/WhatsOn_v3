@@ -34,7 +34,7 @@ export function validateSchedule(schedule: WeekSchedule): string | null {
 
 export function describeSchedule(schedule: WeekSchedule): string {
   if (isAlwaysOpen(schedule)) return "Sempre aberto";
-  return DAYS.filter((d) => (schedule[d.key] ?? []).length > 0)
-    .map((d) => d.short)
-    .join(", ");
+  const openDays = DAYS.filter((d) => (schedule[d.key] ?? []).length > 0);
+  if (openDays.length === 0) return "Sempre fechado";
+  return openDays.map((d) => d.short).join(", ");
 }

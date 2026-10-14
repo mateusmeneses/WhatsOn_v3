@@ -117,6 +117,8 @@ function EditContactDialog({ contact, onClose }: { contact: Contact; onClose: ()
     onSuccess: () => {
       toast.success("Contato atualizado");
       void queryClient.invalidateQueries({ queryKey: contactKeys.all });
+      // tickets embutem o contato (nome na lista e no cabeçalho do chat)
+      void queryClient.invalidateQueries({ queryKey: ["tickets"] });
       onClose();
     },
     onError: (err) => toast.error(errorMessage(err)),

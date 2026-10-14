@@ -25,4 +25,8 @@ describe("schedule helpers", () => {
   it("describes open days", () => {
     expect(describeSchedule({ "1": ["08:00-18:00"], "6": ["08:00-12:00"] })).toBe("Seg, Sáb");
   });
+
+  it("describes a schedule with days but no open day as always closed", () => {
+    expect(describeSchedule({ "1": [], "2": [] })).toBe("Sempre fechado");
+  });
 });

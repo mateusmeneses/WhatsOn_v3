@@ -38,7 +38,8 @@ describe("ContactsPage", () => {
   it("renames a contact", async () => {
     vi.mocked(fetchContacts).mockResolvedValue({ items: [makeContact({ id: 1, name: "Maria" })], hasMore: false });
     vi.mocked(updateContact).mockResolvedValue(makeContact({ id: 1, name: "Maria VIP" }));
-    renderWithProviders(<ContactsPage />);
+    const { queryClient } = renderWithProviders(<ContactsPage />);
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
 
     await userEvent.click(await screen.findByRole("button", { name: "Editar Maria" }));
     const dialog = screen.getByRole("dialog", { name: "Editar contato" });
@@ -49,5 +50,6 @@ describe("ContactsPage", () => {
 
     await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, { name: "Maria VIP" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["tickets"] });
   });
 });
