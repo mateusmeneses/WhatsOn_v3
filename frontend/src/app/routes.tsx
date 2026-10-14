@@ -1,8 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { ProtectedRoute, RequireProfile } from "@/components/layout/ProtectedRoute";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
+import { QueuesPage } from "@/features/queues/QueuesPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
 
 export function AppRoutes() {
@@ -20,6 +21,14 @@ export function AppRoutes() {
         <Route path="atendimento" element={<TicketsPage />} />
         <Route path="atendimento/:ticketId" element={<TicketsPage />} />
         <Route path="contatos" element={<ContactsPage />} />
+        <Route
+          path="filas"
+          element={
+            <RequireProfile profiles={["admin"]}>
+              <QueuesPage />
+            </RequireProfile>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/atendimento" replace />} />
     </Routes>
