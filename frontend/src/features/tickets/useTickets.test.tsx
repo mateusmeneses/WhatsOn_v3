@@ -43,4 +43,44 @@ describe("useTicketRealtime", () => {
     const items = qc.getQueryData<TicketPages>(ticketKeys.list("pending", ""))!.pages[0]!.items;
     expect(items.map((t) => t.id)).toEqual([5]);
   });
+
+  it("waits for the agent's queues before touching the lists (only the detail cache is updated)", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    let resolveOptions!: (value: { id: number; name: string; queueIds: number[] }[]) => void;
+    vi.mocked(fetchUserOptions).mockReturnValueOnce(new Promise((resolve) => (resolveOptions = resolve)));
+    const qc = createTestQueryClient();
+    const pendingList = { pages: [{ items: [], hasMore: false }], pageParams: [1] };
+    qc.setQueryData(ticketKeys.list("pending", ""), pendingList);
+    const socket = new FakeSocket();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={qc}>
+        <RealtimeContext.Provider value={{ socket: socket as unknown as Socket, epoch: 1, connected: true }}>{children}</RealtimeContext.Provider>
+      </QueryClientProvider>
+    );
+    const { result } = renderHook(
+      () => {
+        useTicketRealtime();
+        return useViewer();
+      },
+      { wrapper },
+    );
+    expect(result.current).toBeNull();
+
+    const ticket = makeTicket({ id: 5, queueId: 10 });
+    act(() => socket.serverEmit("ticket:update", ticket));
+    expect(qc.getQueryData(ticketKeys.list("pending", ""))).toBe(pendingList);
+    expect(qc.getQueryData(ticketKeys.detail(5))).toEqual(ticket);
+
+    await act(async () => resolveOptions([{ id: 1, name: "Ana", queueIds: [10] }]));
+    await waitFor(() => expect(result.current?.queueIds).toEqual([10]));
+  });
+
+  it("does not wait for the queues for supervisors", () => {
+    setTestUser({ id: 2, profile: "supervisor" });
+    vi.mocked(fetchUserOptions).mockReturnValueOnce(new Promise(() => undefined));
+    const qc = createTestQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useViewer(), { wrapper });
+    expect(result.current).toEqual({ userId: 2, profile: "supervisor", queueIds: [] });
+  });
 });
