@@ -82,4 +82,18 @@ describe("TicketsPage", () => {
     await userEvent.click(await screen.findByRole("link", { name: /Maria Souza/ }));
     expect(await screen.findByText("chat do ticket 1")).toBeInTheDocument();
   });
+
+  it("shows a ticket only once when it shows up again on the next page", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    vi.mocked(fetchTickets).mockImplementation(async (status, _search, page) => {
+      if (status !== "pending") return { items: [], hasMore: false };
+      return page === 1 ? { items: [maria], hasMore: true } : { items: [maria, joao], hasMore: false };
+    });
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    await userEvent.click(await screen.findByRole("button", { name: "Carregar mais" }));
+
+    const list = screen.getByRole("list", { name: "Lista de atendimentos" });
+    await within(list).findByText("João Lima");
+    expect(within(list).getAllByText("Maria Souza")).toHaveLength(1);
+  });
 });

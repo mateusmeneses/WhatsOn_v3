@@ -3,13 +3,23 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
-import type { TicketStatus } from "@/types/api";
+import type { Ticket, TicketStatus } from "@/types/api";
 import { TicketListItem } from "./TicketListItem";
 import { useTicketList } from "./useTickets";
 
+/** Um ticket pode reaparecer na página seguinte quando a lista muda entre as cargas; mantém a primeira ocorrência. */
+function uniqueById(tickets: Ticket[]): Ticket[] {
+  const seen = new Set<number>();
+  return tickets.filter((ticket) => {
+    if (seen.has(ticket.id)) return false;
+    seen.add(ticket.id);
+    return true;
+  });
+}
+
 export function TicketList({ status, search, selectedId }: { status: TicketStatus; search: string; selectedId: number | null }) {
   const query = useTicketList(status, search);
-  const tickets = query.data?.pages.flatMap((page) => page.items) ?? [];
+  const tickets = uniqueById(query.data?.pages.flatMap((page) => page.items) ?? []);
 
   if (query.isLoading) {
     return (
