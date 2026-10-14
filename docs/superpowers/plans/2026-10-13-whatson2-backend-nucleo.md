@@ -2832,7 +2832,7 @@ git commit -m "feat(users): CRUD de usuários com vínculo a filas e dados da em
   - `mediaTypeFromMime(mime: string): "image" | "audio" | "video" | "document"`.
   - Rotas: `GET /api/contacts`, `GET/PUT /api/contacts/:id`, `POST /api/media` (multipart, campo `file`, até 16 MB). Arquivos servidos em `GET /media/{companyId}/{arquivo}`.
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `backend/test/integration/contacts.test.ts`:
 
@@ -2954,12 +2954,12 @@ describe("media storage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/contacts.test.ts test/integration/media.test.ts`
 Expected: FAIL com `Cannot find module '../../src/modules/media/media.storage'`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/contacts/contacts.service.ts`:
 
@@ -3131,12 +3131,12 @@ apiRoutes.use("/contacts", contactRoutes);
 apiRoutes.use("/media", mediaRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
