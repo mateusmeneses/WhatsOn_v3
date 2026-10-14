@@ -2,6 +2,7 @@ import request from "supertest";
 import { createApp } from "../../src/app";
 import { env } from "../../src/config/env";
 import { Connection, Contact, Message, Ticket } from "../../src/models";
+import * as chatbot from "../../src/modules/chatbot/chatbot.service";
 import { handleInboundEvent, processInboundJob, routingKey } from "../../src/modules/inbound/inbound";
 import { clearWebhookCache } from "../../src/modules/inbound/webhook.routes";
 import { createOutgoingMessage } from "../../src/modules/messages/messages.service";
@@ -40,6 +41,7 @@ describe("inbound pipeline", () => {
     fake.reset();
     setProvider(fake);
   });
+  afterEach(() => jest.restoreAllMocks());
   afterAll(() => setProvider(null));
 
   it("creates contact and bot ticket, stores the message and greets", async () => {
@@ -193,5 +195,28 @@ describe("inbound pipeline", () => {
     } finally {
       await Promise.all(workers.map((w) => w.close()));
     }
+  });
+
+  it("does not run the bot when the ticket left the bot state while the message was being processed", async () => {
+    // Determinístico: o download da mídia (executado durante o processamento) move o ticket para "pending",
+    // como faria o worker de timeout ou um atendente.
+    const { company, connection, queue, contact } = await scenario();
+    await withBot(connection, queue.id);
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "bot" });
+    jest.spyOn(fake, "downloadMedia").mockImplementation(async () => {
+      await ticket.update({ status: "pending", queueId: queue.id });
+      return { base64: Buffer.from("x").toString("base64"), mimetype: "image/jpeg" };
+    });
+    await deliver(connection, imageMessage({ from: contact.number, caption: "foto" }));
+    expect(await Message.count({ where: { ticketId: ticket.id, isBot: true } })).toBe(0);
+    expect(await Message.count({ where: { ticketId: ticket.id } })).toBe(1);
+  });
+
+  it("keeps the inbound message when the bot throws", async () => {
+    const { connection, queue } = await scenario();
+    await withBot(connection, queue.id);
+    jest.spyOn(chatbot, "runBot").mockRejectedValue(new Error("boom"));
+    await expect(deliver(connection, textMessage({ id: "B1", text: "Oi" }))).resolves.toBeUndefined();
+    expect(await Message.count({ where: { providerMessageId: "B1" } })).toBe(1);
   });
 });

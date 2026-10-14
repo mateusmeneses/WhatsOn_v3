@@ -1,5 +1,6 @@
 import { Op, UniqueConstraintError } from "sequelize";
 import { Connection, Contact, Message, MessageType, Ticket, TicketStatus } from "../../models";
+import { sequelize } from "../../database/sequelize";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { logger } from "../../shared/logger";
 import { hasBot, runBot } from "../chatbot/chatbot.service";
@@ -38,7 +39,11 @@ async function matchPendingEcho(connectionId: number, contactId: number, ev: Inb
     order: [["id", "ASC"]],
   });
   if (!candidate) return false;
-  await Message.update({ providerMessageId: ev.providerMessageId, ack: "sent" }, { where: { id: candidate.id } });
+  const [claimed] = await Message.update(
+    { providerMessageId: ev.providerMessageId, ack: "sent" },
+    { where: { id: candidate.id, providerMessageId: null, ack: "pending" } },
+  );
+  if (claimed === 0) return false;
   await candidate.reload();
   emitMessage(candidate, "message:update");
   return true;
@@ -93,12 +98,6 @@ async function resolveQuoted(connectionId: number, providerMessageId?: string): 
   return quoted?.id ?? null;
 }
 
-async function takeOverFromBot(ticket: Ticket): Promise<void> {
-  await ticket.update({ status: "open", userId: null, chatbotNodeId: null, chatbotAttempts: 0 });
-  await cancelBotTimeout(ticket.id);
-  await logTicket(ticket, "accepted");
-}
-
 export async function handleInboundMessage(
   connection: Connection,
   ev: InboundMessage,
@@ -110,40 +109,68 @@ export async function handleInboundMessage(
   const contact = await upsertContact(connection.companyId, ev);
   if (ev.fromMe && (await matchPendingEcho(connection.id, contact.id, ev))) return;
 
-  const ticket = await findOrCreateTicket(connection, contact, ev.fromMe);
   const { media, body } = await fetchMedia(connection, ev, opts);
+  const ticket = await findOrCreateTicket(connection, contact, ev.fromMe);
+  const quotedMessageId = await resolveQuoted(connection.id, ev.quotedProviderMessageId);
 
   let message: Message;
+  let tookOver = false;
   try {
-    message = await Message.create({
-      companyId: connection.companyId,
-      ticketId: ticket.id,
-      connectionId: connection.id,
-      providerMessageId: ev.providerMessageId,
-      fromMe: ev.fromMe,
-      body,
-      type: ev.type,
-      mediaUrl: media?.url ?? null,
-      mediaMime: media?.mime ?? null,
-      mediaName: media?.name ?? null,
-      ack: ev.fromMe ? "sent" : "delivered",
-      quotedMessageId: await resolveQuoted(connection.id, ev.quotedProviderMessageId),
-      isBot: false,
-    });
+    ({ message, tookOver } = await sequelize.transaction(async (transaction) => {
+      const created = await Message.create(
+        {
+          companyId: connection.companyId,
+          ticketId: ticket.id,
+          connectionId: connection.id,
+          providerMessageId: ev.providerMessageId,
+          fromMe: ev.fromMe,
+          body,
+          type: ev.type,
+          mediaUrl: media?.url ?? null,
+          mediaMime: media?.mime ?? null,
+          mediaName: media?.name ?? null,
+          ack: ev.fromMe ? "sent" : "delivered",
+          quotedMessageId,
+          isBot: false,
+        },
+        { transaction },
+      );
+      await Ticket.update(
+        { lastMessage: previewOf(created), lastMessageAt: new Date() },
+        { where: { id: ticket.id }, transaction },
+      );
+      if (!ev.fromMe) await Ticket.increment("unreadCount", { by: 1, where: { id: ticket.id }, transaction });
+      let took = false;
+      if (ev.fromMe) {
+        const [n] = await Ticket.update(
+          { status: "open", userId: null, chatbotNodeId: null, chatbotAttempts: 0 },
+          { where: { id: ticket.id, status: "bot" }, transaction },
+        );
+        took = n === 1;
+      }
+      return { message: created, tookOver: took };
+    }));
   } catch (err) {
     if (err instanceof UniqueConstraintError) return;
     throw err;
   }
 
-  await ticket.update({
-    lastMessage: previewOf(message),
-    lastMessageAt: new Date(),
-    unreadCount: ev.fromMe ? ticket.unreadCount : ticket.unreadCount + 1,
-  });
   emitMessage(message, "message:new");
-
-  if (ev.fromMe && ticket.status === "bot") await takeOverFromBot(ticket);
+  if (tookOver) {
+    await cancelBotTimeout(ticket.id);
+    await logTicket(ticket, "accepted");
+  }
   await emitTicket(ticket.id);
 
-  if (!ev.fromMe && ticket.status === "bot") await runBot(ticket, ev.type === "text" ? ev.body : null);
+  if (ev.fromMe) return;
+  await ticket.reload();
+  if (ticket.status !== "bot") return;
+  try {
+    await runBot(ticket, ev.type === "text" ? ev.body : null);
+  } catch (err) {
+    logger.error(
+      { err, connectionId: connection.id, ticketId: ticket.id, providerMessageId: ev.providerMessageId },
+      "chatbot failed",
+    );
+  }
 }

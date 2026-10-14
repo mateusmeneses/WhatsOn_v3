@@ -18,9 +18,14 @@ export async function enqueueOutbound(messageId: number, ticketId: number): Prom
   await getQueue(QueueNames.outbound(shard)).add("send", { messageId });
 }
 
+async function setSent(id: number, providerMessageId: string): Promise<void> {
+  await Message.update({ providerMessageId }, { where: { id } });
+  await Message.update({ ack: "sent" }, { where: { id, ack: "pending" } });
+}
+
 async function markSent(message: Message, providerMessageId: string): Promise<void> {
   try {
-    await Message.update({ providerMessageId, ack: "sent" }, { where: { id: message.id } });
+    await setSent(message.id, providerMessageId);
   } catch (err) {
     if (!(err instanceof UniqueConstraintError)) throw err;
     // O eco (fromMe) chegou pelo webhook antes de gravarmos o id: ficamos com a nossa mensagem.
@@ -29,7 +34,7 @@ async function markSent(message: Message, providerMessageId: string): Promise<vo
     });
     await Message.destroy({ where: { id: echoes.map((e) => e.id) } });
     echoes.forEach(emitMessageDeleted);
-    await Message.update({ providerMessageId, ack: "sent" }, { where: { id: message.id } });
+    await setSent(message.id, providerMessageId);
   }
   await message.reload();
   emitMessage(message, "message:update");

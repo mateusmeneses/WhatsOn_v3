@@ -148,4 +148,17 @@ describe("outgoing messages", () => {
       spy.mockRestore();
     }
   });
+
+  it("does not downgrade an ack applied after echo reconciliation", async () => {
+    const { ticket } = await openTicket();
+    const message = await createOutgoingMessage(ticket, { body: "Olá!" });
+    jest.spyOn(fake, "sendText").mockImplementation(async () => {
+      await Message.update({ providerMessageId: "fake-1", ack: "read" }, { where: { id: message.id } });
+      return { providerMessageId: "fake-1" };
+    });
+    await processOutboundJob(job(message.id));
+    await message.reload();
+    expect(message).toMatchObject({ providerMessageId: "fake-1", ack: "read" });
+    jest.restoreAllMocks();
+  });
 });
