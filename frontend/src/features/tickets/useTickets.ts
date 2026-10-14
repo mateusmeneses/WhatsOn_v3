@@ -53,3 +53,9 @@ export function useTicketRealtime(): void {
   const applyTicket = useApplyTicket();
   useRealtimeEvent<Ticket>("ticket:update", applyTicket);
 }
+
+/** Montado no AppShell: mantém as listas de tickets em cache atualizadas em qualquer rota. */
+export function TicketRealtime(): null {
+  useTicketRealtime();
+  return null;
+}

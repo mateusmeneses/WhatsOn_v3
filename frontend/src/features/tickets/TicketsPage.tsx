@@ -9,7 +9,6 @@ import { useDebounced } from "@/lib/useDebounced";
 import { useAuth } from "@/stores/auth";
 import type { TicketStatus } from "@/types/api";
 import { TicketList } from "./TicketList";
-import { useTicketRealtime } from "./useTickets";
 
 export function TicketsPage() {
   const user = useAuth((s) => s.user)!;
@@ -18,7 +17,6 @@ export function TicketsPage() {
   const [status, setStatus] = useState<TicketStatus>("pending");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search.trim());
-  useTicketRealtime();
 
   const tabs: TabItem<TicketStatus>[] = [
     { value: "pending", label: "Aguardando" },

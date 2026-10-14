@@ -7,6 +7,7 @@ import { makeContact, makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { fetchTickets } from "./ticketsApi";
 import { TicketsPage } from "./TicketsPage";
+import { TicketRealtime } from "./useTickets";
 
 vi.mock("./ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ticketsApi")>()),
@@ -59,7 +60,13 @@ describe("TicketsPage", () => {
   it("removes a ticket from the pending tab when another agent accepts it", async () => {
     setTestUser({ id: 1, profile: "agent" });
     const socket = new FakeSocket();
-    renderWithProviders(<TicketsPage />, { socket });
+    renderWithProviders(
+      <>
+        <TicketRealtime />
+        <TicketsPage />
+      </>,
+      { socket },
+    );
     await screen.findByText("Maria Souza");
     await waitFor(() => expect(fetchUserOptions).toHaveBeenCalled());
 
