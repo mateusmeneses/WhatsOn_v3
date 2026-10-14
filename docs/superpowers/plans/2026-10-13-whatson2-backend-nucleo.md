@@ -2453,7 +2453,7 @@ git commit -m "feat(queues): CRUD de filas e cálculo de expediente com fuso"
   - Rotas: `GET/POST /api/users`, `PUT/DELETE /api/users/:id`.
   - Rotas da empresa do usuário logado: `GET /api/company` (todos), `PUT /api/company` (admin; `{ name?, timezone? }`, timezone IANA validado com `Intl`).
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `backend/test/integration/company.test.ts`:
 
@@ -2597,12 +2597,12 @@ describe("users API", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest test/integration/users.test.ts test/integration/company.test.ts`
 Expected: FAIL com 404 nas rotas `/api/users` e `/api/company` (rotas ainda não existem).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `backend/src/modules/users/userQueues.ts`:
 
@@ -2798,12 +2798,12 @@ apiRoutes.use("/company", companyRoutes);
 apiRoutes.use("/users", userRoutes);
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npx jest && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend
