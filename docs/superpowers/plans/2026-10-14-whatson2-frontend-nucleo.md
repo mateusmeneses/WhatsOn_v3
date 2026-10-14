@@ -3631,7 +3631,7 @@ git commit -m "feat(frontend): aceitar, transferir e finalizar atendimentos"
   - `TicketsPage` em `/atendimento` e `/atendimento/:ticketId`: coluna de lista (título "Atendimentos", abas "Aguardando" / "Atendendo" / "Finalizados" e, para supervisor/admin, "No bot"; busca "Buscar por nome ou número") e área do chat.
   - `TicketList({ status, search, selectedId })` (lista com `aria-label="Lista de atendimentos"`, botão "Carregar mais"), `TicketListItem({ ticket, selected })` (link para `/atendimento/:id`).
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/tickets/TicketsPage.test.tsx`:
 
@@ -3716,12 +3716,12 @@ describe("TicketsPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/tickets/TicketsPage.test.tsx`
 Expected: FAIL (a versão inicial da página não tem lista nem abas).
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/tickets/TicketListItem.tsx`:
 
@@ -3894,12 +3894,12 @@ export function TicketsPage() {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS (o teste de login da Task 3 continua achando o título "Atendimentos").
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
