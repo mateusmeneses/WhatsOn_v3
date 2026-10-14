@@ -87,7 +87,7 @@ Testes ficam ao lado do código (`*.test.ts(x)`).
   - `Dialog` (= Radix Root, `open`/`onOpenChange`), `DialogContent({ title, description?, children, className? })`, `DialogFooter`.
   - `Tabs<T extends string>({ value: T, onChange(v: T), items: { value: T; label: string; count?: number }[] })` com `role="tablist"`/`role="tab"`.
 
-- [ ] **Step 1: Criar o projeto e instalar dependências**
+- [x] **Step 1: Criar o projeto e instalar dependências**
 
 Run (na raiz do repo):
 
@@ -104,7 +104,7 @@ npm i -D typescript@5 vite@5 @vitejs/plugin-react@4 @types/react@18 @types/react
 
 Expected: instalação sem erros. (`npm pkg set private=true --json` grava booleano.)
 
-- [ ] **Step 2: Configuração**
+- [x] **Step 2: Configuração**
 
 `frontend/tsconfig.json`:
 
@@ -251,7 +251,7 @@ body {
 import "@testing-library/jest-dom/vitest";
 ```
 
-- [ ] **Step 3: Escrever o teste que falha**
+- [x] **Step 3: Escrever o teste que falha**
 
 `frontend/src/components/ui/ui.test.tsx`:
 
@@ -314,12 +314,12 @@ describe("ui primitives", () => {
 });
 ```
 
-- [ ] **Step 4: Rodar e ver falhar**
+- [x] **Step 4: Rodar e ver falhar**
 
 Run (em `frontend/`): `npx vitest run src/components/ui`
 Expected: FAIL com `Failed to resolve import "./badge"`.
 
-- [ ] **Step 5: Implementar**
+- [x] **Step 5: Implementar**
 
 `frontend/src/lib/cn.ts`:
 
@@ -623,12 +623,12 @@ export function Tabs<T extends string>({
 }
 ```
 
-- [ ] **Step 6: Rodar e ver passar**
+- [x] **Step 6: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: 5 testes PASS; `tsc` sem erros.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add frontend
