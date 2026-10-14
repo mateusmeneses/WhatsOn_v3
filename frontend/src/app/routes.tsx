@@ -5,6 +5,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { QueuesPage } from "@/features/queues/QueuesPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
+import { UsersPage } from "@/features/users/UsersPage";
 
 export function AppRoutes() {
   return (
@@ -26,6 +27,14 @@ export function AppRoutes() {
           element={
             <RequireProfile profiles={["admin"]}>
               <QueuesPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="usuarios"
+          element={
+            <RequireProfile profiles={["admin", "supervisor"]}>
+              <UsersPage />
             </RequireProfile>
           }
         />
