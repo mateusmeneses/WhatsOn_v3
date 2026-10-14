@@ -6,6 +6,7 @@ import { errorMessage } from "@/lib/apiError";
 import { useTicketRoom } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
 import type { PublicUser, StoredMedia, Ticket } from "@/types/api";
+import { TicketActions } from "@/features/tickets/TicketActions";
 import { ChatHeader } from "./ChatHeader";
 import { Composer } from "./Composer";
 import { useTicketLocalMessages } from "./localMessages";
@@ -77,7 +78,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
 
   return (
     <div className="flex h-full flex-col">
-      <ChatHeader ticket={ticket} />
+      <ChatHeader ticket={ticket} actions={<TicketActions ticket={ticket} />} />
       {messagesQuery.isLoading && messages.length === 0 ? (
         <div className="flex flex-1 items-center justify-center bg-background">
           <Spinner />
