@@ -2481,7 +2481,7 @@ git commit -m "feat(frontend): dados de tickets com visibilidade por perfil e ca
   - Texto quando não pode responder: `pending` → "Aceite o atendimento para responder."; `bot` → "O chatbot está conduzindo esta conversa."; `closed` → "Atendimento finalizado."; aberto com outra pessoa → "Este atendimento está com outro atendente.".
   - Rótulos de ack (aria-label): `pending` "Enviando", `sent` "Enviada", `delivered` "Entregue", `read` "Lida", `failed` "Falhou"; falha mostra "Não enviada" + botão "Tentar novamente".
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 Acrescente em `frontend/src/test/factories.ts`:
 
@@ -2675,12 +2675,12 @@ describe("ChatPanel", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/chat`
 Expected: FAIL com `Failed to resolve import "./messageCache"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/chat/messagesApi.ts`:
 
@@ -3225,12 +3225,12 @@ function ChatView({ ticket }: { ticket: Ticket }) {
 }
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
