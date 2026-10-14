@@ -1184,7 +1184,7 @@ git commit -m "feat(frontend): tipos da API, cliente HTTP com renovação de tok
   - `AppRoutes` em `src/app/routes.tsx`: `/login`, `/` → `/atendimento`, `/atendimento` e `/atendimento/:ticketId` (TicketsPage). Tasks seguintes acrescentam rotas aqui.
   - Helpers de teste em `src/test/utils.tsx`: `createTestQueryClient()`, `setTestUser(partial?): PublicUser`, `renderWithProviders(ui, { route?, queryClient?, socket? })` (o parâmetro `socket` passa a funcionar na Task 4).
 
-- [ ] **Step 1: Escrever os testes que falham**
+- [x] **Step 1: Escrever os testes que falham**
 
 `frontend/src/test/utils.tsx`:
 
@@ -1321,12 +1321,12 @@ describe("Sidebar", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/auth src/components/layout`
 Expected: FAIL com `Failed to resolve import "@/app/routes"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/auth/authApi.ts`:
 
@@ -1697,12 +1697,12 @@ createRoot(document.getElementById("root")!).render(
 );
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
