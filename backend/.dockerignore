@@ -1,0 +1,8 @@
+node_modules
+dist
+tmp
+public/media
+.env
+.env.test
+test
+coverage
