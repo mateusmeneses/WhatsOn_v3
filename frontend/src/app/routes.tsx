@@ -6,6 +6,7 @@ import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { QueuesPage } from "@/features/queues/QueuesPage";
+import { SettingsPage } from "@/features/settings/SettingsPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
 import { UsersPage } from "@/features/users/UsersPage";
 
@@ -45,6 +46,14 @@ export function AppRoutes() {
           element={
             <RequireProfile profiles={["admin"]}>
               <ChatbotPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="configuracoes"
+          element={
+            <RequireProfile profiles={["admin"]}>
+              <SettingsPage />
             </RequireProfile>
           }
         />
