@@ -83,6 +83,7 @@ describe("session lifecycle", () => {
     setTestUser({ profile: "agent" });
     refreshTokenStorage.set("r1");
     apiMock.onPost("/auth/logout").reply(204);
+    apiMock.onGet("/users/options").reply(200, []);
     apiMock.onGet().reply(200, { items: [], hasMore: false });
     renderWithProviders(<AppRoutes />, { route: "/contatos" });
 
