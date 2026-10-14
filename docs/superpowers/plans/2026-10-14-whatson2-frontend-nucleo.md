@@ -3921,7 +3921,7 @@ git commit -m "feat(frontend): tela de atendimento com abas, busca e lista em te
   - `contactKeys = { all: ["contacts"], list(search, page) }`, `fetchContacts(search, page): Promise<Page<Contact>>`, `updateContact(id, { name }): Promise<Contact>`.
   - `ContactsPage` em `/contatos` (todos os perfis): busca "Buscar por nome ou número", tabela (Nome, Número, ação "Editar"), paginação "Anterior"/"Próxima", diálogo "Editar contato".
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/contacts/ContactsPage.test.tsx`:
 
@@ -3981,12 +3981,12 @@ describe("ContactsPage", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/contacts`
 Expected: FAIL com `Failed to resolve import "./ContactsPage"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/contacts/contactsApi.ts`:
 
@@ -4171,12 +4171,12 @@ import { ContactsPage } from "@/features/contacts/ContactsPage";
         <Route path="contatos" element={<ContactsPage />} />
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
