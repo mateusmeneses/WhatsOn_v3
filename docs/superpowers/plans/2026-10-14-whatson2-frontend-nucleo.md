@@ -5173,7 +5173,7 @@ git commit -m "feat(frontend): gestão de usuários com perfis e filas"
   - `STATUS_LABEL`: `connected` "Conectado", `qrcode` "Aguardando QR code", `disconnected` "Desconectado".
   - `ConnectionsPage` em `/conexoes`; `ConnectionDialog({ connection?, onClose, onCreated? })`; `QrCodeDialog({ connection, onClose })` (atualiza com `connection:qrcode`, fecha com toast "WhatsApp conectado" quando o status vira `connected`); `ConnectionAlerts` (toast de erro em `connection:alert`).
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [x] **Step 1: Escrever o teste que falha**
 
 `frontend/src/features/connections/ConnectionsPage.test.tsx`:
 
@@ -5289,12 +5289,12 @@ describe("ConnectionAlerts", () => {
 });
 ```
 
-- [ ] **Step 2: Rodar e ver falhar**
+- [x] **Step 2: Rodar e ver falhar**
 
 Run: `npx vitest run src/features/connections`
 Expected: FAIL com `Failed to resolve import "./ConnectionAlerts"`.
 
-- [ ] **Step 3: Implementar**
+- [x] **Step 3: Implementar**
 
 `frontend/src/features/connections/connectionsApi.ts`:
 
@@ -5763,12 +5763,12 @@ import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
         />
 ```
 
-- [ ] **Step 4: Rodar e ver passar**
+- [x] **Step 4: Rodar e ver passar**
 
 Run: `npm test && npm run typecheck`
 Expected: todos PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add frontend
