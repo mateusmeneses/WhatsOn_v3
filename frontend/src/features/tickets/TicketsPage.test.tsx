@@ -12,6 +12,7 @@ import { TicketRealtime } from "./useTickets";
 vi.mock("./ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ticketsApi")>()),
   fetchTickets: vi.fn(),
+  fetchTicketAttendants: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/features/users/usersApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/users/usersApi")>()),

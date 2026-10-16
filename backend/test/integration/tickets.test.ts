@@ -5,7 +5,7 @@ import { closeTicketInternal, moveToPending } from "../../src/modules/tickets/ti
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createContact, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
+import { createContact, createMessage, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 import { resetRedis } from "../helpers/redis";
 
@@ -253,6 +253,37 @@ describe("tickets", () => {
       const res = await request(app).post(`/api/tickets/${closed.id}/reopen`).set("Authorization", bearer(w.agentA));
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("TICKET_ACTIVE_EXISTS");
+    });
+  });
+
+  describe("attendants", () => {
+    it("lists who accepted, replied and holds the ticket, in order of arrival", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "pending", queueId: w.queueA.id });
+      await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.agentA));
+      await createMessage(ticket, { fromMe: true, sentByUserId: w.supervisor.id });
+      await createMessage(ticket, { fromMe: true, sentByUserId: w.agentA.id });
+      await request(app)
+        .post(`/api/tickets/${ticket.id}/transfer`)
+        .set("Authorization", bearer(w.agentA))
+        .send({ userId: w.agentA2.id });
+
+      const res = await request(app).get(`/api/tickets/${ticket.id}/attendants`).set("Authorization", bearer(w.supervisor));
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual([
+        { id: w.agentA.id, name: w.agentA.name },
+        { id: w.supervisor.id, name: w.supervisor.name },
+        { id: w.agentA2.id, name: w.agentA2.name },
+      ]);
+    });
+
+    it("is empty for a ticket nobody handled and hidden from agents without access", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      const res = await request(app).get(`/api/tickets/${ticket.id}/attendants`).set("Authorization", bearer(w.supervisor));
+      expect(res.body).toEqual([]);
+      const denied = await request(app).get(`/api/tickets/${ticket.id}/attendants`).set("Authorization", bearer(w.agentA));
+      expect(denied.status).toBe(403);
     });
   });
 });

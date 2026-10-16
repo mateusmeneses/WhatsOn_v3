@@ -2,7 +2,8 @@ import request from "supertest";
 import { createApp } from "../../src/app";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createContact, createUser } from "../helpers/factories";
+import { emitter } from "../../src/modules/realtime/socket";
+import { createCompany, createConnection, createContact, createTicket, createUser } from "../helpers/factories";
 
 const app = createApp();
 
@@ -45,5 +46,22 @@ describe("contacts API", () => {
     const foreign = await createContact(other.id);
     const res = await request(app).get(`/api/contacts/${foreign.id}`).set("Authorization", bearer(agent));
     expect(res.status).toBe(404);
+  });
+
+  it("pushes the new name to the contact's active tickets", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const connection = await createConnection(company.id);
+    const contact = await createContact(company.id);
+    const open = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "open" });
+    await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "closed" });
+    const spy = jest.spyOn(emitter, "toRooms");
+
+    await request(app).put(`/api/contacts/${contact.id}`).set("Authorization", bearer(agent)).send({ name: "Cliente VIP" });
+
+    const updates = spy.mock.calls.filter(([, event]) => event === "ticket:update");
+    expect(updates).toHaveLength(1);
+    expect(updates[0][2]).toMatchObject({ id: open.id, contact: { name: "Cliente VIP" } });
+    spy.mockRestore();
   });
 });

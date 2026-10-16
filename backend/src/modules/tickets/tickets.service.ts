@@ -1,5 +1,5 @@
 import { Op, UniqueConstraintError } from "sequelize";
-import { Connection, Contact, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
+import { Connection, Contact, Message, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { PAGE_SIZE, paginate } from "../../shared/http";
@@ -28,6 +28,39 @@ export async function logTicket(
 
 export function loadTicket(id: number) {
   return Ticket.findByPk(id, { include: TICKET_INCLUDE });
+}
+
+/**
+ * Atendentes que já passaram pelo chamado: quem aceitou/reabriu, quem respondeu e o atendente atual,
+ * na ordem em que entraram (o atual por último se ainda não aparece no histórico).
+ */
+export async function ticketAttendants(ticket: Ticket): Promise<{ id: number; name: string }[]> {
+  const [logs, messages] = await Promise.all([
+    TicketLog.findAll({
+      where: { ticketId: ticket.id, event: ["accepted", "reopened"], userId: { [Op.ne]: null } },
+      attributes: ["userId", "createdAt"],
+    }),
+    Message.findAll({
+      where: { ticketId: ticket.id, sentByUserId: { [Op.ne]: null } },
+      attributes: ["sentByUserId", "createdAt"],
+    }),
+  ]);
+  const firstSeen = new Map<number, number>();
+  const seen = (userId: number, at: number) => {
+    const prev = firstSeen.get(userId);
+    if (prev === undefined || prev > at) firstSeen.set(userId, at);
+  };
+  for (const log of logs) seen(log.userId!, log.createdAt.getTime());
+  for (const msg of messages) seen(msg.sentByUserId!, msg.createdAt.getTime());
+  if (ticket.userId !== null) seen(ticket.userId, Number.MAX_SAFE_INTEGER);
+  if (firstSeen.size === 0) return [];
+  const users = await User.findAll({
+    where: { id: [...firstSeen.keys()], companyId: ticket.companyId },
+    attributes: ["id", "name"],
+  });
+  return users
+    .sort((a, b) => firstSeen.get(a.id)! - firstSeen.get(b.id)!)
+    .map((u) => ({ id: u.id, name: u.name }));
 }
 
 const queueIdsFor = (auth: AuthContext) => (auth.profile === "agent" ? userQueueIds(auth.userId) : Promise.resolve([]));

@@ -5,7 +5,13 @@ export const ticketKeys = {
   lists: ["tickets", "list"] as const,
   list: (status: TicketStatus, search: string) => ["tickets", "list", status, search] as const,
   detail: (id: number) => ["tickets", "detail", id] as const,
+  attendants: (id: number) => ["tickets", "attendants", id] as const,
 };
+
+export async function fetchTicketAttendants(id: number): Promise<{ id: number; name: string }[]> {
+  const { data } = await api.get<{ id: number; name: string }[]>(`/tickets/${id}/attendants`);
+  return data;
+}
 
 export async function fetchTickets(status: TicketStatus, search: string, page: number): Promise<Page<Ticket>> {
   const { data } = await api.get<Page<Ticket>>("/tickets", { params: { status, page, ...(search ? { search } : {}) } });

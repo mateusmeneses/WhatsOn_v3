@@ -1,10 +1,11 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
-import { fetchTicket, markTicketRead } from "@/features/tickets/ticketsApi";
+import { updateContact } from "@/features/contacts/contactsApi";
+import { fetchTicket, fetchTicketAttendants, markTicketRead } from "@/features/tickets/ticketsApi";
 import { fetchUserOptions } from "@/features/users/usersApi";
 import { FakeSocket } from "@/test/fakeSocket";
-import { makeMessage, makeTicket } from "@/test/factories";
+import { makeContact, makeMessage, makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import type { Message } from "@/types/api";
 import { useLocalMessages } from "./localMessages";
@@ -14,7 +15,12 @@ import { deleteMessage, editMessage, fetchMessages, sendMessage, uploadMedia } f
 vi.mock("@/features/tickets/ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/tickets/ticketsApi")>()),
   fetchTicket: vi.fn(),
+  fetchTicketAttendants: vi.fn(),
   markTicketRead: vi.fn(),
+}));
+vi.mock("@/features/contacts/contactsApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/contacts/contactsApi")>()),
+  updateContact: vi.fn(),
 }));
 vi.mock("@/features/users/usersApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/users/usersApi")>()),
@@ -55,6 +61,7 @@ function setup(ticketPartial = {}) {
   setTestUser({ id: 1, profile: "agent" });
   vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10] }]);
   vi.mocked(fetchTicket).mockResolvedValue(makeTicket({ status: "open", userId: 1, ...ticketPartial }));
+  vi.mocked(fetchTicketAttendants).mockResolvedValue([]);
   vi.mocked(markTicketRead).mockResolvedValue(makeTicket({ status: "open", userId: 1 }));
   vi.mocked(fetchMessages).mockResolvedValue({ items: [makeMessage({ id: 1, body: "Bom dia" })], hasMore: false });
   const socket = new FakeSocket();
@@ -73,6 +80,32 @@ describe("ChatPanel", () => {
     expect(await screen.findByText("Bom dia")).toBeInTheDocument();
     expect(screen.getByText("Maria Souza")).toBeInTheDocument();
     expect(socket.emitted.some((e) => e.event === "ticket:join" && e.args[0] === 1)).toBe(true);
+  });
+
+  it("lists the technicians who handled the ticket, highlighting the current one", async () => {
+    setup();
+    vi.mocked(fetchTicketAttendants).mockResolvedValue([
+      { id: 2, name: "Bruno" },
+      { id: 1, name: "Ana" },
+    ]);
+    const attendants = await screen.findByTestId("ticket-attendants");
+    expect(attendants).toHaveTextContent("Técnicos: Bruno, Ana");
+    expect(within(attendants).getByText("Ana")).toHaveAttribute("title", "Responsável atual");
+    expect(fetchTicketAttendants).toHaveBeenCalledWith(1);
+  });
+
+  it("renames the contact from the conversation header", async () => {
+    vi.mocked(updateContact).mockResolvedValue(makeContact({ name: "Maria VIP" }));
+    const { queryClient } = setup();
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    await userEvent.click(await screen.findByRole("button", { name: "Editar nome do contato" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar contato" });
+    const input = within(dialog).getByLabelText("Nome");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Maria VIP");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, { name: "Maria VIP" }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["tickets"] });
   });
 
   it("shows the message right away and keeps a single bubble when the server confirms", async () => {

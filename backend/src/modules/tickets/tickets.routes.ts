@@ -10,6 +10,7 @@ import {
   loadTicket,
   markTicketRead,
   reopenTicket,
+  ticketAttendants,
   transferTicket,
 } from "./tickets.service";
 
@@ -33,6 +34,10 @@ ticketRoutes.get("/", async (req, res) => {
 ticketRoutes.get("/:id", async (req, res) => {
   const ticket = await getVisibleTicket(currentAuth(req), idParam(req));
   res.json(await loadTicket(ticket.id));
+});
+
+ticketRoutes.get("/:id/attendants", async (req, res) => {
+  res.json(await ticketAttendants(await getVisibleTicket(currentAuth(req), idParam(req))));
 });
 
 ticketRoutes.post("/:id/accept", async (req, res) => {
