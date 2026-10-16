@@ -7,11 +7,11 @@ DOMAIN="hmlwhatson.connectmulti.com.br"
 APP_DIR="/home/deploy/whatson2-hml"
 REPO="https://github.com/mateusmeneses/WhatsOn_v3.git"
 BRANCH="main"
-NGINX_SITE="/etc/nginx/sites-available/whatson2-hml"
+NGINX_SITE="/etc/nginx/sites-available/$DOMAIN"   # padrão do servidor: um arquivo por domínio
 
-# Portas só em 127.0.0.1 e diferentes das do WhatsOn antigo (3000/4003).
-FRONTEND_PORT=3010
-BACKEND_PORT=4010
+# Portas só em 127.0.0.1, livres no servidor (ocupadas: 3000 3001 3010 3306 4003 5003 5432 8000 8015 8501).
+FRONTEND_PORT=3020
+BACKEND_PORT=4020
 POSTGRES_PORT=5434
 REDIS_PORT=6381
 EVOLUTION_PORT=8081
@@ -42,13 +42,6 @@ if [ ! -f .env ]; then
   BULL_PASS="$(rnd 8)"
   umask 077
   cat > .env <<EOF
-COMPOSE_PROJECT_NAME=whatson2-hml
-FRONTEND_BIND=127.0.0.1:$FRONTEND_PORT
-BACKEND_BIND=127.0.0.1:$BACKEND_PORT
-POSTGRES_BIND=127.0.0.1:$POSTGRES_PORT
-REDIS_BIND=127.0.0.1:$REDIS_PORT
-EVOLUTION_BIND=127.0.0.1:$EVOLUTION_PORT
-
 DB_USER=whatson
 DB_PASS=$(rnd 24)
 DB_NAME=whatson
@@ -70,6 +63,17 @@ EOF
   echo " (anote agora; ficam só em $APP_DIR/.env)"
   echo "------------------------------------------------------------"
 fi
+
+# Portas e nome do projeto vêm deste script: reescritos no .env a cada deploy.
+set_env() {
+  if grep -q "^$1=" .env; then sed -i "s|^$1=.*|$1=$2|" .env; else echo "$1=$2" >> .env; fi
+}
+set_env COMPOSE_PROJECT_NAME whatson2-hml
+set_env FRONTEND_BIND "127.0.0.1:$FRONTEND_PORT"
+set_env BACKEND_BIND "127.0.0.1:$BACKEND_PORT"
+set_env POSTGRES_BIND "127.0.0.1:$POSTGRES_PORT"
+set_env REDIS_BIND "127.0.0.1:$REDIS_PORT"
+set_env EVOLUTION_BIND "127.0.0.1:$EVOLUTION_PORT"
 
 step "Conferindo portas"
 if [ -z "$(docker compose ps -q 2>/dev/null)" ]; then
@@ -104,6 +108,7 @@ map \$http_upgrade \$whatson2_hml_connection {
 
 server {
   listen 80;
+  listen [::]:80;
   server_name $DOMAIN;
   client_max_body_size 20m;
 
@@ -120,7 +125,7 @@ server {
   }
 }
 EOF
-  ln -sf "$NGINX_SITE" /etc/nginx/sites-enabled/whatson2-hml
+  ln -sf "$NGINX_SITE" "/etc/nginx/sites-enabled/$DOMAIN"
 fi
 nginx -t
 systemctl reload nginx
