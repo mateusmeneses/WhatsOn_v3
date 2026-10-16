@@ -87,6 +87,19 @@ describe("connections", () => {
     expect((await Connection.findByPk(connection.id))!.status).toBe("qrcode");
   });
 
+  it("recreates the instance when the provider no longer has it and returns its QR code", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { status: "disconnected" });
+    fake.lostInstances.add(connection.instanceName);
+
+    const res = await request(app).get(`/api/connections/${connection.id}/qrcode`).set("Authorization", bearer(user));
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ qr: "data:image/png;base64,FAKEQR" });
+    expect(fake.instances.get(connection.instanceName)).toBe(
+      `http://backend.test/webhooks/evolution/${connection.webhookToken}`,
+    );
+  });
+
   it("lets agents list connections but not create them", async () => {
     const { company } = await admin();
     const agent = await createUser(company.id, { profile: "agent" });

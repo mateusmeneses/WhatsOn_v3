@@ -101,6 +101,11 @@ describe("EvolutionProvider", () => {
     await expect(provider.getQrCode("inst")).resolves.toBe("data:image/png;base64,AAA");
   });
 
+  it("reports a missing instance on QR code as INSTANCE_NOT_FOUND", async () => {
+    api().get("/instance/connect/gone").reply(404, { status: 404, response: { message: ['The "gone" instance does not exist'] } });
+    await expect(provider.getQrCode("gone")).rejects.toMatchObject({ code: "INSTANCE_NOT_FOUND" });
+  });
+
   it("downloads media by message id", async () => {
     api()
       .post("/chat/getBase64FromMediaMessage/inst", { message: { key: { id: "M1" } }, convertToMp4: false })

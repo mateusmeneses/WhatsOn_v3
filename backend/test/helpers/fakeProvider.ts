@@ -18,6 +18,8 @@ export class FakeProvider implements WhatsAppProvider {
   edits: { number: string; id: string; text: string }[] = [];
   deletes: { number: string; id: string }[] = [];
   instances = new Map<string, string>();
+  /** Instâncias que o provedor "perdeu": getQrCode falha com INSTANCE_NOT_FOUND até serem recriadas. */
+  lostInstances = new Set<string>();
   state: ConnectionStatus = "connected";
   private failures = new Map<Method, number>();
   private counter = 0;
@@ -27,6 +29,7 @@ export class FakeProvider implements WhatsAppProvider {
     this.edits = [];
     this.deletes = [];
     this.instances.clear();
+    this.lostInstances.clear();
     this.state = "connected";
     this.failures.clear();
     this.counter = 0;
@@ -53,6 +56,7 @@ export class FakeProvider implements WhatsAppProvider {
   async createInstance(instanceName: string, webhookUrl: string): Promise<void> {
     this.maybeFail("createInstance");
     this.instances.set(instanceName, webhookUrl);
+    this.lostInstances.delete(instanceName);
   }
 
   async deleteInstance(instanceName: string): Promise<void> {
@@ -64,8 +68,9 @@ export class FakeProvider implements WhatsAppProvider {
     this.maybeFail("logout");
   }
 
-  async getQrCode(): Promise<string | null> {
+  async getQrCode(instanceName: string): Promise<string | null> {
     this.maybeFail("getQrCode");
+    if (this.lostInstances.has(instanceName)) throw new AppError("INSTANCE_NOT_FOUND", 404, "fake instance not found");
     return "data:image/png;base64,FAKEQR";
   }
 

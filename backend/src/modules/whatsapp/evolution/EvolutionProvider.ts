@@ -81,8 +81,9 @@ export class EvolutionProvider implements WhatsAppProvider {
   }
 
   async getQrCode(instanceName: string): Promise<string | null> {
-    const data = await this.call<{ base64?: string }>(() => this.http.get(`/instance/connect/${instanceName}`));
-    return data?.base64 ?? null;
+    const data = await this.call<{ base64?: string }>(() => this.http.get(`/instance/connect/${instanceName}`), true);
+    if (data === null) throw new AppError("INSTANCE_NOT_FOUND", 404, "Instância não existe na Evolution API");
+    return data.base64 ?? null;
   }
 
   async getConnectionState(instanceName: string): Promise<ConnectionStatus> {

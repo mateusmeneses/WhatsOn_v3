@@ -90,7 +90,17 @@ export async function deleteConnection(companyId: number, id: number): Promise<v
 export async function getConnectionQrCode(companyId: number, id: number): Promise<{ qr: string | null }> {
   const connection = await getConnectionOr404(companyId, id);
   if (connection.status === "connected") throw new AppError("ALREADY_CONNECTED", 409, "Conexão já está ativa");
-  const qr = await getProvider().getQrCode(connection.instanceName);
+  const provider = getProvider();
+  let qr: string | null;
+  try {
+    qr = await provider.getQrCode(connection.instanceName);
+  } catch (err) {
+    if (!(err instanceof AppError && err.code === "INSTANCE_NOT_FOUND")) throw err;
+    // A Evolution perdeu a instância (volume recriado, banco vindo de outro ambiente): recria e pede o QR de novo.
+    logger.warn({ connectionId: connection.id, instanceName: connection.instanceName }, "instância ausente na Evolution; recriando");
+    await provider.createInstance(connection.instanceName, webhookUrl(connection));
+    qr = await provider.getQrCode(connection.instanceName);
+  }
   if (connection.status !== "qrcode") await connection.update({ status: "qrcode" });
   return { qr };
 }
