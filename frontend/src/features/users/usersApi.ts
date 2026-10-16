@@ -13,6 +13,8 @@ export interface UserInput {
   phone?: string | null;
   profile: Profile;
   queueIds: number[];
+  /** Só na criação: envia o acesso por WhatsApp na hora. */
+  sendAccess?: boolean;
 }
 
 export const PROFILE_LABEL: Record<Profile, string> = {

@@ -29,6 +29,7 @@ export function UserDialog({
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<Profile>(user?.profile ?? "agent");
   const [queueIds, setQueueIds] = useState<number[]>(user?.queueIds ?? []);
+  const [sendAccess, setSendAccess] = useState(false);
 
   const passwordError = password.length > 0 && password.length < 6 ? "A senha precisa ter pelo menos 6 caracteres." : null;
   const valid = name.trim() && email.trim() && !passwordError;
@@ -43,13 +44,14 @@ export function UserDialog({
         profile,
         queueIds,
       };
-      return user ? updateUser(user.id, input) : createUser(input);
+      return user ? updateUser(user.id, input) : createUser({ ...input, sendAccess });
     },
     onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
       const created = user ? null : (saved as UserWithAccess);
       if (!created) toast.success("Usuário atualizado");
       else if (created.access?.sent) toast.success("Usuário criado. Acesso enviado por WhatsApp.");
+      else if (!sendAccess) toast.success("Usuário criado. Envie o acesso pela lista quando quiser.");
       else toast.success("Usuário criado");
       onClose();
       if (created?.access?.temporaryPassword) onAccessNotSent?.(created);
@@ -89,9 +91,20 @@ export function UserDialog({
               onChange={(e) => setPhone(e.target.value)}
             />
             {!user && (
-              <p className="mt-1 text-xs text-ink-muted">
-                O sistema gera uma senha temporária e envia link, usuário e senha para este número.
-              </p>
+              <>
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-primary)]"
+                    checked={sendAccess}
+                    onChange={(e) => setSendAccess(e.target.checked)}
+                  />
+                  Enviar acesso por WhatsApp agora
+                </label>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Desmarcado, o acesso (link, usuário e senha temporária) fica para o botão "Enviar acesso" na lista.
+                </p>
+              </>
             )}
           </div>
           {user && (

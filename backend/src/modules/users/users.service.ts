@@ -19,6 +19,11 @@ export interface UserInput {
   queueIds?: number[];
 }
 
+export interface CreateUserInput extends UserInput {
+  /** Só envia o acesso por WhatsApp na criação quando o admin pedir; senão fica para o "Enviar acesso". */
+  sendAccess?: boolean;
+}
+
 export interface UserView extends PublicUser {
   queueIds: number[];
 }
@@ -86,7 +91,7 @@ export async function listUserOptions(companyId: number): Promise<UserOption[]> 
 
 export async function createUser(
   companyId: number,
-  input: UserInput,
+  input: CreateUserInput,
 ): Promise<UserView & { access: AccessDelivery }> {
   const email = input.email.trim().toLowerCase();
   const phone = phoneOrNull(input.phone);
@@ -103,7 +108,9 @@ export async function createUser(
       await setUserQueues(created.id, input.queueIds ?? [], t);
       return created;
     });
-    return { ...(await view(user)), access: await deliverAccess(user, password, input.password === undefined) };
+    // Sem envio a senha gerada é descartada: o acesso válido sai depois pelo "Enviar acesso" (resetAccess).
+    const access = input.sendAccess ? await deliverAccess(user, password, input.password === undefined) : { sent: false };
+    return { ...(await view(user)), access };
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw emailInUse();
     throw err;

@@ -31,7 +31,7 @@ export function UsersPage() {
     mutationFn: (id: number) => resetUserAccess(id),
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
-      if (result.access.sent) toast.success("Novo acesso enviado por WhatsApp");
+      if (result.access.sent) toast.success("Acesso enviado por WhatsApp");
       else setAccessResult(result);
     },
     onError: (err) => toast.error(errorMessage(err)),
@@ -102,13 +102,13 @@ export function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          aria-label={`Gerar novo acesso para ${user.name}`}
-                          title="Gerar nova senha temporária e enviar por WhatsApp"
+                          aria-label={`Enviar acesso para ${user.name}`}
+                          title="Enviar acesso: gera senha temporária e envia por WhatsApp"
                           onClick={async () => {
                             const ok = await confirm({
-                              title: "Gerar novo acesso",
-                              description: `Uma nova senha temporária será gerada para ${user.name} e as sessões atuais serão encerradas.`,
-                              confirmLabel: "Gerar",
+                              title: "Enviar acesso",
+                              description: `Uma nova senha temporária será gerada para ${user.name} e enviada por WhatsApp. As sessões atuais serão encerradas.`,
+                              confirmLabel: "Enviar",
                             });
                             if (ok) reset.mutate(user.id);
                           }}

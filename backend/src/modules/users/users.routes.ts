@@ -25,8 +25,10 @@ userRoutes.get("/options", async (req, res) => {
   res.json(await listUserOptions(currentAuth(req).companyId));
 });
 
+const createUserSchema = userSchema.extend({ sendAccess: z.boolean().optional() });
+
 userRoutes.post("/", requireProfile("admin"), async (req, res) => {
-  const input = userSchema.parse(req.body);
+  const input = createUserSchema.parse(req.body);
   res.status(201).json(await createUser(currentAuth(req).companyId, input));
 });
 

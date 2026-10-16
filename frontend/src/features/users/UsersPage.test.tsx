@@ -39,7 +39,7 @@ describe("UsersPage", () => {
     expect(await within(row).findByText("Suporte")).toBeInTheDocument();
   });
 
-  it("creates an agent with WhatsApp and no password (the system generates one)", async () => {
+  it("creates an agent without sending the access by default", async () => {
     setTestUser({ id: 1, profile: "admin" });
     vi.mocked(createUser).mockResolvedValue({
       id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [20], access: { sent: true },
@@ -63,9 +63,28 @@ describe("UsersPage", () => {
         phone: "(11) 98888-7777",
         profile: "agent",
         queueIds: [20],
+        sendAccess: false,
       }),
     );
     expect(screen.queryByText("Acesso não enviado")).not.toBeInTheDocument();
+  });
+
+  it("sends the access on creation when the admin ticks the option", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    vi.mocked(createUser).mockResolvedValue({
+      id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [], access: { sent: true },
+    });
+    renderWithProviders(<UsersPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Novo usuário" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
+    await userEvent.type(within(dialog).getByLabelText("Nome"), "Carla");
+    await userEvent.type(within(dialog).getByLabelText("E-mail"), "carla@test.local");
+    const send = within(dialog).getByRole("checkbox", { name: "Enviar acesso por WhatsApp agora" });
+    expect(send).not.toBeChecked();
+    await userEvent.click(send);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() => expect(createUser).toHaveBeenCalledWith(expect.objectContaining({ sendAccess: true })));
   });
 
   it("shows the temporary password when WhatsApp could not deliver it", async () => {
@@ -79,20 +98,21 @@ describe("UsersPage", () => {
     const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
     await userEvent.type(within(dialog).getByLabelText("Nome"), "Carla");
     await userEvent.type(within(dialog).getByLabelText("E-mail"), "carla@test.local");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Enviar acesso por WhatsApp agora" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
     const result = await screen.findByRole("dialog", { name: "Acesso não enviado" });
     expect(within(result).getByTestId("temporary-password")).toHaveTextContent("Xy7kPq2mNa");
   });
 
-  it("generates a new access after confirming", async () => {
+  it("sends the access after confirming", async () => {
     setTestUser({ id: 1, profile: "admin" });
     vi.mocked(resetUserAccess).mockResolvedValue({
       id: 2, companyId: 1, name: "Bruno", email: "bruno@test.local", profile: "agent", queueIds: [10], access: { sent: true },
     });
     renderWithProviders(<UsersPage />);
-    await userEvent.click(await screen.findByRole("button", { name: "Gerar novo acesso para Bruno" }));
-    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Gerar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Enviar acesso para Bruno" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Enviar" }));
     await waitFor(() => expect(resetUserAccess).toHaveBeenCalledWith(2));
   });
 

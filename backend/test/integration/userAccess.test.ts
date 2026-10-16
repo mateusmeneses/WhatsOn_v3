@@ -17,7 +17,7 @@ async function setup({ connected = true } = {}) {
   return { company, admin };
 }
 
-const newUser = { name: "Bruno", email: "bruno@test.local", phone: "(11) 98888-7777", profile: "agent" };
+const newUser = { name: "Bruno", email: "bruno@test.local", phone: "(11) 98888-7777", profile: "agent", sendAccess: true };
 
 describe("user access", () => {
   beforeEach(async () => {
@@ -43,6 +43,30 @@ describe("user access", () => {
     const login = await request(app).post("/api/auth/login").send({ email: "bruno@test.local", password });
     expect(login.status).toBe(200);
     expect(login.body.user.mustChangePassword).toBe(true);
+  });
+
+  it("does not send nor reveal the access unless the admin asks to send it", async () => {
+    const { admin } = await setup();
+    const { sendAccess: _, ...withoutSend } = newUser;
+    const res = await request(app).post("/api/users").set("Authorization", bearer(admin)).send(withoutSend);
+    expect(res.status).toBe(201);
+    expect(res.body.access).toEqual({ sent: false });
+    expect(fake.sent).toHaveLength(0);
+
+    const off = await request(app).post("/api/users").set("Authorization", bearer(admin)).send({ ...newUser, email: "c@test.local", sendAccess: false });
+    expect(off.body.access).toEqual({ sent: false });
+    expect(fake.sent).toHaveLength(0);
+  });
+
+  it("sends the access later through reset-access", async () => {
+    const { admin } = await setup();
+    const { sendAccess: _, ...withoutSend } = newUser;
+    const created = await request(app).post("/api/users").set("Authorization", bearer(admin)).send(withoutSend);
+    const res = await request(app).post(`/api/users/${created.body.id}/reset-access`).set("Authorization", bearer(admin));
+    expect(res.status).toBe(200);
+    expect(res.body.access).toEqual({ sent: true });
+    expect(fake.sent).toHaveLength(1);
+    expect(fake.sent[0]!.text).toContain("Usuário: bruno@test.local");
   });
 
   it("shows the temporary password to the admin when WhatsApp is unavailable", async () => {
