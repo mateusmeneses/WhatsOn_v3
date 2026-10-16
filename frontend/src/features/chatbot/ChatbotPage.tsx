@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -21,6 +22,7 @@ const WELCOME = "Olá! Escolha uma opção:";
 
 export function ChatbotPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const connections = useConnections();
   const [connectionId, setConnectionId] = useState<number | null>(null);
   const [target, setTarget] = useState<NodeFormTarget | null>(null);
@@ -131,8 +133,16 @@ export function ChatbotPage() {
                         parent: all.find((n) => n.id === parentId)!,
                         suggestedKey: nextFreeKey(childrenOf(parentId)),
                       }),
-                    onDelete: (id, title) => {
-                      if (window.confirm(`Excluir "${title}" e todas as opções dentro dela?`)) remove.mutate(id);
+                    onDelete: async (id, title) => {
+                      if (
+                        await confirm({
+                          title: "Excluir opção",
+                          description: `Excluir "${title}" e todas as opções dentro dela?`,
+                          confirmLabel: "Excluir",
+                          danger: true,
+                        })
+                      )
+                        remove.mutate(id);
                     },
                     onReorder: (parentId, ids) => reorder.mutate({ parentId, ids }),
                   }}

@@ -200,12 +200,12 @@ describe("ChatPanel", () => {
       const own = makeMessage({ id: 9, fromMe: true, body: "Errada", createdAt: recent() });
       setupWith(own);
       await screen.findByText("Errada");
-      vi.spyOn(window, "confirm").mockReturnValue(true);
       vi.mocked(deleteMessage).mockResolvedValue({ ...own, deletedAt: new Date().toISOString() });
 
       await userEvent.click(screen.getByRole("button", { name: "Apagar mensagem" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Apagar" }));
 
-      expect(deleteMessage).toHaveBeenCalledWith(9);
+      await waitFor(() => expect(deleteMessage).toHaveBeenCalledWith(9));
       expect(await screen.findByText("Você apagou esta mensagem")).toBeInTheDocument();
       expect(screen.queryByText("Errada")).not.toBeInTheDocument();
     });

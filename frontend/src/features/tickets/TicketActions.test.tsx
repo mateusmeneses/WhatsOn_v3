@@ -97,14 +97,17 @@ describe("TicketActions", () => {
   it("asks for confirmation before closing", async () => {
     setTestUser({ id: 1, profile: "agent" });
     vi.mocked(closeTicket).mockResolvedValue(makeTicket({ status: "closed", userId: 1 }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     renderWithProviders(<TicketActions ticket={makeTicket({ status: "open", userId: 1 })} />);
 
+    // cancela: abre o diálogo e desiste
     await userEvent.click(screen.getByRole("button", { name: /finalizar/i }));
+    await userEvent.click(await screen.findByRole("button", { name: "Cancelar" }));
     expect(closeTicket).not.toHaveBeenCalled();
+
+    // confirma: reabre e clica em Finalizar dentro do diálogo
     await userEvent.click(screen.getByRole("button", { name: /finalizar/i }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Finalizar" }));
     await waitFor(() => expect(closeTicket).toHaveBeenCalledWith(1));
-    confirm.mockRestore();
   });
 
   it("offers no actions to an agent looking at someone else's ticket", () => {

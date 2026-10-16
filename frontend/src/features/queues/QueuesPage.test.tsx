@@ -73,9 +73,9 @@ describe("QueuesPage", () => {
   it("deletes a queue after confirmation", async () => {
     setTestUser({ profile: "admin" });
     vi.mocked(deleteQueue).mockResolvedValue();
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderWithProviders(<QueuesPage />);
     await userEvent.click(await screen.findByRole("button", { name: "Excluir Suporte" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Excluir" }));
     await waitFor(() => expect(deleteQueue).toHaveBeenCalledWith(10));
   });
 

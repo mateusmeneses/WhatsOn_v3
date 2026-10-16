@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/ui/confirm";
 import { Spinner } from "@/components/ui/spinner";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
@@ -16,6 +17,7 @@ import { deleteUser, fetchUsers, PROFILE_LABEL, userKeys } from "./usersApi";
 
 export function UsersPage() {
   const me = useAuth((s) => s.user)!;
+  const confirm = useConfirm();
   const isAdmin = me.profile === "admin";
   const queryClient = useQueryClient();
   const users = useQuery({ queryKey: [...userKeys.all, "list"], queryFn: fetchUsers });
@@ -90,8 +92,9 @@ export function UsersPage() {
                             variant="ghost"
                             size="icon"
                             aria-label={`Excluir ${user.name}`}
-                            onClick={() => {
-                              if (window.confirm(`Excluir o usuário ${user.name}?`)) remove.mutate(user.id);
+                            onClick={async () => {
+                              if (await confirm({ title: "Excluir usuário", description: `Excluir o usuário ${user.name}?`, confirmLabel: "Excluir", danger: true }))
+                                remove.mutate(user.id);
                             }}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden />

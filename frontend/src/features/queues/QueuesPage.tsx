@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
@@ -16,6 +17,7 @@ import { describeSchedule } from "./schedule";
 
 export function QueuesPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const queues = useQueues();
   const [dialog, setDialog] = useState<{ queue?: Queue } | null>(null);
 
@@ -65,8 +67,9 @@ export function QueuesPage() {
                     variant="ghost"
                     size="icon"
                     aria-label={`Excluir ${queue.name}`}
-                    onClick={() => {
-                      if (window.confirm(`Excluir a fila "${queue.name}"?`)) remove.mutate(queue.id);
+                    onClick={async () => {
+                      if (await confirm({ title: "Excluir fila", description: `Excluir a fila "${queue.name}"?`, confirmLabel: "Excluir", danger: true }))
+                        remove.mutate(queue.id);
                     }}
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />

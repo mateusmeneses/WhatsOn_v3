@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { Spinner } from "@/components/ui/spinner";
 import { markTicketRead } from "@/features/tickets/ticketsApi";
 import { useApplyTicket, useTicket } from "@/features/tickets/useTickets";
@@ -50,6 +51,7 @@ export function ChatPanel({ ticketId }: { ticketId: number }) {
 
 function ChatView({ ticket }: { ticket: Ticket }) {
   const user = useAuth((s) => s.user)!;
+  const confirm = useConfirm();
   const applyTicket = useApplyTicket();
   const messagesQuery = useMessages(ticket.id);
   const send = useSendMessage(ticket);
@@ -88,8 +90,9 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   const actions: MessageActions | undefined = canReply
     ? {
         onEdit: (message, body) => edit.mutateAsync({ id: message.id, body }),
-        onDelete: (message) => {
-          if (window.confirm("Apagar esta mensagem para todos?")) remove.mutate(message.id);
+        onDelete: async (message) => {
+          if (await confirm({ title: "Apagar mensagem", description: "Apagar esta mensagem para todos?", confirmLabel: "Apagar", danger: true }))
+            remove.mutate(message.id);
         },
       }
     : undefined;

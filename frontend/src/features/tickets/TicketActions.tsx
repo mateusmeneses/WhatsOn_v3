@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useConfirm } from "@/components/ui/confirm";
 import { errorMessage } from "@/lib/apiError";
 import { useAuth } from "@/stores/auth";
 import type { Ticket } from "@/types/api";
@@ -14,6 +15,7 @@ import { ticketVisibleIn } from "./visibility";
 
 export function TicketActions({ ticket }: { ticket: Ticket }) {
   const user = useAuth((s) => s.user)!;
+  const confirm = useConfirm();
   const applyTicket = useApplyTicket();
   const viewer = useViewer();
   const navigate = useNavigate();
@@ -60,8 +62,8 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
             size="sm"
             variant="secondary"
             loading={close.isPending}
-            onClick={() => {
-              if (window.confirm("Finalizar este atendimento?")) close.mutate();
+            onClick={async () => {
+              if (await confirm({ title: "Finalizar atendimento", description: "Finalizar este atendimento?", confirmLabel: "Finalizar" })) close.mutate();
             }}
           >
             <CheckCircle2 className="h-4 w-4" aria-hidden /> Finalizar

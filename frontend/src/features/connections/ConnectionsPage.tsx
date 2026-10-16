@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useConfirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
@@ -24,6 +25,7 @@ const STATUS_TONE: Record<ConnectionStatus, "success" | "warning" | "neutral"> =
 
 export function ConnectionsPage() {
   const queryClient = useQueryClient();
+  const confirm = useConfirm();
   const connections = useConnections();
   useConnectionRealtime();
   const [editing, setEditing] = useState<{ connection?: Connection } | null>(null);
@@ -81,8 +83,15 @@ export function ConnectionsPage() {
                         size="sm"
                         variant="secondary"
                         aria-label={`Desconectar ${c.name}`}
-                        onClick={() => {
-                          if (window.confirm(`Desconectar ${c.name}? O número deixará de receber mensagens.`)) {
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              title: "Desconectar conexão",
+                              description: `Desconectar ${c.name}? O número deixará de receber mensagens.`,
+                              confirmLabel: "Desconectar",
+                              danger: true,
+                            })
+                          ) {
                             disconnect.mutate(c.id);
                           }
                         }}
@@ -101,8 +110,9 @@ export function ConnectionsPage() {
                       size="sm"
                       variant="ghost"
                       aria-label={`Excluir ${c.name}`}
-                      onClick={() => {
-                        if (window.confirm(`Excluir a conexão ${c.name}?`)) remove.mutate(c.id);
+                      onClick={async () => {
+                        if (await confirm({ title: "Excluir conexão", description: `Excluir a conexão ${c.name}?`, confirmLabel: "Excluir", danger: true }))
+                          remove.mutate(c.id);
                       }}
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />

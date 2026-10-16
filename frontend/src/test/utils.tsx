@@ -3,6 +3,7 @@ import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
 import type { Socket } from "socket.io-client";
+import { ConfirmProvider } from "@/components/ui/confirm";
 import { RealtimeContext } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
 import type { FakeSocket } from "./fakeSocket";
@@ -42,7 +43,9 @@ export function renderWithProviders(
   );
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>{content}</MemoryRouter>
+      <MemoryRouter initialEntries={[route]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ConfirmProvider>{content}</ConfirmProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { ...result, queryClient };

@@ -92,9 +92,9 @@ describe("ConnectionsPage", () => {
 
   it("disconnects after confirmation", async () => {
     vi.mocked(disconnectConnection).mockResolvedValue(conn({ status: "disconnected" }));
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     renderWithProviders(<ConnectionsPage />, { socket: new FakeSocket() });
     await userEvent.click(await screen.findByRole("button", { name: "Desconectar Principal" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Desconectar" }));
     await waitFor(() => expect(disconnectConnection).toHaveBeenCalledWith(1));
   });
 });
