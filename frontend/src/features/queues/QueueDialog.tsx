@@ -14,7 +14,7 @@ import { validateSchedule } from "./schedule";
 export function QueueDialog({ queue, onClose }: { queue?: Queue; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState(queue?.name ?? "");
-  const [color, setColor] = useState(queue?.color ?? "#6d5dfc");
+  const [color, setColor] = useState(queue?.color ?? "#0a6ad6");
   const [schedule, setSchedule] = useState<WeekSchedule>(queue?.schedule ?? {});
   const scheduleError = validateSchedule(schedule);
 

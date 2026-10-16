@@ -45,7 +45,7 @@ describe("QueuesPage", () => {
     await waitFor(() =>
       expect(createQueue).toHaveBeenCalledWith({
         name: "Financeiro",
-        color: "#6d5dfc",
+        color: "#0a6ad6",
         schedule: {
           "0": [],
           "1": ["08:00-12:00"],

@@ -8,14 +8,14 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #6d5dfc;
-  --color-primary-soft: #efedff;
-  --color-sidebar: #1e1b3a;
-  --color-background: #f7f7fb;
+  --color-primary: #0a6ad6; /* brand.blue — texto branco 5.2:1 (AA) */
+  --color-primary-soft: #e7f0fc;
+  --color-sidebar: #06142e; /* brand.night */
+  --color-background: #f4f7fb;
   --color-surface: #ffffff;
-  --color-border: #ececf3;
-  --color-ink: #1e1b3a;
-  --color-ink-muted: #6b6884;
+  --color-border: #e3e9f2;
+  --color-ink: #0f1d36;
+  --color-ink-muted: #5a6880;
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-danger: #dc2626;
