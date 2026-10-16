@@ -75,6 +75,13 @@ set_env POSTGRES_BIND "127.0.0.1:$POSTGRES_PORT"
 set_env REDIS_BIND "127.0.0.1:$REDIS_PORT"
 set_env EVOLUTION_BIND "127.0.0.1:$EVOLUTION_PORT"
 
+# Super-admin da plataforma: criado uma vez; a senha fica só no .env do servidor.
+if ! grep -q "^SUPERADMIN_PASSWORD=." .env; then
+  set_env SUPERADMIN_EMAIL superadmin@whatson.local
+  set_env SUPERADMIN_PASSWORD "$(openssl rand -hex 12)"
+  echo "Super-admin: superadmin@whatson.local (senha em $APP_DIR/.env, SUPERADMIN_PASSWORD)"
+fi
+
 step "Conferindo portas"
 if [ -z "$(docker compose ps -q 2>/dev/null)" ]; then
   for p in $FRONTEND_PORT $BACKEND_PORT $POSTGRES_PORT $REDIS_PORT $EVOLUTION_PORT; do

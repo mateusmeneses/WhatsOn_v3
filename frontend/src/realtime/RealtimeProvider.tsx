@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Socket } from "socket.io-client";
-import { refreshAccessToken } from "@/lib/api";
+import { endBlockedSession, refreshAccessToken } from "@/lib/api";
 import { useAuth } from "@/stores/auth";
 import { createSocket } from "./socket";
 
@@ -25,6 +25,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const tokenRef = useRef(token);
   tokenRef.current = token;
   const hasToken = Boolean(token);
+  // Super-admin trocando de empresa: reconecta para entrar nas salas da nova empresa.
+  const companyId = useAuth((s) => s.user?.companyId ?? null);
 
   useEffect(() => {
     if (!hasToken) return;
@@ -57,6 +59,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       setValue((prev) => ({ socket, epoch: prev.epoch + 1, connected: true }));
     });
 
+    socket.on("company:blocked", () => endBlockedSession());
+
     socket.on("disconnect", () => {
       markDisconnected();
       scheduleRetry();
@@ -65,7 +69,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     socket.on("connect_error", (err: Error) => {
       markDisconnected();
       if (disposed || socket.active) return;
-      if (err.message === "UNAUTHENTICATED") {
+      if (err.message === "COMPANY_BLOCKED") {
+        endBlockedSession();
+      } else if (err.message === "UNAUTHENTICATED") {
         void refreshAccessToken().then((newToken) => {
           // Reconecta na hora só na primeira recusa; depois segue o backoff (evita laço se o servidor seguir recusando).
           if (newToken && attempt === 0 && canConnect()) {
@@ -86,7 +92,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       socket.disconnect();
       setValue({ socket: null, epoch: 0, connected: false });
     };
-  }, [hasToken, queryClient]);
+  }, [hasToken, companyId, queryClient]);
 
   return <RealtimeContext.Provider value={value}>{children}</RealtimeContext.Provider>;
 }

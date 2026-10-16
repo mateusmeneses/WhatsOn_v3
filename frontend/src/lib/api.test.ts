@@ -56,6 +56,19 @@ describe("api client", () => {
     expect(refreshTokenStorage.get()).toBeNull();
   });
 
+  it("ends the session when the company is blocked, except for the super-admin", async () => {
+    const blocked = { error: { code: "COMPANY_BLOCKED", message: "Empresa bloqueada" } };
+    apiMock.onGet("/tickets").reply(403, blocked);
+
+    useAuth.setState({ accessToken: "abc", user: { ...user, profile: "admin", superAdmin: true } });
+    await expect(api.get("/tickets")).rejects.toBeDefined();
+    expect(useAuth.getState().user).not.toBeNull();
+
+    useAuth.setState({ accessToken: "abc", user });
+    await expect(api.get("/tickets")).rejects.toBeDefined();
+    expect(useAuth.getState().user).toBeNull();
+  });
+
   it("keeps the session when the refresh fails with a network error", async () => {
     useAuth.setState({ accessToken: "old", user });
     refreshTokenStorage.set("r1");

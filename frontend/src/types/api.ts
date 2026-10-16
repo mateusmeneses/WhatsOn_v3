@@ -1,4 +1,7 @@
-export type Profile = "admin" | "supervisor" | "agent";
+/** "superadmin" só aparece fora de uma empresa; dentro dela o super-admin atua como "admin". */
+export type Profile = "admin" | "supervisor" | "agent" | "superadmin";
+/** Perfis de usuários de uma empresa. */
+export type CompanyProfile = Exclude<Profile, "superadmin">;
 export type TicketStatus = "bot" | "pending" | "open" | "closed";
 export type Ack = "pending" | "sent" | "delivered" | "read" | "failed";
 export type MessageType = "text" | "image" | "audio" | "video" | "document" | "sticker" | "location";
@@ -9,13 +12,16 @@ export type WeekSchedule = Partial<Record<WeekDay, string[]>>;
 
 export interface PublicUser {
   id: number;
-  companyId: number;
+  /** Para o super-admin, a empresa em que está atuando (null no painel da plataforma). */
+  companyId: number | null;
   name: string;
   email: string;
   profile: Profile;
   phone?: string | null;
   /** Senha temporária: precisa trocar antes de usar o sistema. */
   mustChangePassword?: boolean;
+  /** Super-admin da plataforma (pode entrar em qualquer empresa). */
+  superAdmin?: boolean;
 }
 
 /** Resultado do envio do acesso por WhatsApp; a senha só vem quando não foi possível enviar. */
@@ -43,6 +49,7 @@ export interface AuthResponse {
 }
 
 export interface UserView extends PublicUser {
+  profile: CompanyProfile;
   queueIds: number[];
 }
 
@@ -161,6 +168,12 @@ export interface Company {
   name: string;
   status: string;
   timezone: string;
+}
+
+/** Empresa vista pelo super-admin. */
+export interface AdminCompany extends Company {
+  createdAt: string;
+  userCount: number;
 }
 
 export interface BotState {

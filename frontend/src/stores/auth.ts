@@ -46,7 +46,11 @@ export const useAuth = create<AuthState>((set) => ({
     set((s) => ({
       accessToken: response.accessToken,
       user: response.user,
-      generation: s.user && s.user.id !== response.user.id ? s.generation + 1 : s.generation,
+      // Outro usuário ou outra empresa (super-admin): renovações em voo da sessão anterior são descartadas.
+      generation:
+        s.user && (s.user.id !== response.user.id || s.user.companyId !== response.user.companyId)
+          ? s.generation + 1
+          : s.generation,
     }));
   },
   setAccessToken: (token) => set({ accessToken: token }),

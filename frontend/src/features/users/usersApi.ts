@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { AccessDelivery, Profile, UserOption, UserView } from "@/types/api";
+import type { AccessDelivery, CompanyProfile, UserOption, UserView } from "@/types/api";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -11,13 +11,13 @@ export interface UserInput {
   email: string;
   password?: string;
   phone?: string | null;
-  profile: Profile;
+  profile: CompanyProfile;
   queueIds: number[];
   /** Só na criação: envia o acesso por WhatsApp na hora. */
   sendAccess?: boolean;
 }
 
-export const PROFILE_LABEL: Record<Profile, string> = {
+export const PROFILE_LABEL: Record<CompanyProfile, string> = {
   admin: "Administrador",
   supervisor: "Supervisor",
   agent: "Atendente",

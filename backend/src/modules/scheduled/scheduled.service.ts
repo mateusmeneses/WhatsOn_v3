@@ -3,6 +3,7 @@ import { ScheduledMessage, Ticket } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger";
 import { AuthContext } from "../auth/auth.types";
+import { isCompanyBlocked } from "../companies/companyStatus";
 import { createOutgoingMessage } from "../messages/messages.service";
 import { emitter, rooms } from "../realtime/socket";
 import { getVisibleTicket, reopenTicketInternal } from "../tickets/tickets.service";
@@ -81,6 +82,7 @@ async function targetTicket(row: ScheduledMessage): Promise<Ticket> {
 
 async function sendOne(row: ScheduledMessage): Promise<void> {
   try {
+    if (await isCompanyBlocked(row.companyId)) throw new Error("Empresa bloqueada");
     const ticket = await targetTicket(row);
     const message = await createOutgoingMessage(ticket, { body: row.body, sentByUserId: row.userId });
     await row.update({ status: "sent", messageId: message.id, error: null });

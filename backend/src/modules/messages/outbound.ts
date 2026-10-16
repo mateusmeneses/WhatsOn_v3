@@ -3,6 +3,7 @@ import { Op, UniqueConstraintError } from "sequelize";
 import { env } from "../../config/env";
 import { Connection, Contact, Message, Ticket } from "../../models";
 import { getQueue, QueueNames, shardFor } from "../../queues";
+import { isCompanyBlocked } from "../companies/companyStatus";
 import { readMediaBase64 } from "../media/media.storage";
 import { emitMessage, emitMessageDeleted } from "../tickets/ticket.events";
 import { OutboundMediaType } from "../whatsapp/provider";
@@ -56,6 +57,12 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
     include: [{ model: Ticket, include: [Contact, Connection] }],
   });
   if (!message || message.providerMessageId || message.ack !== "pending") return;
+  if (await isCompanyBlocked(message.companyId)) {
+    await Message.update({ ack: "failed" }, { where: { id: message.id, ack: "pending" } });
+    await message.reload();
+    emitMessage(message, "message:update");
+    return;
+  }
   const { contact, connection } = message.ticket!;
 
   const send = async () => {

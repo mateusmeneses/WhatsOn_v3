@@ -1,6 +1,7 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { toast } from "sonner";
 import { refreshTokenStorage, useAuth } from "@/stores/auth";
-import type { AuthResponse } from "@/types/api";
+import type { ApiErrorBody, AuthResponse } from "@/types/api";
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? "";
 
@@ -11,6 +12,19 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+const COMPANY_BLOCKED_MESSAGE = "Empresa bloqueada. Entre em contato com o suporte.";
+
+/** Empresa bloqueada: encerra a sessão e avisa (o super-admin nunca cai por isso). */
+export function endBlockedSession(): void {
+  const user = useAuth.getState().user;
+  if (!user || user.superAdmin) return;
+  useAuth.getState().clear();
+  toast.error(COMPANY_BLOCKED_MESSAGE, { id: "company-blocked" });
+}
+
+const isCompanyBlocked = (err: unknown) =>
+  axios.isAxiosError(err) && (err.response?.data as ApiErrorBody | undefined)?.error?.code === "COMPANY_BLOCKED";
 
 let refreshing: { generation: number; promise: Promise<string | null> } | null = null;
 
@@ -37,7 +51,8 @@ export function refreshAccessToken(): Promise<string | null> {
         return data.accessToken;
       } catch (err) {
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-        if ((status === 401 || status === 403) && !stale()) useAuth.getState().clear();
+        if (isCompanyBlocked(err) && !stale()) endBlockedSession();
+        else if ((status === 401 || status === 403) && !stale()) useAuth.getState().clear();
         return null;
       }
     })().finally(() => {
@@ -63,6 +78,7 @@ api.interceptors.response.use(
         return api(original);
       }
     }
+    if (error.response?.status === 403 && isCompanyBlocked(error) && !isAuthCall) endBlockedSession();
     return Promise.reject(error);
   },
 );

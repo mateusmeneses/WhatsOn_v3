@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { currentAuth, isAuth } from "./auth.middleware";
+import { currentSession, isSession } from "./auth.middleware";
 import { changePassword, login, logout, me, refresh } from "./auth.service";
 
 export const authRoutes = Router();
@@ -22,16 +22,16 @@ authRoutes.post("/refresh", async (req, res) => {
   res.json(await refresh(refreshToken));
 });
 
-authRoutes.post("/logout", isAuth, async (req, res) => {
-  await logout(currentAuth(req).userId);
+authRoutes.post("/logout", isSession, async (req, res) => {
+  await logout(currentSession(req).userId);
   res.status(204).end();
 });
 
-authRoutes.post("/change-password", isAuth, async (req, res) => {
+authRoutes.post("/change-password", isSession, async (req, res) => {
   const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
-  res.json(await changePassword(currentAuth(req), currentPassword, newPassword));
+  res.json(await changePassword(currentSession(req), currentPassword, newPassword));
 });
 
-authRoutes.get("/me", isAuth, async (req, res) => {
-  res.json(await me(currentAuth(req)));
+authRoutes.get("/me", isSession, async (req, res) => {
+  res.json(await me(currentSession(req)));
 });

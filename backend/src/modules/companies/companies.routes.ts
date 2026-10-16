@@ -4,7 +4,7 @@ import { Company } from "../../models";
 import { notFound } from "../../shared/errors/AppError";
 import { currentAuth, isAuth, requireProfile } from "../auth/auth.middleware";
 
-const isTimeZone = (tz: string) => {
+export const isTimeZone = (tz: string) => {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: tz });
     return true;

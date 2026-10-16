@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
-import type { Profile, UserView } from "@/types/api";
+import type { CompanyProfile, UserView } from "@/types/api";
 import { createUser, PROFILE_LABEL, updateUser, userKeys, type UserInput, type UserWithAccess } from "./usersApi";
 
 export function UserDialog({
@@ -27,7 +27,7 @@ export function UserDialog({
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [password, setPassword] = useState("");
-  const [profile, setProfile] = useState<Profile>(user?.profile ?? "agent");
+  const [profile, setProfile] = useState<CompanyProfile>(user?.profile ?? "agent");
   const [queueIds, setQueueIds] = useState<number[]>(user?.queueIds ?? []);
   const [sendAccess, setSendAccess] = useState(false);
 
@@ -123,8 +123,8 @@ export function UserDialog({
           )}
           <div>
             <Label htmlFor="user-profile">Perfil</Label>
-            <Select id="user-profile" value={profile} onChange={(e) => setProfile(e.target.value as Profile)}>
-              {(Object.keys(PROFILE_LABEL) as Profile[]).map((p) => (
+            <Select id="user-profile" value={profile} onChange={(e) => setProfile(e.target.value as CompanyProfile)}>
+              {(Object.keys(PROFILE_LABEL) as CompanyProfile[]).map((p) => (
                 <option key={p} value={p}>
                   {PROFILE_LABEL[p]}
                 </option>

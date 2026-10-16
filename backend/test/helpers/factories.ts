@@ -40,6 +40,19 @@ export async function createUser(
   return user;
 }
 
+export async function createSuperAdmin(attrs: Partial<{ name: string; email: string; password: string }> = {}) {
+  const n = next();
+  const { password = "secret123", ...rest } = attrs;
+  return User.create({
+    companyId: null,
+    name: `Super ${n}`,
+    email: `super${n}@test.local`,
+    profile: "superadmin",
+    passwordHash: await bcrypt.hash(password, 4),
+    ...rest,
+  });
+}
+
 export function createQueue(companyId: number, attrs: Partial<{ name: string; color: string; schedule: WeekSchedule }> = {}) {
   return Queue.create({ companyId, name: `Fila ${next()}`, ...attrs });
 }

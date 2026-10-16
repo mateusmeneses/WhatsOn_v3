@@ -8,6 +8,9 @@ const bool = z
   .default("false")
   .transform((v) => v === "true");
 
+/** Linha vazia no .env (ex.: copiada do .env.example) vale como não definida. */
+const emptyAsUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().default(4000),
@@ -34,6 +37,9 @@ const schema = z.object({
   BULL_BOARD_PASS: z.string().optional(),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@whatson.local"),
   SEED_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
+  /** Super-admin da plataforma, criado na subida se ainda não existir. */
+  SUPERADMIN_EMAIL: z.preprocess(emptyAsUndefined, z.string().email().optional()),
+  SUPERADMIN_PASSWORD: z.preprocess(emptyAsUndefined, z.string().min(8).optional()),
 });
 
 /** Valores de exemplo (.env.example da raiz e do backend) que nunca podem ir para produção. */

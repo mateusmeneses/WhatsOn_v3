@@ -2,6 +2,7 @@ import { Job } from "bullmq";
 import { env } from "../../config/env";
 import { Connection } from "../../models";
 import { getQueue, QueueNames, shardFor } from "../../queues";
+import { isCompanyBlocked } from "../companies/companyStatus";
 import { applyConnectionUpdate, applyQrCode } from "../connections/connections.service";
 import { applyAck } from "../messages/messages.service";
 import { InboundEvent } from "../whatsapp/provider";
@@ -30,6 +31,8 @@ export async function handleInboundEvent(job: InboundJob, opts: { finalAttempt: 
   const { event } = job;
   switch (event.kind) {
     case "message":
+      // Empresa bloqueada: as mensagens recebidas são descartadas.
+      if (await isCompanyBlocked(connection.companyId)) return;
       return handleInboundMessage(connection, event, opts);
     case "ack":
       return applyAck(connection.id, event.providerMessageId, event.ack);

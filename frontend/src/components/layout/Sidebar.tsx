@@ -1,5 +1,6 @@
 import {
   BookUser,
+  Building2,
   Bot,
   Braces,
   Layers,
@@ -38,6 +39,9 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/configuracoes", label: "Configurações", icon: Settings, profiles: ["admin"] },
 ];
 
+/** Só para o super-admin: volta ao painel da plataforma. */
+const PLATFORM_ITEM: NavItem = { to: "/empresas", label: "Empresas", icon: Building2, profiles: [] };
+
 export function navItemsFor(profile: Profile): NavItem[] {
   return NAV_ITEMS.filter((item) => item.profiles.includes(profile));
 }
@@ -57,7 +61,7 @@ export function Sidebar() {
   return (
     <nav aria-label="Navegação principal" className="flex w-16 shrink-0 flex-col items-center gap-2 bg-sidebar py-4">
       <img src={logoMark} alt="WhatsOn" width={40} height={40} className="mb-4 h-10 w-10 drop-shadow" />
-      {navItemsFor(user.profile).map(({ to, label, icon: Icon }) => (
+      {[...navItemsFor(user.profile), ...(user.superAdmin ? [PLATFORM_ITEM] : [])].map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
           to={to}

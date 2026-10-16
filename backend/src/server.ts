@@ -3,7 +3,7 @@ import { createApp } from "./app";
 import { mountBullBoard } from "./bullBoard";
 import { env } from "./config/env";
 import { migrator } from "./database/migrator";
-import { seed } from "./database/seed";
+import { ensureSuperAdmin, seed } from "./database/seed";
 import { sequelize } from "./database/sequelize";
 import { closeSocket, initSocket } from "./modules/realtime/socket";
 import { canJoinTicket } from "./modules/tickets/tickets.service";
@@ -20,6 +20,7 @@ async function main(): Promise<void> {
   await migrator.up();
   const seeded = await seed();
   if (seeded.created) logger.warn({ email: env.SEED_ADMIN_EMAIL }, "admin inicial criado; troque a senha no primeiro acesso");
+  if ((await ensureSuperAdmin()).created) logger.warn({ email: env.SUPERADMIN_EMAIL }, "super-admin criado");
 
   const app = createApp({
     healthChecks: {

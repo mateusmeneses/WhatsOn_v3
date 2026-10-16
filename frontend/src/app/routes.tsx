@@ -4,6 +4,8 @@ import { ProtectedRoute, RequireProfile } from "@/components/layout/ProtectedRou
 import { ApiDocsPage } from "@/features/apiDocs/ApiDocsPage";
 import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { AdminShell } from "@/features/admin/AdminShell";
+import { CompaniesPage } from "@/features/admin/CompaniesPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
@@ -17,6 +19,15 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/trocar-senha" element={<ChangePasswordPage />} />
+      <Route
+        element={
+          <ProtectedRoute platform>
+            <AdminShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="empresas" element={<CompaniesPage />} />
+      </Route>
       <Route
         element={
           <ProtectedRoute>

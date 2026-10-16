@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { Connection } from "../../models";
 import { AppError } from "../../shared/errors/AppError";
+import { companyBlocked, isCompanyBlocked } from "../companies/companyStatus";
 
 /** Autentica pelo token de API da conexão (Authorization: Bearer <apiToken>). */
 export async function apiTokenAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
@@ -9,6 +10,7 @@ export async function apiTokenAuth(req: Request, _res: Response, next: NextFunct
   if (!token) throw new AppError("UNAUTHENTICATED", 401, "Token ausente");
   const connection = await Connection.findOne({ where: { apiToken: token } });
   if (!connection) throw new AppError("INVALID_API_TOKEN", 403, "Token de API inválido");
+  if (await isCompanyBlocked(connection.companyId)) throw companyBlocked();
   req.apiConnection = connection;
   next();
 }

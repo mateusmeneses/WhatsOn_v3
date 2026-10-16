@@ -1,13 +1,15 @@
 import { Column, DataType, Model, Table } from "sequelize-typescript";
 
-export type Profile = "admin" | "supervisor" | "agent";
+/** "superadmin" só existe no banco: dentro de uma empresa o token do super-admin usa "admin". */
+export type Profile = "admin" | "supervisor" | "agent" | "superadmin";
 
 @Table({ tableName: "users" })
 export class User extends Model {
   declare id: number;
 
-  @Column({ type: DataType.INTEGER, allowNull: false })
-  companyId!: number;
+  /** null só para o super-admin, que não pertence a nenhuma empresa. */
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  companyId!: number | null;
 
   @Column({ type: DataType.STRING, allowNull: false })
   name!: string;

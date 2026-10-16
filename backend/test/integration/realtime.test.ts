@@ -1,11 +1,11 @@
 import http from "node:http";
 import { AddressInfo } from "node:net";
 import { io as ioc, Socket } from "socket.io-client";
-import { closeSocket, emitter, initSocket, rooms } from "../../src/modules/realtime/socket";
+import { closeSocket, disconnectCompany, emitter, initSocket, rooms } from "../../src/modules/realtime/socket";
 import { emitMessage, emitMessageDeleted, emitTicket } from "../../src/modules/tickets/ticket.events";
-import { bearer } from "../helpers/auth";
+import { bearer, superAdminBearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createMessage, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
+import { createCompany, createMessage, createQueue, createSuperAdmin, createTicket, createUser, scenario } from "../helpers/factories";
 
 let server: http.Server;
 let port: number;
@@ -146,5 +146,29 @@ describe("realtime", () => {
     const silent = noEvent(socket, "message:new");
     emitMessage(message, "message:new");
     await silent;
+  });
+
+  it("connects a super-admin outside any company", async () => {
+    const sa = await createSuperAdmin();
+    const socket = await connect(superAdminBearer(sa).slice(7));
+    expect(socket.connected).toBe(true);
+  });
+
+  it("refuses and drops the company's users when it is blocked, but not the super-admin", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const sa = await createSuperAdmin();
+    const user = await connect(bearer(agent).slice(7));
+    const admin = await connect(superAdminBearer(sa, company.id).slice(7));
+
+    await company.update({ status: "blocked" });
+    const notified = nextEvent(user, "company:blocked");
+    const dropped = nextEvent(user, "disconnect");
+    await disconnectCompany(company.id);
+    await expect(notified).resolves.toBeUndefined();
+    await expect(dropped).resolves.toBe("io server disconnect");
+    expect(admin.connected).toBe(true);
+
+    await expect(connect(bearer(agent).slice(7))).rejects.toThrow("COMPANY_BLOCKED");
   });
 });

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { adminRoutes } from "./modules/admin/admin.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { chatbotRoutes } from "./modules/chatbot/chatbot.routes";
 import { companyRoutes } from "./modules/companies/companies.routes";
@@ -14,6 +15,7 @@ import { userRoutes } from "./modules/users/users.routes";
 export const apiRoutes = Router();
 
 apiRoutes.use("/auth", authRoutes);
+apiRoutes.use("/admin", adminRoutes);
 apiRoutes.use("/queues", queueRoutes);
 apiRoutes.use("/company", companyRoutes);
 apiRoutes.use("/users", userRoutes);

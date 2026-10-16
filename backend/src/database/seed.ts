@@ -23,9 +23,32 @@ export async function seed(): Promise<{ created: boolean }> {
   return { created: true };
 }
 
+/** Cria o super-admin configurado (SUPERADMIN_EMAIL/SUPERADMIN_PASSWORD) se ainda não existir; nunca altera um existente. */
+export async function ensureSuperAdmin(
+  email = env.SUPERADMIN_EMAIL,
+  password = env.SUPERADMIN_PASSWORD,
+): Promise<{ created: boolean }> {
+  if (!email || !password) return { created: false };
+  const normalized = email.trim().toLowerCase();
+  if (await User.count({ where: { email: normalized } })) return { created: false };
+  await User.create({
+    companyId: null,
+    name: "Super-admin",
+    email: normalized,
+    profile: "superadmin",
+    passwordHash: await bcrypt.hash(password, 10),
+  });
+  return { created: true };
+}
+
 if (require.main === module) {
+  // Em sequência: o seed só cria o admin demo quando não há nenhum usuário.
   seed()
-    .then((r) => console.log(r.created ? "seed: admin criado" : "seed: já existem usuários, nada a fazer"))
+    .then(async (r) => [r, await ensureSuperAdmin()] as const)
+    .then(([r, sa]) => {
+      console.log(r.created ? "seed: admin criado" : "seed: já existem usuários, nada a fazer");
+      if (sa.created) console.log("seed: super-admin criado");
+    })
     .catch((err) => {
       console.error(err);
       process.exitCode = 1;
