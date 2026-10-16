@@ -3,6 +3,9 @@
 API para outros sistemas (ex.: ERP MULTICOMERCIO) conectarem um número e enviarem mensagens.
 Cada token pertence a **uma conexão**: tudo que é feito com ele usa aquele número.
 
+Guia completo (fluxos, erros, segurança e clientes em várias linguagens): [manual-integracao-api.md](manual-integracao-api.md).
+No painel, a página **Integração API** traz o manual e um console de testes.
+
 ## Token
 
 1. No painel, **Conexões** → botão de chave (🔑) da conexão → **Gerar token** (só admin).

@@ -1,6 +1,7 @@
 import {
   BookUser,
   Bot,
+  Braces,
   Layers,
   LogOut,
   MessagesSquare,
@@ -33,6 +34,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/usuarios", label: "Usuários", icon: UserCog, profiles: ["admin", "supervisor"] },
   { to: "/conexoes", label: "Conexões", icon: Smartphone, profiles: ["admin"] },
   { to: "/chatbot", label: "Chatbot", icon: Bot, profiles: ["admin"] },
+  { to: "/integracao-api", label: "Integração API", icon: Braces, profiles: ["admin"] },
   { to: "/configuracoes", label: "Configurações", icon: Settings, profiles: ["admin"] },
 ];
 

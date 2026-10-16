@@ -21,6 +21,7 @@ describe("Sidebar", () => {
       "Usuários",
       "Conexões",
       "Chatbot",
+      "Integração API",
       "Configurações",
     ]);
     expect(navItemsFor("supervisor").map((i) => i.label)).toEqual(["Atendimento", "Contatos", "Usuários"]);

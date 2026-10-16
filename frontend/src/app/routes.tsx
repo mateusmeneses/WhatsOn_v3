@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute, RequireProfile } from "@/components/layout/ProtectedRoute";
+import { ApiDocsPage } from "@/features/apiDocs/ApiDocsPage";
 import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
@@ -48,6 +49,14 @@ export function AppRoutes() {
           element={
             <RequireProfile profiles={["admin"]}>
               <ChatbotPage />
+            </RequireProfile>
+          }
+        />
+        <Route
+          path="integracao-api"
+          element={
+            <RequireProfile profiles={["admin"]}>
+              <ApiDocsPage />
             </RequireProfile>
           }
         />

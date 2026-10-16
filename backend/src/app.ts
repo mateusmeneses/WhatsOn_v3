@@ -21,7 +21,10 @@ export function createApp(options: AppOptions = {}): Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-  app.use(cors({ origin: env.FRONTEND_URL }));
+  // Expõe os cabeçalhos de limite da API externa para o console de testes do painel.
+  app.use(
+    cors({ origin: env.FRONTEND_URL, exposedHeaders: ["X-RateLimit-Limit", "X-RateLimit-Remaining", "Retry-After"] }),
+  );
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/health", createHealthHandler(options.healthChecks ?? {}));
