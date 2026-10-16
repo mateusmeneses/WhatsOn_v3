@@ -29,6 +29,12 @@ vi.mock("./messagesApi", async (importOriginal) => ({
   editMessage: vi.fn(),
   deleteMessage: vi.fn(),
 }));
+vi.mock("./scheduledApi", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./scheduledApi")>()),
+  fetchScheduled: vi.fn().mockResolvedValue([]),
+  createScheduled: vi.fn(),
+  cancelScheduled: vi.fn(),
+}));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 function deferred<T>() {

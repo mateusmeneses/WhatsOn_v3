@@ -7,17 +7,33 @@ import { AuthContext } from "../auth/auth.types";
 import { PublicUser, toPublicUser } from "../auth/auth.service";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { setUserQueues, userQueueIds } from "./userQueues";
+import { generateTemporaryPassword, normalizePhone, sendAccessMessage } from "./welcome";
 
 export interface UserInput {
   name: string;
   email: string;
-  password: string;
+  /** Sem senha o sistema gera uma temporária. */
+  password?: string;
+  phone?: string | null;
   profile: Profile;
   queueIds?: number[];
 }
 
 export interface UserView extends PublicUser {
   queueIds: number[];
+}
+
+/** Resultado do envio do acesso. A senha só volta quando foi gerada e não chegou por WhatsApp. */
+export interface AccessDelivery {
+  sent: boolean;
+  temporaryPassword?: string;
+}
+
+const phoneOrNull = (phone: string | null | undefined) => (phone ? normalizePhone(phone) : null);
+
+async function deliverAccess(user: User, password: string, generated: boolean): Promise<AccessDelivery> {
+  const sent = await sendAccessMessage(user, password);
+  return sent || !generated ? { sent } : { sent, temporaryPassword: password };
 }
 
 async function view(user: User): Promise<UserView> {
@@ -68,31 +84,44 @@ export async function listUserOptions(companyId: number): Promise<UserOption[]> 
   }));
 }
 
-export async function createUser(companyId: number, input: UserInput): Promise<UserView> {
+export async function createUser(
+  companyId: number,
+  input: UserInput,
+): Promise<UserView & { access: AccessDelivery }> {
   const email = input.email.trim().toLowerCase();
+  const phone = phoneOrNull(input.phone);
   await assertEmailFree(email);
   await assertQueuesBelong(companyId, input.queueIds ?? []);
-  const passwordHash = await bcrypt.hash(input.password, 10);
+  const password = input.password ?? generateTemporaryPassword();
+  const passwordHash = await bcrypt.hash(password, 10);
   try {
     const user = await sequelize.transaction(async (t) => {
       const created = await User.create(
-        { companyId, name: input.name, email, profile: input.profile, passwordHash },
+        { companyId, name: input.name, email, phone, profile: input.profile, passwordHash, mustChangePassword: true },
         { transaction: t },
       );
       await setUserQueues(created.id, input.queueIds ?? [], t);
       return created;
     });
-    return view(user);
+    return { ...(await view(user)), access: await deliverAccess(user, password, input.password === undefined) };
   } catch (err) {
     if (err instanceof UniqueConstraintError) throw emailInUse();
     throw err;
   }
 }
 
-export async function updateUser(companyId: number, id: number, input: Partial<UserInput>): Promise<UserView> {
+export async function updateUser(
+  companyId: number,
+  id: number,
+  input: Partial<UserInput>,
+  actorId?: number,
+): Promise<UserView> {
   const user = await getUserOr404(companyId, id);
-  const patch: Partial<Pick<User, "name" | "email" | "profile" | "passwordHash" | "tokenVersion">> = {};
+  const patch: Partial<
+    Pick<User, "name" | "email" | "phone" | "profile" | "passwordHash" | "tokenVersion" | "mustChangePassword">
+  > = {};
   if (input.name !== undefined) patch.name = input.name;
+  if (input.phone !== undefined) patch.phone = phoneOrNull(input.phone);
   if (input.profile !== undefined) patch.profile = input.profile;
   if (input.email !== undefined) {
     patch.email = input.email.trim().toLowerCase();
@@ -101,6 +130,8 @@ export async function updateUser(companyId: number, id: number, input: Partial<U
   if (input.password !== undefined) {
     patch.passwordHash = await bcrypt.hash(input.password, 10);
     patch.tokenVersion = user.tokenVersion + 1;
+    // Senha definida pelo admin vale como temporária (exceto quando é a própria).
+    patch.mustChangePassword = actorId !== user.id;
   }
   if (input.queueIds !== undefined) await assertQueuesBelong(companyId, input.queueIds);
   if (input.profile !== undefined && input.profile !== "admin") await assertNotLastAdmin(user);
@@ -114,6 +145,18 @@ export async function updateUser(companyId: number, id: number, input: Partial<U
     throw err;
   }
   return view(user);
+}
+
+/** Gera nova senha temporária, derruba as sessões e reenvia o acesso por WhatsApp. */
+export async function resetAccess(companyId: number, id: number): Promise<UserView & { access: AccessDelivery }> {
+  const user = await getUserOr404(companyId, id);
+  const password = generateTemporaryPassword();
+  await user.update({
+    passwordHash: await bcrypt.hash(password, 10),
+    mustChangePassword: true,
+    tokenVersion: user.tokenVersion + 1,
+  });
+  return { ...(await view(user)), access: await deliverAccess(user, password, true) };
 }
 
 export async function deleteUser(auth: AuthContext, id: number): Promise<void> {

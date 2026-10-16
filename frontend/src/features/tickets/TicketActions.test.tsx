@@ -7,13 +7,14 @@ import { fetchUserOptions } from "@/features/users/usersApi";
 import { makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { TicketActions } from "./TicketActions";
-import { acceptTicket, closeTicket, transferTicket } from "./ticketsApi";
+import { acceptTicket, closeTicket, reopenTicket, transferTicket } from "./ticketsApi";
 
 vi.mock("./ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ticketsApi")>()),
   acceptTicket: vi.fn(),
   closeTicket: vi.fn(),
   transferTicket: vi.fn(),
+  reopenTicket: vi.fn(),
 }));
 vi.mock("@/features/queues/queuesApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/queues/queuesApi")>()),
@@ -108,6 +109,24 @@ describe("TicketActions", () => {
     await userEvent.click(screen.getByRole("button", { name: /finalizar/i }));
     await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Finalizar" }));
     await waitFor(() => expect(closeTicket).toHaveBeenCalledWith(1));
+  });
+
+  it("reopens an own closed ticket after confirming", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    vi.mocked(reopenTicket).mockResolvedValue(makeTicket({ status: "open", userId: 1 }));
+    renderWithProviders(<TicketActions ticket={makeTicket({ status: "closed", userId: 1 })} />);
+    expect(screen.queryByRole("button", { name: /finalizar/i })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /reabrir/i }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Reabrir" }));
+    await waitFor(() => expect(reopenTicket).toHaveBeenCalledWith(1));
+    expect(toast.success).toHaveBeenCalledWith("Atendimento reaberto");
+  });
+
+  it("does not let an agent reopen someone else's closed ticket", () => {
+    setTestUser({ id: 1, profile: "agent" });
+    renderWithProviders(<TicketActions ticket={makeTicket({ status: "closed", userId: 9 })} />);
+    expect(screen.queryByRole("button", { name: /reabrir/i })).not.toBeInTheDocument();
   });
 
   it("offers no actions to an agent looking at someone else's ticket", () => {

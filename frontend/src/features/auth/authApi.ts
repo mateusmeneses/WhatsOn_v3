@@ -6,6 +6,11 @@ export async function login(email: string, password: string): Promise<AuthRespon
   return data;
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>("/auth/change-password", { currentPassword, newPassword });
+  return data;
+}
+
 export async function logout(): Promise<void> {
   await api.post("/auth/logout").catch(() => undefined);
 }

@@ -21,6 +21,13 @@ export class User extends Model {
   @Column({ type: DataType.STRING, allowNull: false, defaultValue: "agent" })
   profile!: Profile;
 
+  @Column({ type: DataType.STRING, allowNull: true })
+  phone!: string | null;
+
+  /** Senha temporária: o usuário precisa trocá-la antes de usar o sistema. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  mustChangePassword!: boolean;
+
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   online!: boolean;
 

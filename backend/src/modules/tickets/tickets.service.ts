@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import { Connection, Contact, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
@@ -140,6 +140,41 @@ export async function closeTicket(auth: AuthContext, id: number) {
   assertCanHandle(auth, ticket);
   const closed = await closeTicketInternal(ticket, { userId: auth.userId, event: "closed", sendClosingMessage: true });
   if (!closed) throw ticketClosed();
+  return loadTicket(id);
+}
+
+const activeTicketExists = () =>
+  new AppError("TICKET_ACTIVE_EXISTS", 409, "Este contato já tem um atendimento em andamento nesta conexão");
+
+/**
+ * Reabre um chamado finalizado com o atendente informado (sem atendente volta para a fila como pendente).
+ * Devolve false se o chamado não estava mais finalizado.
+ */
+export async function reopenTicketInternal(ticket: Ticket, userId: number | null): Promise<boolean> {
+  const prev = { queueId: ticket.queueId, userId: ticket.userId };
+  let updated: number;
+  try {
+    [updated] = await Ticket.update(
+      { status: userId ? "open" : "pending", userId, closedAt: null, unreadCount: 0 },
+      { where: { id: ticket.id, status: "closed" } },
+    );
+  } catch (err) {
+    if (err instanceof UniqueConstraintError) throw activeTicketExists();
+    throw err;
+  }
+  if (updated === 0) return false;
+  await ticket.reload();
+  await logTicket(ticket, "reopened", { userId });
+  await emitTicket(ticket.id, prev);
+  return true;
+}
+
+export async function reopenTicket(auth: AuthContext, id: number) {
+  const ticket = await getVisibleTicket(auth, id);
+  if (ticket.status !== "closed") throw new AppError("TICKET_NOT_CLOSED", 409, "Este atendimento não está finalizado");
+  if (!(await reopenTicketInternal(ticket, auth.userId))) {
+    throw new AppError("TICKET_NOT_CLOSED", 409, "Este atendimento não está finalizado");
+  }
   return loadTicket(id);
 }
 

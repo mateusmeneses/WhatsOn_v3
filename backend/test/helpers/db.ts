@@ -11,6 +11,7 @@ const TABLES = [
   "messages",
   "chatbot_nodes",
   "ticket_logs",
+  "scheduled_messages",
 ];
 
 export async function resetDb(): Promise<void> {

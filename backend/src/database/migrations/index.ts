@@ -1,6 +1,7 @@
 import { QueryInterface } from "sequelize";
 import * as m0001 from "./0001-initial";
 import * as m0002 from "./0002-message-edit-delete";
+import * as m0003 from "./0003-reopen-user-phone-scheduled";
 
 export interface MigrationModule {
   name: string;
@@ -11,4 +12,5 @@ export interface MigrationModule {
 export const migrations: MigrationModule[] = [
   { name: "0001-initial", up: m0001.up, down: m0001.down },
   { name: "0002-message-edit-delete", up: m0002.up, down: m0002.down },
+  { name: "0003-reopen-user-phone-scheduled", up: m0003.up, down: m0003.down },
 ];

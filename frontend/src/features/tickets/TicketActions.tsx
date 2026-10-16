@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { ArrowRightLeft, Check, CheckCircle2 } from "lucide-react";
+import { ArrowRightLeft, Check, CheckCircle2, RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { errorMessage } from "@/lib/apiError";
 import { useAuth } from "@/stores/auth";
 import type { Ticket } from "@/types/api";
 import { TransferDialog } from "./TransferDialog";
-import { acceptTicket, closeTicket } from "./ticketsApi";
+import { acceptTicket, closeTicket, reopenTicket } from "./ticketsApi";
 import { useApplyTicket, useViewer } from "./useTickets";
 import { ticketVisibleIn } from "./visibility";
 
@@ -39,7 +39,18 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
     onError,
   });
 
-  const canHandle = ticket.status !== "closed" && (user.profile !== "agent" || ticket.userId === user.id);
+  const reopen = useMutation({
+    mutationFn: () => reopenTicket(ticket.id),
+    onSuccess: (updated) => {
+      applyTicket(updated);
+      toast.success("Atendimento reaberto");
+    },
+    onError,
+  });
+
+  const isMineOrSupervisor = user.profile !== "agent" || ticket.userId === user.id;
+  const canHandle = ticket.status !== "closed" && isMineOrSupervisor;
+  const canReopen = ticket.status === "closed" && isMineOrSupervisor;
 
   function onTransferred(updated: Ticket) {
     applyTicket(updated);
@@ -51,6 +62,22 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
       {ticket.status === "pending" && (
         <Button size="sm" loading={accept.isPending} onClick={() => accept.mutate()}>
           <Check className="h-4 w-4" aria-hidden /> Aceitar
+        </Button>
+      )}
+      {canReopen && (
+        <Button
+          size="sm"
+          loading={reopen.isPending}
+          onClick={async () => {
+            const ok = await confirm({
+              title: "Reabrir atendimento",
+              description: "O atendimento volta para “Em atendimento” com você.",
+              confirmLabel: "Reabrir",
+            });
+            if (ok) reopen.mutate();
+          }}
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden /> Reabrir
         </Button>
       )}
       {canHandle && (

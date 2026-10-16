@@ -9,21 +9,28 @@ import { Select } from "@/components/ui/select";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
 import type { Profile, UserView } from "@/types/api";
-import { createUser, PROFILE_LABEL, updateUser, userKeys, type UserInput } from "./usersApi";
+import { createUser, PROFILE_LABEL, updateUser, userKeys, type UserInput, type UserWithAccess } from "./usersApi";
 
-export function UserDialog({ user, onClose }: { user?: UserView; onClose: () => void }) {
+export function UserDialog({
+  user,
+  onClose,
+  onAccessNotSent,
+}: {
+  user?: UserView;
+  onClose: () => void;
+  /** Novo usuário cujo acesso não chegou por WhatsApp: a senha temporária precisa ser mostrada. */
+  onAccessNotSent?: (created: UserWithAccess) => void;
+}) {
   const queryClient = useQueryClient();
   const queues = useQueues();
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
+  const [phone, setPhone] = useState(user?.phone ?? "");
   const [password, setPassword] = useState("");
   const [profile, setProfile] = useState<Profile>(user?.profile ?? "agent");
   const [queueIds, setQueueIds] = useState<number[]>(user?.queueIds ?? []);
 
-  const passwordError =
-    (!user && password.length < 6) || (user && password.length > 0 && password.length < 6)
-      ? "A senha precisa ter pelo menos 6 caracteres."
-      : null;
+  const passwordError = password.length > 0 && password.length < 6 ? "A senha precisa ter pelo menos 6 caracteres." : null;
   const valid = name.trim() && email.trim() && !passwordError;
 
   const mutation = useMutation({
@@ -31,16 +38,21 @@ export function UserDialog({ user, onClose }: { user?: UserView; onClose: () => 
       const input: UserInput = {
         name: name.trim(),
         email: email.trim(),
-        ...(password ? { password } : {}),
+        phone: phone.trim() || null,
+        ...(user && password ? { password } : {}),
         profile,
         queueIds,
       };
       return user ? updateUser(user.id, input) : createUser(input);
     },
-    onSuccess: () => {
-      toast.success(user ? "Usuário atualizado" : "Usuário criado");
+    onSuccess: (saved) => {
       void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      const created = user ? null : (saved as UserWithAccess);
+      if (!created) toast.success("Usuário atualizado");
+      else if (created.access?.sent) toast.success("Usuário criado. Acesso enviado por WhatsApp.");
+      else toast.success("Usuário criado");
       onClose();
+      if (created?.access?.temporaryPassword) onAccessNotSent?.(created);
     },
     onError: (err) => toast.error(errorMessage(err)),
   });
@@ -67,17 +79,35 @@ export function UserDialog({ user, onClose }: { user?: UserView; onClose: () => 
             <Input id="user-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="user-password">Senha</Label>
+            <Label htmlFor="user-phone">WhatsApp</Label>
             <Input
-              id="user-password"
-              type="password"
-              autoComplete="new-password"
-              placeholder={user ? "Deixe em branco para manter" : ""}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              id="user-phone"
+              type="tel"
+              inputMode="tel"
+              placeholder="(11) 98888-7777"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
             />
-            {password && passwordError && <p className="mt-1 text-xs text-danger">{passwordError}</p>}
+            {!user && (
+              <p className="mt-1 text-xs text-ink-muted">
+                O sistema gera uma senha temporária e envia link, usuário e senha para este número.
+              </p>
+            )}
           </div>
+          {user && (
+            <div>
+              <Label htmlFor="user-password">Nova senha</Label>
+              <Input
+                id="user-password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Deixe em branco para manter"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              {passwordError && <p className="mt-1 text-xs text-danger">{passwordError}</p>}
+            </div>
+          )}
           <div>
             <Label htmlFor="user-profile">Perfil</Label>
             <Select id="user-profile" value={profile} onChange={(e) => setProfile(e.target.value as Profile)}>

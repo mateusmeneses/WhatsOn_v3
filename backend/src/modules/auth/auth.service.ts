@@ -10,10 +10,20 @@ export interface PublicUser {
   name: string;
   email: string;
   profile: Profile;
+  phone: string | null;
+  mustChangePassword: boolean;
 }
 
 export function toPublicUser(u: User): PublicUser {
-  return { id: u.id, companyId: u.companyId, name: u.name, email: u.email, profile: u.profile };
+  return {
+    id: u.id,
+    companyId: u.companyId,
+    name: u.name,
+    email: u.email,
+    profile: u.profile,
+    phone: u.phone ?? null,
+    mustChangePassword: u.mustChangePassword ?? false,
+  };
 }
 
 function issueTokens(u: User) {
@@ -38,6 +48,24 @@ export async function refresh(refreshToken: string) {
   }
   const user = await User.findByPk(payload.userId);
   if (!user || user.tokenVersion !== payload.tokenVersion) throw invalid;
+  return { ...issueTokens(user), user: toPublicUser(user) };
+}
+
+/** Troca a senha (obrigatório no primeiro acesso); invalida as outras sessões e devolve tokens novos. */
+export async function changePassword(auth: AuthContext, currentPassword: string, newPassword: string) {
+  const user = await User.findOne({ where: { id: auth.userId, companyId: auth.companyId } });
+  if (!user) throw notFound("Usuário");
+  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+    throw new AppError("INVALID_CURRENT_PASSWORD", 400, "Senha atual incorreta");
+  }
+  if (currentPassword === newPassword) {
+    throw new AppError("SAME_PASSWORD", 400, "A nova senha deve ser diferente da atual");
+  }
+  await user.update({
+    passwordHash: await bcrypt.hash(newPassword, 10),
+    mustChangePassword: false,
+    tokenVersion: user.tokenVersion + 1,
+  });
   return { ...issueTokens(user), user: toPublicUser(user) };
 }
 

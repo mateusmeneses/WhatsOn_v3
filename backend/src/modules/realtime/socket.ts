@@ -25,7 +25,9 @@ export function initSocket(server: http.Server, deps: SocketDeps): Server {
 
   io.use((socket, next) => {
     try {
-      socket.data.auth = verifyAccessToken(String(socket.handshake.auth?.token ?? ""));
+      const auth = verifyAccessToken(String(socket.handshake.auth?.token ?? ""));
+      if (auth.mustChangePassword) return next(new Error("PASSWORD_CHANGE_REQUIRED"));
+      socket.data.auth = auth;
       next();
     } catch {
       next(new Error("UNAUTHENTICATED"));

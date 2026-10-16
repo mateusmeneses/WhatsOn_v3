@@ -13,6 +13,27 @@ export interface PublicUser {
   name: string;
   email: string;
   profile: Profile;
+  phone?: string | null;
+  /** Senha temporária: precisa trocar antes de usar o sistema. */
+  mustChangePassword?: boolean;
+}
+
+/** Resultado do envio do acesso por WhatsApp; a senha só vem quando não foi possível enviar. */
+export interface AccessDelivery {
+  sent: boolean;
+  temporaryPassword?: string;
+}
+
+export type ScheduledStatus = "pending" | "sending" | "sent" | "canceled" | "failed";
+
+export interface ScheduledMessage {
+  id: number;
+  ticketId: number;
+  userId: number | null;
+  body: string;
+  sendAt: string;
+  status: ScheduledStatus;
+  error: string | null;
 }
 
 export interface AuthResponse {

@@ -12,6 +12,10 @@ export function isAuth(req: Request, _res: Response, next: NextFunction): void {
   } catch {
     throw new AppError("UNAUTHENTICATED", 401, "Token inválido ou expirado");
   }
+  // Com senha temporária só as rotas de /auth (me, logout, change-password) ficam liberadas.
+  if (req.auth.mustChangePassword && !req.originalUrl.startsWith("/api/auth/")) {
+    throw new AppError("PASSWORD_CHANGE_REQUIRED", 403, "Troque sua senha temporária para continuar");
+  }
   next();
 }
 

@@ -1,12 +1,16 @@
 import { Router } from "express";
 import { z } from "zod";
 import { currentAuth, isAuth } from "./auth.middleware";
-import { login, logout, me, refresh } from "./auth.service";
+import { changePassword, login, logout, me, refresh } from "./auth.service";
 
 export const authRoutes = Router();
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
 const refreshSchema = z.object({ refreshToken: z.string().min(1) });
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(6, "a nova senha deve ter pelo menos 6 caracteres").max(100),
+});
 
 authRoutes.post("/login", async (req, res) => {
   const { email, password } = loginSchema.parse(req.body);
@@ -21,6 +25,11 @@ authRoutes.post("/refresh", async (req, res) => {
 authRoutes.post("/logout", isAuth, async (req, res) => {
   await logout(currentAuth(req).userId);
   res.status(204).end();
+});
+
+authRoutes.post("/change-password", isAuth, async (req, res) => {
+  const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+  res.json(await changePassword(currentAuth(req), currentPassword, newPassword));
 });
 
 authRoutes.get("/me", isAuth, async (req, res) => {

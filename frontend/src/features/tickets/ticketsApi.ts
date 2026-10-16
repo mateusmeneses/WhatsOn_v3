@@ -32,6 +32,11 @@ export async function closeTicket(id: number): Promise<Ticket> {
   return data;
 }
 
+export async function reopenTicket(id: number): Promise<Ticket> {
+  const { data } = await api.post<Ticket>(`/tickets/${id}/reopen`);
+  return data;
+}
+
 export async function markTicketRead(id: number): Promise<Ticket> {
   const { data } = await api.post<Ticket>(`/tickets/${id}/read`);
   return data;

@@ -3,8 +3,9 @@ import { env } from "../../config/env";
 import { Profile } from "../../models";
 import { AuthContext } from "./auth.types";
 
-export function signAccessToken(u: { id: number; companyId: number; profile: Profile }): string {
-  return jwt.sign({ companyId: u.companyId, profile: u.profile, typ: "access" }, env.JWT_SECRET, {
+export function signAccessToken(u: { id: number; companyId: number; profile: Profile; mustChangePassword?: boolean }): string {
+  const claims = { companyId: u.companyId, profile: u.profile, typ: "access", ...(u.mustChangePassword ? { pwd: true } : {}) };
+  return jwt.sign(claims, env.JWT_SECRET, {
     subject: String(u.id),
     expiresIn: "15m",
   });
@@ -15,7 +16,12 @@ export function verifyAccessToken(token: string): AuthContext {
   if (payload.typ !== "access" || typeof payload.sub !== "string" || typeof payload.companyId !== "number") {
     throw new Error("invalid access token");
   }
-  return { userId: Number(payload.sub), companyId: payload.companyId, profile: payload.profile as Profile };
+  return {
+    userId: Number(payload.sub),
+    companyId: payload.companyId,
+    profile: payload.profile as Profile,
+    ...(payload.pwd === true ? { mustChangePassword: true } : {}),
+  };
 }
 
 export function signRefreshToken(u: { id: number; tokenVersion: number }): string {

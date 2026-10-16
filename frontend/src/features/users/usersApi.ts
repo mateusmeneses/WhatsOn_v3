@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Profile, UserOption, UserView } from "@/types/api";
+import type { AccessDelivery, Profile, UserOption, UserView } from "@/types/api";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -10,6 +10,7 @@ export interface UserInput {
   name: string;
   email: string;
   password?: string;
+  phone?: string | null;
   profile: Profile;
   queueIds: number[];
 }
@@ -30,8 +31,15 @@ export async function fetchUsers(): Promise<UserView[]> {
   return data;
 }
 
-export async function createUser(input: UserInput): Promise<UserView> {
-  const { data } = await api.post<UserView>("/users", input);
+export type UserWithAccess = UserView & { access: AccessDelivery };
+
+export async function createUser(input: UserInput): Promise<UserWithAccess> {
+  const { data } = await api.post<UserWithAccess>("/users", input);
+  return data;
+}
+
+export async function resetUserAccess(id: number): Promise<UserWithAccess> {
+  const { data } = await api.post<UserWithAccess>(`/users/${id}/reset-access`);
   return data;
 }
 

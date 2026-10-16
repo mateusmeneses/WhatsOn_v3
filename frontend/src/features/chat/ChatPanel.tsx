@@ -14,6 +14,7 @@ import { Composer } from "./Composer";
 import { useTicketLocalMessages } from "./localMessages";
 import type { MessageActions } from "./MessageBubble";
 import { MessageList } from "./MessageList";
+import { ScheduledMessages } from "./ScheduledMessages";
 import { createTempMessage, flattenMessages, type ChatMessage } from "./messageCache";
 import {
   useDeleteMessage,
@@ -64,7 +65,9 @@ function ChatView({ ticket }: { ticket: Ticket }) {
     const ids = new Set(server.map((m) => m.id));
     return [...server, ...localMessages.filter((m) => !ids.has(m.id))];
   }, [messagesQuery.data, localMessages]);
-  const canReply = ticket.status === "open" && (user.profile !== "agent" || ticket.userId === user.id);
+  const isMineOrSupervisor = user.profile !== "agent" || ticket.userId === user.id;
+  const canReply = ticket.status === "open" && isMineOrSupervisor;
+  const canSchedule = (ticket.status === "open" || ticket.status === "closed") && isMineOrSupervisor;
 
   useEffect(() => {
     if (ticket.unreadCount > 0) {
@@ -123,6 +126,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
           actions={actions}
         />
       )}
+      {canSchedule && <ScheduledMessages ticket={ticket} />}
       {canReply ? (
         <Composer onSend={onSend} />
       ) : (

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { KeyRound, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -10,10 +10,12 @@ import { useConfirm } from "@/components/ui/confirm";
 import { Spinner } from "@/components/ui/spinner";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
+import { formatPhone } from "@/lib/format";
 import { useAuth } from "@/stores/auth";
 import type { UserView } from "@/types/api";
+import { AccessResultDialog } from "./AccessResultDialog";
 import { UserDialog } from "./UserDialog";
-import { deleteUser, fetchUsers, PROFILE_LABEL, userKeys } from "./usersApi";
+import { deleteUser, fetchUsers, PROFILE_LABEL, resetUserAccess, userKeys, type UserWithAccess } from "./usersApi";
 
 export function UsersPage() {
   const me = useAuth((s) => s.user)!;
@@ -23,6 +25,17 @@ export function UsersPage() {
   const users = useQuery({ queryKey: [...userKeys.all, "list"], queryFn: fetchUsers });
   const queues = useQueues();
   const [dialog, setDialog] = useState<{ user?: UserView } | null>(null);
+  const [accessResult, setAccessResult] = useState<UserWithAccess | null>(null);
+
+  const reset = useMutation({
+    mutationFn: (id: number) => resetUserAccess(id),
+    onSuccess: (result) => {
+      void queryClient.invalidateQueries({ queryKey: userKeys.all });
+      if (result.access.sent) toast.success("Novo acesso enviado por WhatsApp");
+      else setAccessResult(result);
+    },
+    onError: (err) => toast.error(errorMessage(err)),
+  });
 
   const remove = useMutation({
     mutationFn: (id: number) => deleteUser(id),
@@ -62,6 +75,7 @@ export function UsersPage() {
                 <tr>
                   <th className="px-5 py-3 font-medium">Nome</th>
                   <th className="px-5 py-3 font-medium">E-mail</th>
+                  <th className="px-5 py-3 font-medium">WhatsApp</th>
                   <th className="px-5 py-3 font-medium">Perfil</th>
                   <th className="px-5 py-3 font-medium">Filas</th>
                   {isAdmin && <th className="px-5 py-3" />}
@@ -72,6 +86,7 @@ export function UsersPage() {
                   <tr key={user.id}>
                     <td className="px-5 py-3 font-medium">{user.name}</td>
                     <td className="px-5 py-3 text-ink-muted">{user.email}</td>
+                    <td className="px-5 py-3 text-ink-muted">{user.phone ? formatPhone(user.phone) : "—"}</td>
                     <td className="px-5 py-3">
                       <Badge tone={user.profile === "agent" ? "neutral" : "primary"}>{PROFILE_LABEL[user.profile]}</Badge>
                     </td>
@@ -84,6 +99,22 @@ export function UsersPage() {
                     </td>
                     {isAdmin && (
                       <td className="px-5 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Gerar novo acesso para ${user.name}`}
+                          title="Gerar nova senha temporária e enviar por WhatsApp"
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Gerar novo acesso",
+                              description: `Uma nova senha temporária será gerada para ${user.name} e as sessões atuais serão encerradas.`,
+                              confirmLabel: "Gerar",
+                            });
+                            if (ok) reset.mutate(user.id);
+                          }}
+                        >
+                          <KeyRound className="h-4 w-4" aria-hidden />
+                        </Button>
                         <Button variant="ghost" size="icon" aria-label={`Editar ${user.name}`} onClick={() => setDialog({ user })}>
                           <Pencil className="h-4 w-4" aria-hidden />
                         </Button>
@@ -109,7 +140,8 @@ export function UsersPage() {
           )}
         </Card>
       </div>
-      {dialog && <UserDialog user={dialog.user} onClose={() => setDialog(null)} />}
+      {dialog && <UserDialog user={dialog.user} onClose={() => setDialog(null)} onAccessNotSent={setAccessResult} />}
+      {accessResult && <AccessResultDialog user={accessResult} onClose={() => setAccessResult(null)} />}
     </div>
   );
 }

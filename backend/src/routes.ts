@@ -7,6 +7,7 @@ import { contactRoutes } from "./modules/contacts/contacts.routes";
 import { mediaRoutes } from "./modules/media/media.routes";
 import { messageRoutes } from "./modules/messages/messages.routes";
 import { queueRoutes } from "./modules/queues/queues.routes";
+import { scheduledRoutes } from "./modules/scheduled/scheduled.routes";
 import { ticketRoutes } from "./modules/tickets/tickets.routes";
 import { userRoutes } from "./modules/users/users.routes";
 
@@ -22,3 +23,4 @@ apiRoutes.use(chatbotRoutes);
 apiRoutes.use("/connections", connectionRoutes);
 apiRoutes.use("/tickets", ticketRoutes);
 apiRoutes.use(messageRoutes);
+apiRoutes.use(scheduledRoutes);

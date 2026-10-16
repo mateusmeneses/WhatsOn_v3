@@ -9,6 +9,7 @@ import {
   listTickets,
   loadTicket,
   markTicketRead,
+  reopenTicket,
   transferTicket,
 } from "./tickets.service";
 
@@ -44,6 +45,10 @@ ticketRoutes.post("/:id/transfer", async (req, res) => {
 
 ticketRoutes.post("/:id/close", async (req, res) => {
   res.json(await closeTicket(currentAuth(req), idParam(req)));
+});
+
+ticketRoutes.post("/:id/reopen", async (req, res) => {
+  res.json(await reopenTicket(currentAuth(req), idParam(req)));
 });
 
 ticketRoutes.post("/:id/read", async (req, res) => {

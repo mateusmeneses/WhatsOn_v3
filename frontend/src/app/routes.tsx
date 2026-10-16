@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute, RequireProfile } from "@/components/layout/ProtectedRoute";
+import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
@@ -14,6 +15,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/trocar-senha" element={<ChangePasswordPage />} />
       <Route
         element={
           <ProtectedRoute>

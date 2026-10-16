@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { fetchQueues } from "@/features/queues/queuesApi";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { UsersPage } from "./UsersPage";
-import { createUser, fetchUsers, updateUser } from "./usersApi";
+import { createUser, fetchUsers, resetUserAccess, updateUser } from "./usersApi";
 
 vi.mock("./usersApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./usersApi")>()),
@@ -11,6 +11,7 @@ vi.mock("./usersApi", async (importOriginal) => ({
   createUser: vi.fn(),
   updateUser: vi.fn(),
   deleteUser: vi.fn(),
+  resetUserAccess: vi.fn(),
 }));
 vi.mock("@/features/queues/queuesApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/queues/queuesApi")>()),
@@ -38,10 +39,10 @@ describe("UsersPage", () => {
     expect(await within(row).findByText("Suporte")).toBeInTheDocument();
   });
 
-  it("creates an agent linked to a queue", async () => {
+  it("creates an agent with WhatsApp and no password (the system generates one)", async () => {
     setTestUser({ id: 1, profile: "admin" });
     vi.mocked(createUser).mockResolvedValue({
-      id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [20],
+      id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [20], access: { sent: true },
     });
     renderWithProviders(<UsersPage />);
     await screen.findByText("Bruno");
@@ -50,7 +51,8 @@ describe("UsersPage", () => {
     const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
     await userEvent.type(within(dialog).getByLabelText("Nome"), "Carla");
     await userEvent.type(within(dialog).getByLabelText("E-mail"), "carla@test.local");
-    await userEvent.type(within(dialog).getByLabelText("Senha"), "senha123");
+    expect(within(dialog).queryByLabelText(/senha/i)).not.toBeInTheDocument();
+    await userEvent.type(within(dialog).getByLabelText("WhatsApp"), "(11) 98888-7777");
     await userEvent.click(await within(dialog).findByRole("checkbox", { name: "Financeiro" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
@@ -58,11 +60,40 @@ describe("UsersPage", () => {
       expect(createUser).toHaveBeenCalledWith({
         name: "Carla",
         email: "carla@test.local",
-        password: "senha123",
+        phone: "(11) 98888-7777",
         profile: "agent",
         queueIds: [20],
       }),
     );
+    expect(screen.queryByText("Acesso não enviado")).not.toBeInTheDocument();
+  });
+
+  it("shows the temporary password when WhatsApp could not deliver it", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    vi.mocked(createUser).mockResolvedValue({
+      id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [],
+      phone: null, access: { sent: false, temporaryPassword: "Xy7kPq2mNa" },
+    });
+    renderWithProviders(<UsersPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Novo usuário" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
+    await userEvent.type(within(dialog).getByLabelText("Nome"), "Carla");
+    await userEvent.type(within(dialog).getByLabelText("E-mail"), "carla@test.local");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    const result = await screen.findByRole("dialog", { name: "Acesso não enviado" });
+    expect(within(result).getByTestId("temporary-password")).toHaveTextContent("Xy7kPq2mNa");
+  });
+
+  it("generates a new access after confirming", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    vi.mocked(resetUserAccess).mockResolvedValue({
+      id: 2, companyId: 1, name: "Bruno", email: "bruno@test.local", profile: "agent", queueIds: [10], access: { sent: true },
+    });
+    renderWithProviders(<UsersPage />);
+    await userEvent.click(await screen.findByRole("button", { name: "Gerar novo acesso para Bruno" }));
+    await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Gerar" }));
+    await waitFor(() => expect(resetUserAccess).toHaveBeenCalledWith(2));
   });
 
   it("edits without sending an empty password", async () => {
@@ -82,6 +113,7 @@ describe("UsersPage", () => {
       expect(updateUser).toHaveBeenCalledWith(2, {
         name: "Bruno Lima",
         email: "bruno@test.local",
+        phone: null,
         profile: "agent",
         queueIds: [10],
       }),

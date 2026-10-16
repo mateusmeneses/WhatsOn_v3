@@ -217,4 +217,42 @@ describe("tickets", () => {
     expect(await Ticket.findByPk(ticket.id)).toMatchObject({ status: "open", userId: w.agentA.id });
     expect(await TicketLog.count({ where: { ticketId: ticket.id } })).toBe(0);
   });
+
+  describe("reopen", () => {
+    it("reopens a closed ticket with the agent and logs it", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "closed", userId: w.agentA.id, queueId: w.queueA.id, closedAt: new Date() });
+      const res = await request(app).post(`/api/tickets/${ticket.id}/reopen`).set("Authorization", bearer(w.agentA));
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ status: "open", userId: w.agentA.id, closedAt: null });
+      expect(await TicketLog.count({ where: { ticketId: ticket.id, event: "reopened" } })).toBe(1);
+    });
+
+    it("lets a supervisor reopen any ticket, assigning it to themself", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "closed", userId: w.agentA.id, closedAt: new Date() });
+      const res = await request(app).post(`/api/tickets/${ticket.id}/reopen`).set("Authorization", bearer(w.supervisor));
+      expect(res.body).toMatchObject({ status: "open", userId: w.supervisor.id });
+    });
+
+    it("refuses another agent's ticket and tickets that are not closed", async () => {
+      const w = await world();
+      const closed = await w.ticketFor({ status: "closed", userId: w.agentA.id, closedAt: new Date() });
+      const other = await request(app).post(`/api/tickets/${closed.id}/reopen`).set("Authorization", bearer(w.agentA2));
+      expect(other.status).toBe(403);
+      const open = await w.ticketFor({ status: "open", userId: w.agentA.id });
+      const res = await request(app).post(`/api/tickets/${open.id}/reopen`).set("Authorization", bearer(w.agentA));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("TICKET_NOT_CLOSED");
+    });
+
+    it("refuses when the contact already has an active ticket", async () => {
+      const w = await world();
+      const closed = await w.ticketFor({ status: "closed", userId: w.agentA.id, closedAt: new Date() });
+      await createTicket({ companyId: w.company.id, contactId: closed.contactId, connectionId: closed.connectionId, status: "pending" });
+      const res = await request(app).post(`/api/tickets/${closed.id}/reopen`).set("Authorization", bearer(w.agentA));
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("TICKET_ACTIVE_EXISTS");
+    });
+  });
 });
