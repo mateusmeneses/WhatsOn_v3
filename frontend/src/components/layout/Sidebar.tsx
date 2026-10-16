@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router-dom";
+import logoMark from "@/assets/brand/logo-mark.webp";
 import { logout } from "@/features/auth/authApi";
 import { cn } from "@/lib/cn";
 import { initials } from "@/lib/format";
@@ -53,9 +54,7 @@ export function Sidebar() {
 
   return (
     <nav aria-label="Navegação principal" className="flex w-16 shrink-0 flex-col items-center gap-2 bg-sidebar py-4">
-      <div className="mb-4 rounded-xl bg-primary p-2 text-white">
-        <MessagesSquare className="h-5 w-5" aria-hidden />
-      </div>
+      <img src={logoMark} alt="WhatsOn" width={40} height={40} className="mb-4 h-10 w-10 drop-shadow" />
       {navItemsFor(user.profile).map(({ to, label, icon: Icon }) => (
         <NavLink
           key={to}
