@@ -33,7 +33,7 @@ services:
       retries: 10
 
   evolution:
-    image: evoapicloud/evolution-api:v2.3.0
+    image: evoapicloud/evolution-api:v2.3.7
     restart: unless-stopped
     ports:
       - "${EVOLUTION_BIND:-127.0.0.1:8080}:8080"
