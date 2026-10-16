@@ -28,3 +28,13 @@ export async function uploadMedia(file: File): Promise<StoredMedia> {
   const { data } = await api.post<StoredMedia>("/media", form);
   return data;
 }
+
+export async function editMessage(id: number, body: string): Promise<Message> {
+  const { data } = await api.patch<Message>(`/messages/${id}`, { body });
+  return data;
+}
+
+export async function deleteMessage(id: number): Promise<Message> {
+  const { data } = await api.delete<Message>(`/messages/${id}`);
+  return data;
+}

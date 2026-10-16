@@ -5,7 +5,7 @@ import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import type { Message, Page, StoredMedia, Ticket } from "@/types/api";
 import { useLocalMessages } from "./localMessages";
 import { removeMessage, upsertMessage, type ChatMessage, type MessagePages } from "./messageCache";
-import { fetchMessages, messageKeys, resendMessage, sendMessage } from "./messagesApi";
+import { deleteMessage, editMessage, fetchMessages, messageKeys, resendMessage, sendMessage } from "./messagesApi";
 
 export function useMessages(ticketId: number) {
   return useInfiniteQuery<Page<ChatMessage>, Error, MessagePages, ReturnType<typeof messageKeys.ticket>, number | undefined>({
@@ -62,6 +62,24 @@ export function useResendMessage(ticketId: number) {
   const update = useUpdateMessages(ticketId);
   return useMutation({
     mutationFn: (id: number) => resendMessage(id),
+    onSuccess: (message) => update((data) => upsertMessage(data, message)),
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+}
+
+export function useEditMessage(ticketId: number) {
+  const update = useUpdateMessages(ticketId);
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) => editMessage(id, body),
+    onSuccess: (message) => update((data) => upsertMessage(data, message)),
+    onError: (err) => toast.error(errorMessage(err)),
+  });
+}
+
+export function useDeleteMessage(ticketId: number) {
+  const update = useUpdateMessages(ticketId);
+  return useMutation({
+    mutationFn: (id: number) => deleteMessage(id),
     onSuccess: (message) => update((data) => upsertMessage(data, message)),
     onError: (err) => toast.error(errorMessage(err)),
   });

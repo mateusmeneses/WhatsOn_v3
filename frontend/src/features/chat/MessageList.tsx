@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { MessageBubble } from "./MessageBubble";
+import { MessageBubble, type MessageActions } from "./MessageBubble";
 import type { ChatMessage } from "./messageCache";
 
 export function MessageList({
@@ -9,12 +9,14 @@ export function MessageList({
   loadingOlder,
   onLoadOlder,
   onRetry,
+  actions,
 }: {
   messages: ChatMessage[];
   hasOlder: boolean;
   loadingOlder: boolean;
   onLoadOlder: () => void;
   onRetry: (message: ChatMessage) => void;
+  actions?: MessageActions;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const last = messages.at(-1);
@@ -35,7 +37,7 @@ export function MessageList({
         </div>
       )}
       {messages.map((message) => (
-        <MessageBubble key={message.tempId ?? message.id} message={message} onRetry={onRetry} />
+        <MessageBubble key={message.tempId ?? message.id} message={message} onRetry={onRetry} actions={actions} />
       ))}
     </div>
   );

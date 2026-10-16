@@ -22,6 +22,8 @@ const TYPE_LABEL: Record<MessageType, string> = {
   location: "📍 Localização",
 };
 
+export const DELETED_PREVIEW = "🚫 Mensagem apagada";
+
 export function previewOf(m: { body: string; type: MessageType }): string {
   return m.body || TYPE_LABEL[m.type];
 }

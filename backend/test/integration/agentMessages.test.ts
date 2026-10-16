@@ -120,4 +120,84 @@ describe("agent messages", () => {
       spy.mockRestore();
     }
   });
+
+  describe("edit and delete", () => {
+    async function sent(ticket: Parameters<typeof createMessage>[0], attrs: Record<string, unknown> = {}) {
+      return createMessage(ticket, { fromMe: true, ack: "delivered", body: "Bom dia", providerMessageId: "WA1", ...attrs });
+    }
+
+    it("edits a sent text message on WhatsApp and stores the new text", async () => {
+      const { agent, ticket, contact } = await setup();
+      const msg = await sent(ticket);
+      const res = await request(app).patch(`/api/messages/${msg.id}`).set("Authorization", bearer(agent)).send({ body: "Boa tarde" });
+      expect(res.status).toBe(200);
+      expect(res.body.body).toBe("Boa tarde");
+      expect(res.body.editedAt).toBeTruthy();
+      expect(fake.edits).toEqual([{ number: contact.number, id: "WA1", text: "Boa tarde" }]);
+      expect((await ticket.reload()).lastMessage).toBe("Boa tarde");
+    });
+
+    it("refuses to edit after 15 minutes, media, customer or unsent messages", async () => {
+      const { agent, ticket } = await setup();
+      const old = await sent(ticket, { providerMessageId: "WA2" });
+      await Message.update({ createdAt: new Date(Date.now() - 16 * 60 * 1000) }, { where: { id: old.id }, silent: true });
+      const media = await sent(ticket, { providerMessageId: "WA3", type: "image", mediaUrl: "/media/1/a.png" });
+      const customer = await createMessage(ticket, { providerMessageId: "WA4" });
+      const failed = await sent(ticket, { providerMessageId: null, ack: "failed" });
+      const codes = [];
+      for (const m of [old, media, customer, failed]) {
+        const res = await request(app).patch(`/api/messages/${m.id}`).set("Authorization", bearer(agent)).send({ body: "x" });
+        expect(res.status).toBe(409);
+        codes.push(res.body.error.code);
+      }
+      expect(codes).toEqual(["EDIT_EXPIRED", "NOT_EDITABLE", "NOT_OWN_MESSAGE", "NOT_EDITABLE"]);
+      expect(fake.edits).toEqual([]);
+    });
+
+    it("rejects an empty edit", async () => {
+      const { agent, ticket } = await setup();
+      const msg = await sent(ticket);
+      const res = await request(app).patch(`/api/messages/${msg.id}`).set("Authorization", bearer(agent)).send({ body: "  " });
+      expect(res.status).toBe(400);
+    });
+
+    it("deletes a sent message for everyone and keeps the row marked as deleted", async () => {
+      const { agent, ticket, contact } = await setup();
+      const msg = await sent(ticket, { type: "audio", body: "", mediaUrl: "/media/1/a.ogg" });
+      const res = await request(app).delete(`/api/messages/${msg.id}`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(200);
+      expect(res.body.deletedAt).toBeTruthy();
+      expect(fake.deletes).toEqual([{ number: contact.number, id: "WA1" }]);
+      expect((await ticket.reload()).lastMessage).toBe("🚫 Mensagem apagada");
+
+      const again = await request(app).delete(`/api/messages/${msg.id}`).set("Authorization", bearer(agent));
+      expect(again.status).toBe(409);
+      expect(again.body.error.code).toBe("MESSAGE_DELETED");
+    });
+
+    it("deletes a failed message locally without calling WhatsApp", async () => {
+      const { agent, ticket } = await setup();
+      const failed = await sent(ticket, { providerMessageId: null, ack: "failed" });
+      const res = await request(app).delete(`/api/messages/${failed.id}`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(200);
+      expect(fake.deletes).toEqual([]);
+    });
+
+    it("keeps the message when WhatsApp refuses the delete", async () => {
+      const { agent, ticket } = await setup();
+      const msg = await sent(ticket);
+      fake.failNext("delete");
+      const res = await request(app).delete(`/api/messages/${msg.id}`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(502);
+      expect((await Message.findByPk(msg.id))?.deletedAt).toBeNull();
+    });
+
+    it("forbids another agent from changing the message", async () => {
+      const { ticket, company, queue } = await setup();
+      const other = await createUser(company.id, { queueIds: [queue.id] });
+      const msg = await sent(ticket);
+      const res = await request(app).delete(`/api/messages/${msg.id}`).set("Authorization", bearer(other));
+      expect(res.status).toBe(403);
+    });
+  });
 });

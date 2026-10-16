@@ -3,7 +3,7 @@ import { parseEvolutionWebhook } from "../../src/modules/whatsapp/evolution/pars
 import { InboundEvent, OutboundMedia, SendResult, WhatsAppProvider } from "../../src/modules/whatsapp/provider";
 import { AppError } from "../../src/shared/errors/AppError";
 
-type Method = "createInstance" | "deleteInstance" | "logout" | "getQrCode" | "send" | "downloadMedia";
+type Method = "createInstance" | "deleteInstance" | "logout" | "getQrCode" | "send" | "edit" | "delete" | "downloadMedia";
 
 export interface SentItem {
   instanceName: string;
@@ -15,6 +15,8 @@ export interface SentItem {
 
 export class FakeProvider implements WhatsAppProvider {
   sent: SentItem[] = [];
+  edits: { number: string; id: string; text: string }[] = [];
+  deletes: { number: string; id: string }[] = [];
   instances = new Map<string, string>();
   state: ConnectionStatus = "connected";
   private failures = new Map<Method, number>();
@@ -22,6 +24,8 @@ export class FakeProvider implements WhatsAppProvider {
 
   reset(): void {
     this.sent = [];
+    this.edits = [];
+    this.deletes = [];
     this.instances.clear();
     this.state = "connected";
     this.failures.clear();
@@ -79,6 +83,16 @@ export class FakeProvider implements WhatsAppProvider {
     this.maybeFail("send");
     this.sent.push({ instanceName, number, media });
     return { providerMessageId: `fake-${++this.counter}` };
+  }
+
+  async editText(_instanceName: string, number: string, id: string, text: string): Promise<void> {
+    this.maybeFail("edit");
+    this.edits.push({ number, id, text });
+  }
+
+  async deleteForEveryone(_instanceName: string, number: string, id: string): Promise<void> {
+    this.maybeFail("delete");
+    this.deletes.push({ number, id });
   }
 
   async downloadMedia(): Promise<{ base64: string; mimetype: string }> {

@@ -11,9 +11,17 @@ import { TicketActions } from "@/features/tickets/TicketActions";
 import { ChatHeader } from "./ChatHeader";
 import { Composer } from "./Composer";
 import { useTicketLocalMessages } from "./localMessages";
+import type { MessageActions } from "./MessageBubble";
 import { MessageList } from "./MessageList";
 import { createTempMessage, flattenMessages, type ChatMessage } from "./messageCache";
-import { useMessageRealtime, useMessages, useResendMessage, useSendMessage } from "./useMessages";
+import {
+  useDeleteMessage,
+  useEditMessage,
+  useMessageRealtime,
+  useMessages,
+  useResendMessage,
+  useSendMessage,
+} from "./useMessages";
 
 function readOnlyHint(ticket: Ticket, user: PublicUser): string {
   if (ticket.status === "pending") return "Aceite o atendimento para responder.";
@@ -46,6 +54,8 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   const messagesQuery = useMessages(ticket.id);
   const send = useSendMessage(ticket);
   const resend = useResendMessage(ticket.id);
+  const edit = useEditMessage(ticket.id);
+  const remove = useDeleteMessage(ticket.id);
   const localMessages = useTicketLocalMessages(ticket.id);
   const messages = useMemo(() => {
     const server = flattenMessages(messagesQuery.data);
@@ -75,6 +85,15 @@ function ChatView({ ticket }: { ticket: Ticket }) {
     }
   }
 
+  const actions: MessageActions | undefined = canReply
+    ? {
+        onEdit: (message, body) => edit.mutateAsync({ id: message.id, body }),
+        onDelete: (message) => {
+          if (window.confirm("Apagar esta mensagem para todos?")) remove.mutate(message.id);
+        },
+      }
+    : undefined;
+
   const hint = readOnlyHint(ticket, user);
 
   return (
@@ -98,6 +117,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
           loadingOlder={messagesQuery.isFetchingNextPage}
           onLoadOlder={() => void messagesQuery.fetchNextPage()}
           onRetry={onRetry}
+          actions={actions}
         />
       )}
       {canReply ? (

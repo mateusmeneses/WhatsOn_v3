@@ -30,6 +30,8 @@ export interface WhatsAppProvider {
   getConnectionState(instanceName: string): Promise<ConnectionStatus>;
   sendText(instanceName: string, number: string, text: string, quotedProviderMessageId?: string): Promise<SendResult>;
   sendMedia(instanceName: string, number: string, media: OutboundMedia): Promise<SendResult>;
+  editText(instanceName: string, number: string, providerMessageId: string, text: string): Promise<void>;
+  deleteForEveryone(instanceName: string, number: string, providerMessageId: string): Promise<void>;
   downloadMedia(instanceName: string, providerMessageId: string): Promise<{ base64: string; mimetype: string }>;
   parseWebhook(payload: unknown): InboundEvent[];
 }

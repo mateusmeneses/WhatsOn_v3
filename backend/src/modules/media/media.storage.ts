@@ -19,6 +19,7 @@ const EXTENSIONS: Record<string, string> = {
   "audio/mpeg": "mp3",
   "audio/mp4": "m4a",
   "audio/aac": "aac",
+  "audio/webm": "webm",
   "video/mp4": "mp4",
   "video/3gpp": "3gp",
   "application/pdf": "pdf",

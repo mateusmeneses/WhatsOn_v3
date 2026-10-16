@@ -119,6 +119,16 @@ export class EvolutionProvider implements WhatsAppProvider {
     return this.sentId(await this.call(() => this.http.post(`/message/sendMedia/${instanceName}`, body)));
   }
 
+  async editText(instanceName: string, number: string, providerMessageId: string, text: string): Promise<void> {
+    const key = { remoteJid: `${number}@s.whatsapp.net`, fromMe: true, id: providerMessageId };
+    await this.call(() => this.http.post(`/chat/updateMessage/${instanceName}`, { number, key, text }));
+  }
+
+  async deleteForEveryone(instanceName: string, number: string, providerMessageId: string): Promise<void> {
+    const data = { id: providerMessageId, remoteJid: `${number}@s.whatsapp.net`, fromMe: true };
+    await this.call(() => this.http.delete(`/chat/deleteMessageForEveryone/${instanceName}`, { data }));
+  }
+
   async downloadMedia(instanceName: string, providerMessageId: string): Promise<{ base64: string; mimetype: string }> {
     const data = await this.call<{ base64?: string; mimetype?: string }>(() =>
       this.http.post(`/chat/getBase64FromMediaMessage/${instanceName}`, {

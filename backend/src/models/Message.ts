@@ -48,6 +48,13 @@ export class Message extends Model {
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   isBot!: boolean;
 
+  @Column({ type: DataType.DATE, allowNull: true })
+  editedAt!: Date | null;
+
+  /** Apagada para todos; o conteúdo fica guardado. Não é o `paranoid` do Sequelize. */
+  @Column({ type: DataType.DATE, allowNull: true })
+  deletedAt!: Date | null;
+
   @BelongsTo(() => Ticket, "ticketId")
   ticket?: Ticket;
 }

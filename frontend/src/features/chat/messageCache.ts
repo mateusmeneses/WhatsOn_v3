@@ -67,3 +67,26 @@ export function createTempMessage(ticket: Ticket, body: string, media: StoredMed
     updatedAt: now,
   };
 }
+
+/** Mesmos limites do backend (WhatsApp): editar até 15 min, apagar para todos até 2 dias. */
+export const EDIT_WINDOW_MS = 15 * 60 * 1000;
+export const DELETE_WINDOW_MS = 48 * 60 * 60 * 1000;
+
+const age = (m: ChatMessage, now: number) => now - new Date(m.createdAt).getTime();
+const isOwnServerMessage = (m: ChatMessage) => m.fromMe && !m.tempId && m.id > 0 && !m.deletedAt;
+
+export function canEditMessage(m: ChatMessage, now = Date.now()): boolean {
+  return (
+    isOwnServerMessage(m) &&
+    m.type === "text" &&
+    Boolean(m.providerMessageId) &&
+    m.ack !== "pending" &&
+    m.ack !== "failed" &&
+    age(m, now) <= EDIT_WINDOW_MS
+  );
+}
+
+export function canDeleteMessage(m: ChatMessage, now = Date.now()): boolean {
+  if (!isOwnServerMessage(m) || m.ack === "pending") return false;
+  return !m.providerMessageId || age(m, now) <= DELETE_WINDOW_MS;
+}

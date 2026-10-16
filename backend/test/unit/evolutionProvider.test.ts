@@ -33,6 +33,26 @@ describe("EvolutionProvider", () => {
     await expect(provider.sendText("inst", "5511988887777", "olá")).resolves.toEqual({ providerMessageId: "SENT1" });
   });
 
+  it("edits a sent text message", async () => {
+    const scope = api()
+      .post("/chat/updateMessage/inst", {
+        number: "5511988887777",
+        key: { remoteJid: "5511988887777@s.whatsapp.net", fromMe: true, id: "M1" },
+        text: "corrigido",
+      })
+      .reply(200, {});
+    await provider.editText("inst", "5511988887777", "M1", "corrigido");
+    expect(scope.isDone()).toBe(true);
+  });
+
+  it("deletes a message for everyone", async () => {
+    const scope = api()
+      .delete("/chat/deleteMessageForEveryone/inst", { id: "M1", remoteJid: "5511988887777@s.whatsapp.net", fromMe: true })
+      .reply(200, {});
+    await provider.deleteForEveryone("inst", "5511988887777", "M1");
+    expect(scope.isDone()).toBe(true);
+  });
+
   it("sends quoted text", async () => {
     api()
       .post("/message/sendText/inst", { number: "5511988887777", text: "sim", quoted: { key: { id: "Q1" } } })

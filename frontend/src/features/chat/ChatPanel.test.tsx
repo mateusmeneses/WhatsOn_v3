@@ -9,7 +9,7 @@ import { renderWithProviders, setTestUser } from "@/test/utils";
 import type { Message } from "@/types/api";
 import { useLocalMessages } from "./localMessages";
 import { ChatPanel } from "./ChatPanel";
-import { fetchMessages, sendMessage } from "./messagesApi";
+import { deleteMessage, editMessage, fetchMessages, sendMessage, uploadMedia } from "./messagesApi";
 
 vi.mock("@/features/tickets/ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/tickets/ticketsApi")>()),
@@ -26,6 +26,8 @@ vi.mock("./messagesApi", async (importOriginal) => ({
   sendMessage: vi.fn(),
   resendMessage: vi.fn(),
   uploadMedia: vi.fn(),
+  editMessage: vi.fn(),
+  deleteMessage: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
@@ -159,5 +161,125 @@ describe("ChatPanel", () => {
 
     expect(await screen.findByText("Bom dia")).toBeInTheDocument();
     expect(fetchMessages).toHaveBeenCalledTimes(2);
+  });
+
+  describe("edit and delete", () => {
+    const recent = () => new Date(Date.now() - 60_000).toISOString();
+
+    function setupWith(message: Message, ticketPartial = {}) {
+      const ctx = setup(ticketPartial);
+      vi.mocked(fetchMessages).mockResolvedValue({ items: [message], hasMore: false });
+      return ctx;
+    }
+
+    it("edits a recent sent text message", async () => {
+      const own = makeMessage({ id: 7, fromMe: true, body: "Bom dai", ack: "delivered", createdAt: recent() });
+      setupWith(own);
+      await screen.findByText("Bom dai");
+      vi.mocked(editMessage).mockResolvedValue({ ...own, body: "Bom dia", editedAt: new Date().toISOString() });
+
+      await userEvent.click(screen.getByRole("button", { name: "Editar mensagem" }));
+      const box = screen.getByRole("textbox", { name: "Editar mensagem" });
+      await userEvent.clear(box);
+      await userEvent.type(box, "Bom dia{Enter}");
+
+      expect(editMessage).toHaveBeenCalledWith(7, "Bom dia");
+      expect(await screen.findByText("Bom dia")).toBeInTheDocument();
+      expect(screen.getByText("editada")).toBeInTheDocument();
+    });
+
+    it("hides edit for old messages and customer messages", async () => {
+      const old = makeMessage({ id: 8, fromMe: true, body: "Antiga", createdAt: new Date(Date.now() - 20 * 60_000).toISOString() });
+      setupWith(old);
+      await screen.findByText("Antiga");
+      expect(screen.queryByRole("button", { name: "Editar mensagem" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Apagar mensagem" })).toBeInTheDocument();
+    });
+
+    it("deletes a message for everyone after confirming", async () => {
+      const own = makeMessage({ id: 9, fromMe: true, body: "Errada", createdAt: recent() });
+      setupWith(own);
+      await screen.findByText("Errada");
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      vi.mocked(deleteMessage).mockResolvedValue({ ...own, deletedAt: new Date().toISOString() });
+
+      await userEvent.click(screen.getByRole("button", { name: "Apagar mensagem" }));
+
+      expect(deleteMessage).toHaveBeenCalledWith(9);
+      expect(await screen.findByText("Você apagou esta mensagem")).toBeInTheDocument();
+      expect(screen.queryByText("Errada")).not.toBeInTheDocument();
+    });
+
+    it("offers no actions when the agent cannot reply", async () => {
+      const own = makeMessage({ id: 10, fromMe: true, body: "Minha", createdAt: recent() });
+      setupWith(own, { status: "closed" });
+      await screen.findByText("Minha");
+      expect(screen.queryByRole("button", { name: "Apagar mensagem" })).not.toBeInTheDocument();
+    });
+  });
+
+  describe("audio", () => {
+    class FakeRecorder {
+      static isTypeSupported = (type: string) => type.startsWith("audio/webm");
+      mimeType = "audio/webm;codecs=opus";
+      state = "inactive";
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() {
+        this.state = "recording";
+      }
+      stop() {
+        this.state = "inactive";
+        this.ondataavailable?.({ data: new Blob(["voz"], { type: "audio/webm" }) });
+        this.onstop?.();
+      }
+    }
+    const stopTrack = vi.fn();
+
+    beforeEach(() => {
+      vi.stubGlobal("MediaRecorder", FakeRecorder);
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: { getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [{ stop: stopTrack }] }) },
+      });
+    });
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: undefined });
+    });
+
+    it("records and sends a voice message", async () => {
+      setup();
+      await screen.findByText("Bom dia");
+      const media = { url: "/media/1/a.webm", mime: "audio/webm", name: "audio.webm" };
+      vi.mocked(uploadMedia).mockResolvedValue(media);
+      vi.mocked(sendMessage).mockReturnValue(new Promise(() => undefined));
+
+      await userEvent.click(screen.getByRole("button", { name: "Gravar áudio" }));
+      expect(screen.getByText(/Gravando áudio/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Enviar áudio" }));
+
+      await waitFor(() => expect(sendMessage).toHaveBeenCalledWith(1, { media }));
+      const file = vi.mocked(uploadMedia).mock.calls[0]![0];
+      expect(file.type).toBe("audio/webm");
+      expect(stopTrack).toHaveBeenCalled();
+    });
+
+    it("discards a recording without uploading", async () => {
+      setup();
+      await screen.findByText("Bom dia");
+      await userEvent.click(screen.getByRole("button", { name: "Gravar áudio" }));
+      await userEvent.click(screen.getByRole("button", { name: "Descartar áudio" }));
+      expect(uploadMedia).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Mensagem")).toBeInTheDocument();
+    });
+
+    it("shows the send button once there is text", async () => {
+      setup();
+      await screen.findByText("Bom dia");
+      await userEvent.type(screen.getByLabelText("Mensagem"), "oi");
+      expect(screen.queryByRole("button", { name: "Gravar áudio" })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Enviar" })).toBeEnabled();
+    });
   });
 });

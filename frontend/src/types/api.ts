@@ -85,6 +85,8 @@ export interface Message {
   quotedMessageId: number | null;
   sentByUserId: number | null;
   isBot: boolean;
+  editedAt?: string | null;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
