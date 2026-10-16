@@ -47,6 +47,16 @@ export async function fetchQrCode(id: number): Promise<{ qr: string | null }> {
   return data;
 }
 
+export async function fetchApiToken(id: number): Promise<{ apiToken: string | null }> {
+  const { data } = await api.get<{ apiToken: string | null }>(`/connections/${id}/api-token`);
+  return data;
+}
+
+export async function regenerateApiToken(id: number): Promise<{ apiToken: string }> {
+  const { data } = await api.post<{ apiToken: string }>(`/connections/${id}/api-token`);
+  return data;
+}
+
 export async function disconnectConnection(id: number): Promise<Connection> {
   const { data } = await api.post<Connection>(`/connections/${id}/disconnect`);
   return data;

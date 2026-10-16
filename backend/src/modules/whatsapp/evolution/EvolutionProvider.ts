@@ -3,7 +3,7 @@ import { env } from "../../../config/env";
 import { ConnectionStatus } from "../../../models";
 import { AppError } from "../../../shared/errors/AppError";
 import { logger } from "../../../shared/logger";
-import { InboundEvent, OutboundMedia, SendResult, WhatsAppProvider } from "../provider";
+import { InboundEvent, NumberCheck, OutboundMedia, SendResult, WhatsAppProvider } from "../provider";
 import { EVOLUTION_STATES, parseEvolutionWebhook } from "./parseWebhook";
 
 const WEBHOOK_EVENTS = ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"];
@@ -128,6 +128,14 @@ export class EvolutionProvider implements WhatsAppProvider {
   async deleteForEveryone(instanceName: string, number: string, providerMessageId: string): Promise<void> {
     const data = { id: providerMessageId, remoteJid: `${number}@s.whatsapp.net`, fromMe: true };
     await this.call(() => this.http.delete(`/chat/deleteMessageForEveryone/${instanceName}`, { data }));
+  }
+
+  async checkNumber(instanceName: string, number: string): Promise<NumberCheck> {
+    const data = await this.call<{ exists?: boolean; jid?: string }[]>(() =>
+      this.http.post(`/chat/whatsappNumbers/${instanceName}`, { numbers: [number] }),
+    );
+    const found = Array.isArray(data) ? data[0] : undefined;
+    return { exists: Boolean(found?.exists), jid: found?.exists && found.jid ? found.jid : null };
   }
 
   async downloadMedia(instanceName: string, providerMessageId: string): Promise<{ base64: string; mimetype: string }> {

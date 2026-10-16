@@ -6,9 +6,11 @@ import {
   createConnection,
   deleteConnection,
   disconnectConnection,
+  getConnectionApiToken,
   getConnectionQrCode,
   listConnections,
   publicConnection,
+  regenerateConnectionApiToken,
   updateConnection,
 } from "./connections.service";
 
@@ -47,6 +49,14 @@ connectionRoutes.delete("/:id", requireProfile("admin"), async (req, res) => {
 
 connectionRoutes.get("/:id/qrcode", requireProfile("admin"), async (req, res) => {
   res.json(await getConnectionQrCode(currentAuth(req).companyId, idParam(req)));
+});
+
+connectionRoutes.get("/:id/api-token", requireProfile("admin"), async (req, res) => {
+  res.json(await getConnectionApiToken(currentAuth(req).companyId, idParam(req)));
+});
+
+connectionRoutes.post("/:id/api-token", requireProfile("admin"), async (req, res) => {
+  res.json(await regenerateConnectionApiToken(currentAuth(req).companyId, idParam(req)));
 });
 
 connectionRoutes.post("/:id/disconnect", requireProfile("admin"), async (req, res) => {

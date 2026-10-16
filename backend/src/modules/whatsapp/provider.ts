@@ -21,6 +21,7 @@ export type InboundEvent = InboundMessage | AckUpdate | ConnectionUpdate | QrCod
 export type OutboundMediaType = "image" | "audio" | "video" | "document";
 export interface OutboundMedia { type: OutboundMediaType; base64: string; mimetype: string; fileName?: string; caption?: string }
 export interface SendResult { providerMessageId: string }
+export interface NumberCheck { exists: boolean; jid: string | null }
 export interface WhatsAppProvider {
   ping(): Promise<void>;
   createInstance(instanceName: string, webhookUrl: string): Promise<void>;
@@ -32,6 +33,7 @@ export interface WhatsAppProvider {
   sendMedia(instanceName: string, number: string, media: OutboundMedia): Promise<SendResult>;
   editText(instanceName: string, number: string, providerMessageId: string, text: string): Promise<void>;
   deleteForEveryone(instanceName: string, number: string, providerMessageId: string): Promise<void>;
+  checkNumber(instanceName: string, number: string): Promise<NumberCheck>;
   downloadMedia(instanceName: string, providerMessageId: string): Promise<{ base64: string; mimetype: string }>;
   parseWebhook(payload: unknown): InboundEvent[];
 }

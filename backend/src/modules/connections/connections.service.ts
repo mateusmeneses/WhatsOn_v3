@@ -19,8 +19,8 @@ export interface ConnectionInput {
 }
 
 export function publicConnection(c: Connection): Record<string, unknown> {
-  const { webhookToken: _hidden, ...rest } = c.toJSON() as Record<string, unknown>;
-  return rest;
+  const { webhookToken: _hidden, apiToken, ...rest } = c.toJSON() as Record<string, unknown>;
+  return { ...rest, hasApiToken: Boolean(apiToken) };
 }
 
 export function webhookUrl(c: Connection): string {
@@ -103,6 +103,23 @@ export async function getConnectionQrCode(companyId: number, id: number): Promis
   }
   if (connection.status !== "qrcode") await connection.update({ status: "qrcode" });
   return { qr };
+}
+
+export function generateApiToken(): string {
+  return randomBytes(32).toString("hex");
+}
+
+export async function getConnectionApiToken(companyId: number, id: number): Promise<{ apiToken: string | null }> {
+  const connection = await getConnectionOr404(companyId, id);
+  return { apiToken: connection.apiToken };
+}
+
+/** Gera (ou troca) o token da API externa; o anterior deixa de valer na hora. */
+export async function regenerateConnectionApiToken(companyId: number, id: number): Promise<{ apiToken: string }> {
+  const connection = await getConnectionOr404(companyId, id);
+  const apiToken = generateApiToken();
+  await connection.update({ apiToken });
+  return { apiToken };
 }
 
 export async function disconnectConnection(companyId: number, id: number): Promise<Connection> {

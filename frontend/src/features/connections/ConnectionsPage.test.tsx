@@ -9,7 +9,14 @@ import { renderWithProviders, setTestUser } from "@/test/utils";
 import type { Connection } from "@/types/api";
 import { ConnectionAlerts } from "./ConnectionAlerts";
 import { ConnectionsPage } from "./ConnectionsPage";
-import { createConnection, disconnectConnection, fetchConnections, fetchQrCode } from "./connectionsApi";
+import {
+  createConnection,
+  disconnectConnection,
+  fetchApiToken,
+  fetchConnections,
+  fetchQrCode,
+  regenerateApiToken,
+} from "./connectionsApi";
 
 vi.mock("./connectionsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./connectionsApi")>()),
@@ -19,6 +26,8 @@ vi.mock("./connectionsApi", async (importOriginal) => ({
   deleteConnection: vi.fn(),
   fetchQrCode: vi.fn(),
   disconnectConnection: vi.fn(),
+  fetchApiToken: vi.fn(),
+  regenerateApiToken: vi.fn(),
 }));
 vi.mock("@/features/queues/queuesApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/queues/queuesApi")>()),
@@ -96,6 +105,26 @@ describe("ConnectionsPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Desconectar Principal" }));
     await userEvent.click(await screen.findByRole("button", { name: "Desconectar" }));
     await waitFor(() => expect(disconnectConnection).toHaveBeenCalledWith(1));
+  });
+
+  it("shows, copies and regenerates the API token", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    vi.mocked(fetchApiToken).mockResolvedValue({ apiToken: "tok-1" });
+    vi.mocked(regenerateApiToken).mockResolvedValue({ apiToken: "tok-2" });
+    renderWithProviders(<ConnectionsPage />, { socket: new FakeSocket() });
+
+    await userEvent.click(await screen.findByRole("button", { name: "API de Principal" }));
+    const dialog = await screen.findByRole("dialog", { name: "API de Principal" });
+    expect(await within(dialog).findByTestId("api-token")).toHaveTextContent("tok-1");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Copiar token" }));
+    expect(writeText).toHaveBeenCalledWith("tok-1");
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Regenerar token" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Regenerar" }));
+    await waitFor(() => expect(regenerateApiToken).toHaveBeenCalledWith(1));
+    expect(await within(dialog).findByTestId("api-token")).toHaveTextContent("tok-2");
   });
 });
 

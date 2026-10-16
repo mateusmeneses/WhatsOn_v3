@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Plus, QrCode, Smartphone, Star, Trash2, Unplug } from "lucide-react";
+import { KeyRound, Pencil, Plus, QrCode, Smartphone, Star, Trash2, Unplug } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -12,6 +12,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
 import { formatPhone } from "@/lib/format";
 import type { Connection, ConnectionStatus } from "@/types/api";
+import { ApiTokenDialog } from "./ApiTokenDialog";
 import { ConnectionDialog } from "./ConnectionDialog";
 import { connectionKeys, deleteConnection, disconnectConnection, STATUS_LABEL } from "./connectionsApi";
 import { useConnectionRealtime, useConnections } from "./useConnections";
@@ -30,6 +31,7 @@ export function ConnectionsPage() {
   useConnectionRealtime();
   const [editing, setEditing] = useState<{ connection?: Connection } | null>(null);
   const [qrFor, setQrFor] = useState<Connection | null>(null);
+  const [apiFor, setApiFor] = useState<Connection | null>(null);
   const closeQr = useCallback(() => setQrFor(null), []);
 
   const onError = (err: unknown) => toast.error(errorMessage(err));
@@ -103,6 +105,9 @@ export function ConnectionsPage() {
                         <QrCode className="h-4 w-4" aria-hidden /> Conectar
                       </Button>
                     )}
+                    <Button size="sm" variant="ghost" aria-label={`API de ${c.name}`} title="Token da API" onClick={() => setApiFor(c)}>
+                      <KeyRound className="h-4 w-4" aria-hidden />
+                    </Button>
                     <Button size="sm" variant="ghost" aria-label={`Editar ${c.name}`} onClick={() => setEditing({ connection: c })}>
                       <Pencil className="h-4 w-4" aria-hidden />
                     </Button>
@@ -128,6 +133,7 @@ export function ConnectionsPage() {
         <ConnectionDialog connection={editing.connection} onClose={() => setEditing(null)} onCreated={setQrFor} />
       )}
       {qrFor && <QrCodeDialog connection={qrFor} onClose={closeQr} />}
+      {apiFor && <ApiTokenDialog connection={apiFor} onClose={() => setApiFor(null)} />}
     </div>
   );
 }

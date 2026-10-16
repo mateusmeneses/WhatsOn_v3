@@ -130,6 +130,7 @@ export interface Connection {
   closingMessage: string;
   transferMessage: string;
   botTimeoutMinutes: number;
+  hasApiToken?: boolean;
 }
 
 export interface ChatbotNode {

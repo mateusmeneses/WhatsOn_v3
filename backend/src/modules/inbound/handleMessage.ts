@@ -62,7 +62,7 @@ async function matchPendingEcho(connectionId: number, contactId: number, ev: Inb
   return true;
 }
 
-async function findOrCreateTicket(connection: Connection, contact: Contact, fromMe: boolean): Promise<Ticket> {
+export async function findOrCreateTicket(connection: Connection, contact: Contact, fromMe: boolean): Promise<Ticket> {
   const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
   const open = await Ticket.findOne({ where });
   if (open) return open;

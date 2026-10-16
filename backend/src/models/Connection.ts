@@ -26,6 +26,10 @@ export class Connection extends Model {
   @Column({ type: DataType.STRING, allowNull: false, unique: true })
   webhookToken!: string;
 
+  /** Token da API externa (/api/v1). Nulo até o admin gerar. */
+  @Column({ type: DataType.STRING, allowNull: true, unique: true })
+  apiToken!: string | null;
+
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   isDefault!: boolean;
 

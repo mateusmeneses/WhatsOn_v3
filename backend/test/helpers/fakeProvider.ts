@@ -1,9 +1,9 @@
 import { ConnectionStatus } from "../../src/models";
 import { parseEvolutionWebhook } from "../../src/modules/whatsapp/evolution/parseWebhook";
-import { InboundEvent, OutboundMedia, SendResult, WhatsAppProvider } from "../../src/modules/whatsapp/provider";
+import { InboundEvent, NumberCheck, OutboundMedia, SendResult, WhatsAppProvider } from "../../src/modules/whatsapp/provider";
 import { AppError } from "../../src/shared/errors/AppError";
 
-type Method = "createInstance" | "deleteInstance" | "logout" | "getQrCode" | "send" | "edit" | "delete" | "downloadMedia";
+type Method = "createInstance" | "deleteInstance" | "logout" | "getQrCode" | "send" | "edit" | "delete" | "downloadMedia" | "checkNumber";
 
 export interface SentItem {
   instanceName: string;
@@ -21,6 +21,10 @@ export class FakeProvider implements WhatsAppProvider {
   /** Instâncias que o provedor "perdeu": getQrCode falha com INSTANCE_NOT_FOUND até serem recriadas. */
   lostInstances = new Set<string>();
   state: ConnectionStatus = "connected";
+  /** Números que o checkNumber responde como inexistentes no WhatsApp. */
+  missingNumbers = new Set<string>();
+  /** Número consultado -> jid devolvido (ex.: sem o nono dígito). */
+  jidOverrides = new Map<string, string>();
   private failures = new Map<Method, number>();
   private counter = 0;
 
@@ -31,6 +35,8 @@ export class FakeProvider implements WhatsAppProvider {
     this.instances.clear();
     this.lostInstances.clear();
     this.state = "connected";
+    this.missingNumbers.clear();
+    this.jidOverrides.clear();
     this.failures.clear();
     this.counter = 0;
   }
@@ -98,6 +104,12 @@ export class FakeProvider implements WhatsAppProvider {
   async deleteForEveryone(_instanceName: string, number: string, id: string): Promise<void> {
     this.maybeFail("delete");
     this.deletes.push({ number, id });
+  }
+
+  async checkNumber(_instanceName: string, number: string): Promise<NumberCheck> {
+    this.maybeFail("checkNumber");
+    if (this.missingNumbers.has(number)) return { exists: false, jid: null };
+    return { exists: true, jid: this.jidOverrides.get(number) ?? `${number}@s.whatsapp.net` };
   }
 
   async downloadMedia(): Promise<{ base64: string; mimetype: string }> {

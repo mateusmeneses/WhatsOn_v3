@@ -28,6 +28,18 @@ describe("EvolutionProvider", () => {
     expect(scope.isDone()).toBe(true);
   });
 
+  it("checks whether a number is on WhatsApp", async () => {
+    api()
+      .post("/chat/whatsappNumbers/inst", { numbers: ["5531988887777"] })
+      .reply(200, [{ exists: true, jid: "553188887777@s.whatsapp.net", number: "5531988887777" }]);
+    await expect(provider.checkNumber("inst", "5531988887777")).resolves.toEqual({
+      exists: true,
+      jid: "553188887777@s.whatsapp.net",
+    });
+    api().post("/chat/whatsappNumbers/inst").reply(200, [{ exists: false, jid: "5511900000000@s.whatsapp.net" }]);
+    await expect(provider.checkNumber("inst", "5511900000000")).resolves.toEqual({ exists: false, jid: null });
+  });
+
   it("sends text and returns the WhatsApp message id", async () => {
     api().post("/message/sendText/inst", { number: "5511988887777", text: "olá" }).reply(201, { key: { id: "SENT1" } });
     await expect(provider.sendText("inst", "5511988887777", "olá")).resolves.toEqual({ providerMessageId: "SENT1" });
