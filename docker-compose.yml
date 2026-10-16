@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS:-whatson}
       POSTGRES_DB: ${DB_NAME:-whatson}
     ports:
-      - "127.0.0.1:5433:5432"
+      - "${POSTGRES_BIND:-127.0.0.1:5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -23,7 +23,7 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "127.0.0.1:6380:6379"
+      - "${REDIS_BIND:-127.0.0.1:6380}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -36,7 +36,7 @@ services:
     image: evoapicloud/evolution-api:v2.3.0
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${EVOLUTION_BIND:-127.0.0.1:8080}:8080"
     environment:
       SERVER_URL: http://localhost:8080
       AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
@@ -76,7 +76,7 @@ services:
       BACKEND_PUBLIC_URL: http://backend:4000
       MEDIA_DIR: /app/public/media
     ports:
-      - "4000:4000"
+      - "${BACKEND_BIND:-4000}:4000"
     volumes:
       - media_data:/app/public/media
     depends_on:
@@ -91,7 +91,7 @@ services:
     build: ./frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${FRONTEND_BIND:-3000}:80"
     depends_on:
       - backend
 
