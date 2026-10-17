@@ -12,7 +12,11 @@ export async function fetchMessages(ticketId: number, before?: number): Promise<
   return data;
 }
 
-export async function sendMessage(ticketId: number, body: { body?: string; media?: StoredMedia }): Promise<Message> {
+/** `sign` só é respeitado para administradores; os demais perfis sempre assinam. */
+export async function sendMessage(
+  ticketId: number,
+  body: { body?: string; media?: StoredMedia; sign?: boolean },
+): Promise<Message> {
   const { data } = await api.post<Message>(`/tickets/${ticketId}/messages`, body);
   return data;
 }

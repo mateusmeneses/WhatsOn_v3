@@ -1,6 +1,6 @@
-import type { Profile, Ticket, TicketStatus } from "@/types/api";
+import type { Profile, Ticket, TicketAccess, TicketStatus } from "@/types/api";
 
-export interface Viewer {
+export interface Viewer extends TicketAccess {
   userId: number;
   profile: Profile;
   queueIds: number[];
@@ -10,12 +10,13 @@ export interface Viewer {
 export function ticketVisibleIn(ticket: Ticket, status: TicketStatus, viewer: Viewer): boolean {
   if (ticket.status !== status) return false;
   if (viewer.profile !== "agent") return true;
-  if (status === "bot") return false;
+  if (status === "bot") return viewer.canViewBot;
   if (ticket.userId === viewer.userId) return true;
+  if (status === "open") return viewer.canViewOthersOpen;
   return (
     status === "pending" &&
     ticket.userId === null &&
-    (ticket.queueId === null || viewer.queueIds.includes(ticket.queueId))
+    (ticket.queueId === null || viewer.canViewOtherQueues || viewer.queueIds.includes(ticket.queueId))
   );
 }
 

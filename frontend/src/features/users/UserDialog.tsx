@@ -8,8 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
-import type { CompanyProfile, UserView } from "@/types/api";
-import { createUser, PROFILE_LABEL, updateUser, userKeys, type UserInput, type UserWithAccess } from "./usersApi";
+import type { CompanyProfile, TicketAccess, UserView } from "@/types/api";
+import {
+  createUser,
+  PROFILE_LABEL,
+  TICKET_ACCESS_LABEL,
+  updateUser,
+  userKeys,
+  type UserInput,
+  type UserWithAccess,
+} from "./usersApi";
 
 export function UserDialog({
   user,
@@ -30,6 +38,11 @@ export function UserDialog({
   const [profile, setProfile] = useState<CompanyProfile>(user?.profile ?? "agent");
   const [queueIds, setQueueIds] = useState<number[]>(user?.queueIds ?? []);
   const [sendAccess, setSendAccess] = useState(false);
+  const [access, setAccess] = useState<TicketAccess>({
+    canViewBot: user?.canViewBot ?? false,
+    canViewOtherQueues: user?.canViewOtherQueues ?? false,
+    canViewOthersOpen: user?.canViewOthersOpen ?? false,
+  });
 
   const passwordError = password.length > 0 && password.length < 6 ? "A senha precisa ter pelo menos 6 caracteres." : null;
   const valid = name.trim() && email.trim() && !passwordError;
@@ -43,6 +56,7 @@ export function UserDialog({
         ...(user && password ? { password } : {}),
         profile,
         queueIds,
+        ...access,
       };
       return user ? updateUser(user.id, input) : createUser({ ...input, sendAccess });
     },
@@ -147,6 +161,27 @@ export function UserDialog({
               ))}
             </div>
           </fieldset>
+          {profile === "agent" && (
+            <fieldset>
+              <legend className="mb-1.5 text-sm font-medium">Permissões de atendimento</legend>
+              <div className="space-y-2">
+                {(Object.keys(TICKET_ACCESS_LABEL) as (keyof TicketAccess)[]).map((key) => (
+                  <label key={key} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-[var(--color-primary)]"
+                      checked={access[key]}
+                      onChange={(e) => setAccess((a) => ({ ...a, [key]: e.target.checked }))}
+                    />
+                    {TICKET_ACCESS_LABEL[key]}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-1 text-xs text-ink-muted">
+                Além das filas marcadas acima. Supervisores e administradores já veem tudo.
+              </p>
+            </fieldset>
+          )}
           <DialogFooter>
             <Button variant="secondary" onClick={onClose}>
               Cancelar

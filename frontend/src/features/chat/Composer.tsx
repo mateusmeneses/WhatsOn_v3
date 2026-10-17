@@ -1,4 +1,4 @@
-import { Mic, Paperclip, Send, Trash2 } from "lucide-react";
+import { Mic, Paperclip, PenLine, Send, Trash2 } from "lucide-react";
 import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -6,13 +6,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/apiError";
 import type { StoredMedia } from "@/types/api";
 import { uploadMedia } from "./messagesApi";
+import { cn } from "@/lib/cn";
 import { audioRecordingSupported, useAudioRecorder } from "./useAudioRecorder";
 
 function formatDuration(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-export function Composer({ onSend }: { onSend: (body: string, media: StoredMedia | null) => void }) {
+export function Composer({
+  onSend,
+  signature,
+}: {
+  onSend: (body: string, media: StoredMedia | null) => void;
+  /** Só para administradores: liga/desliga a assinatura "*Nome:*" nas mensagens. */
+  signature?: { enabled: boolean; onToggle: () => void };
+}) {
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -95,6 +103,19 @@ export function Composer({ onSend }: { onSend: (body: string, media: StoredMedia
       >
         {!uploading && <Paperclip className="h-5 w-5" aria-hidden />}
       </Button>
+      {signature && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Assinar mensagens"
+          aria-pressed={signature.enabled}
+          title={signature.enabled ? "Mensagens saem assinadas com seu nome" : "Mensagens saem sem assinatura"}
+          onClick={signature.onToggle}
+        >
+          <PenLine className={cn("h-5 w-5", signature.enabled ? "text-primary" : "text-ink-muted")} aria-hidden />
+        </Button>
+      )}
       <Textarea
         aria-label="Mensagem"
         disabled={uploading}

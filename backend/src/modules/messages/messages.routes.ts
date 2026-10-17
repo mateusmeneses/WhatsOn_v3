@@ -14,6 +14,8 @@ const sendSchema = z
     body: z.string().max(4096).optional(),
     quotedMessageId: z.number().int().positive().optional(),
     media: z.object({ url: z.string(), mime: z.string(), name: z.string().nullable() }).optional(),
+    /** Só vale para administradores: false envia sem a assinatura "*Nome:*". */
+    sign: z.boolean().optional(),
   })
   .refine((v) => (v.body && v.body.trim()) || v.media, "informe um texto ou um arquivo");
 

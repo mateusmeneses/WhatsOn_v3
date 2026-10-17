@@ -33,6 +33,18 @@ export class User extends Model {
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   online!: boolean;
 
+  /** Atendente vê (e pode aceitar) os chamados ainda no bot. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  canViewBot!: boolean;
+
+  /** Atendente vê (e pode aceitar) os chamados aguardando em qualquer fila. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  canViewOtherQueues!: boolean;
+
+  /** Atendente vê os chamados em atendimento com outros atendentes. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  canViewOthersOpen!: boolean;
+
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
   tokenVersion!: number;
 }

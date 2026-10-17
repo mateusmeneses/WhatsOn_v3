@@ -6,10 +6,9 @@ import { PAGE_SIZE, paginate } from "../../shared/http";
 import { AuthContext } from "../auth/auth.types";
 import { createOutgoingMessage } from "../messages/messages.service";
 import { assertQueuesBelong } from "../queues/queues.service";
-import { userQueueIds } from "../users/userQueues";
 import { getUserOr404 } from "../users/users.service";
 import { emitTicket, TICKET_INCLUDE } from "./ticket.events";
-import { agentQueueEligible, canView, visibilityWhere } from "./visibility";
+import { agentQueueEligible, canView, loadAgentScope, visibilityWhere } from "./visibility";
 
 export async function logTicket(
   ticket: Ticket,
@@ -63,10 +62,9 @@ export async function ticketAttendants(ticket: Ticket): Promise<{ id: number; na
     .map((u) => ({ id: u.id, name: u.name }));
 }
 
-const queueIdsFor = (auth: AuthContext) => (auth.profile === "agent" ? userQueueIds(auth.userId) : Promise.resolve([]));
 
 export async function listTickets(auth: AuthContext, opts: { status: TicketStatus; search?: string; page: number }) {
-  const visibility = visibilityWhere(auth, await queueIdsFor(auth), opts.status);
+  const visibility = visibilityWhere(auth, await loadAgentScope(auth), opts.status);
   if (visibility === null) return { items: [], hasMore: false };
   const term = opts.search?.trim();
   const rows = await Ticket.findAll({
@@ -93,7 +91,7 @@ export async function listTickets(auth: AuthContext, opts: { status: TicketStatu
 export async function getVisibleTicket(auth: AuthContext, id: number): Promise<Ticket> {
   const ticket = await Ticket.findOne({ where: { id, companyId: auth.companyId } });
   if (!ticket) throw notFound("Ticket");
-  if (!canView(auth, await queueIdsFor(auth), ticket)) throw new AppError("FORBIDDEN", 403, "Sem acesso a este ticket");
+  if (!canView(auth, await loadAgentScope(auth), ticket)) throw new AppError("FORBIDDEN", 403, "Sem acesso a este ticket");
   return ticket;
 }
 
@@ -118,17 +116,20 @@ export async function acceptTicket(auth: AuthContext, id: number) {
   const ticket = await Ticket.findOne({ where: { id, companyId: auth.companyId } });
   if (!ticket) throw notFound("Ticket");
   if (auth.profile === "agent") {
-    const queueIds = await userQueueIds(auth.userId);
-    const eligible = ticket.userId === auth.userId || agentQueueEligible(queueIds, ticket.queueId);
+    const scope = await loadAgentScope(auth);
+    const eligible =
+      ticket.userId === auth.userId ||
+      (ticket.status === "bot" ? scope.canViewBot : agentQueueEligible(scope, ticket.queueId));
     if (!eligible) throw new AppError("FORBIDDEN", 403, "Sem acesso a este ticket");
   }
+  // Chamado ainda no bot também pode ser assumido: sai do fluxo do chatbot direto para o atendente.
   const [updated] = await Ticket.update(
-    { status: "open", userId: auth.userId },
+    { status: "open", userId: auth.userId, chatbotNodeId: null, chatbotAttempts: 0 },
     {
       where: {
         id,
         companyId: auth.companyId,
-        status: "pending",
+        status: ["pending", "bot"],
         [Op.or]: [{ userId: null }, { userId: auth.userId }],
       },
     },
@@ -141,6 +142,7 @@ export async function acceptTicket(auth: AuthContext, id: number) {
     }
     throw new AppError("TICKET_NOT_PENDING", 409, "Este atendimento não está aguardando atendimento");
   }
+  if (ticket.status === "bot") await cancelBotTimeout(ticket.id);
   await logTicket(ticket, "accepted", { userId: auth.userId });
   await emitTicket(id, { queueId: ticket.queueId, userId: ticket.userId });
   return loadTicket(id);
@@ -167,11 +169,16 @@ export async function transferTicket(auth: AuthContext, id: number, input: { que
   return loadTicket(id);
 }
 
-export async function closeTicket(auth: AuthContext, id: number) {
+/** `sendClosingMessage: false` encerra sem a mensagem de finalização da conexão. */
+export async function closeTicket(auth: AuthContext, id: number, opts: { sendClosingMessage?: boolean } = {}) {
   const ticket = await getVisibleTicket(auth, id);
   if (ticket.status === "closed") throw ticketClosed();
   assertCanHandle(auth, ticket);
-  const closed = await closeTicketInternal(ticket, { userId: auth.userId, event: "closed", sendClosingMessage: true });
+  const closed = await closeTicketInternal(ticket, {
+    userId: auth.userId,
+    event: "closed",
+    sendClosingMessage: opts.sendClosingMessage ?? true,
+  });
   if (!closed) throw ticketClosed();
   return loadTicket(id);
 }
@@ -213,7 +220,9 @@ export async function reopenTicket(auth: AuthContext, id: number) {
 
 export async function markTicketRead(auth: AuthContext, id: number) {
   const ticket = await getVisibleTicket(auth, id);
-  if (ticket.unreadCount !== 0) {
+  // Atendente só espiando o atendimento de um colega não zera o contador dele.
+  const watchingColleague = auth.profile === "agent" && ticket.status === "open" && ticket.userId !== auth.userId;
+  if (ticket.unreadCount !== 0 && !watchingColleague) {
     await ticket.update({ unreadCount: 0 });
     await emitTicket(ticket.id);
   }

@@ -8,6 +8,7 @@ import { useConfirm } from "@/components/ui/confirm";
 import { errorMessage } from "@/lib/apiError";
 import { useAuth } from "@/stores/auth";
 import type { Ticket } from "@/types/api";
+import { CloseTicketDialog } from "./CloseTicketDialog";
 import { TransferDialog } from "./TransferDialog";
 import { acceptTicket, closeTicket, reopenTicket } from "./ticketsApi";
 import { useApplyTicket, useViewer } from "./useTickets";
@@ -20,6 +21,7 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
   const viewer = useViewer();
   const navigate = useNavigate();
   const [transferOpen, setTransferOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
 
   const onError = (err: unknown) => toast.error(errorMessage(err));
   const accept = useMutation({
@@ -31,7 +33,7 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
     onError,
   });
   const close = useMutation({
-    mutationFn: () => closeTicket(ticket.id),
+    mutationFn: (sendClosingMessage: boolean) => closeTicket(ticket.id, sendClosingMessage),
     onSuccess: (updated) => {
       applyTicket(updated);
       toast.success("Atendimento finalizado");
@@ -59,7 +61,7 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
 
   return (
     <div className="flex shrink-0 gap-2">
-      {ticket.status === "pending" && (
+      {(ticket.status === "pending" || ticket.status === "bot") && (
         <Button size="sm" loading={accept.isPending} onClick={() => accept.mutate()}>
           <Check className="h-4 w-4" aria-hidden /> Aceitar
         </Button>
@@ -89,12 +91,13 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
             size="sm"
             variant="secondary"
             loading={close.isPending}
-            onClick={async () => {
-              if (await confirm({ title: "Finalizar atendimento", description: "Finalizar este atendimento?", confirmLabel: "Finalizar" })) close.mutate();
-            }}
+            onClick={() => setCloseOpen(true)}
           >
             <CheckCircle2 className="h-4 w-4" aria-hidden /> Finalizar
           </Button>
+          {closeOpen && (
+            <CloseTicketDialog open={closeOpen} onOpenChange={setCloseOpen} onConfirm={(send) => close.mutate(send)} />
+          )}
           {transferOpen && (
             <TransferDialog ticket={ticket} open={transferOpen} onOpenChange={setTransferOpen} onTransferred={onTransferred} />
           )}

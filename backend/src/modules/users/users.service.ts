@@ -17,6 +17,25 @@ export interface UserInput {
   phone?: string | null;
   profile: Profile;
   queueIds?: number[];
+  canViewBot?: boolean;
+  canViewOtherQueues?: boolean;
+  canViewOthersOpen?: boolean;
+}
+
+/** Permissões extras de visibilidade de atendimentos (só fazem diferença para atendentes). */
+export const TICKET_ACCESS_KEYS = ["canViewBot", "canViewOtherQueues", "canViewOthersOpen"] as const;
+export type TicketAccess = Pick<User, (typeof TICKET_ACCESS_KEYS)[number]>;
+
+const ticketAccess = (u: User): TicketAccess => ({
+  canViewBot: u.canViewBot,
+  canViewOtherQueues: u.canViewOtherQueues,
+  canViewOthersOpen: u.canViewOthersOpen,
+});
+
+function ticketAccessPatch(input: Partial<UserInput>): Partial<TicketAccess> {
+  const patch: Partial<TicketAccess> = {};
+  for (const key of TICKET_ACCESS_KEYS) if (input[key] !== undefined) patch[key] = input[key];
+  return patch;
 }
 
 export interface CreateUserInput extends UserInput {
@@ -24,7 +43,7 @@ export interface CreateUserInput extends UserInput {
   sendAccess?: boolean;
 }
 
-export interface UserView extends PublicUser {
+export interface UserView extends PublicUser, TicketAccess {
   queueIds: number[];
 }
 
@@ -42,7 +61,7 @@ async function deliverAccess(user: User, password: string, generated: boolean): 
 }
 
 async function view(user: User): Promise<UserView> {
-  return { ...toPublicUser(user), queueIds: await userQueueIds(user.id) };
+  return { ...toPublicUser(user), ...ticketAccess(user), queueIds: await userQueueIds(user.id) };
 }
 
 export async function getUserOr404(companyId: number, id: number): Promise<User> {
@@ -70,21 +89,29 @@ export async function listUsers(companyId: number): Promise<UserView[]> {
   return Promise.all(users.map(view));
 }
 
-export interface UserOption {
+export interface UserOption extends TicketAccess {
   id: number;
   name: string;
   queueIds: number[];
 }
 
-/** Lista enxuta (sem e-mail/perfil) para seletores de transferência, disponível a todos os perfis. */
+/**
+ * Lista enxuta (sem e-mail/perfil) para seletores de transferência, disponível a todos os perfis.
+ * Leva as permissões de visibilidade para o atendente saber, em tempo real, quais chamados enxerga.
+ */
 export async function listUserOptions(companyId: number): Promise<UserOption[]> {
-  const users = await User.findAll({ where: { companyId }, attributes: ["id", "name"], order: [["name", "ASC"]] });
+  const users = await User.findAll({
+    where: { companyId },
+    attributes: ["id", "name", ...TICKET_ACCESS_KEYS],
+    order: [["name", "ASC"]],
+  });
   const links = users.length
     ? await UserQueue.findAll({ where: { userId: users.map((u) => u.id) }, order: [["queueId", "ASC"]] })
     : [];
   return users.map((u) => ({
     id: u.id,
     name: u.name,
+    ...ticketAccess(u),
     queueIds: links.filter((l) => l.userId === u.id).map((l) => l.queueId),
   }));
 }
@@ -102,7 +129,16 @@ export async function createUser(
   try {
     const user = await sequelize.transaction(async (t) => {
       const created = await User.create(
-        { companyId, name: input.name, email, phone, profile: input.profile, passwordHash, mustChangePassword: true },
+        {
+          companyId,
+          name: input.name,
+          email,
+          phone,
+          profile: input.profile,
+          passwordHash,
+          mustChangePassword: true,
+          ...ticketAccessPatch(input),
+        },
         { transaction: t },
       );
       await setUserQueues(created.id, input.queueIds ?? [], t);
@@ -126,7 +162,8 @@ export async function updateUser(
   const user = await getUserOr404(companyId, id);
   const patch: Partial<
     Pick<User, "name" | "email" | "phone" | "profile" | "passwordHash" | "tokenVersion" | "mustChangePassword">
-  > = {};
+  > &
+    Partial<TicketAccess> = ticketAccessPatch(input);
   if (input.name !== undefined) patch.name = input.name;
   if (input.phone !== undefined) patch.phone = phoneOrNull(input.phone);
   if (input.profile !== undefined) patch.profile = input.profile;

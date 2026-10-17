@@ -1,3 +1,4 @@
+import { UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { formatTime, initials } from "@/lib/format";
@@ -30,10 +31,20 @@ export function TicketListItem({ ticket, selected }: { ticket: Ticket; selected:
               </span>
             )}
           </span>
-          {ticket.queue && (
-            <span className="mt-1 inline-flex items-center gap-1 text-xs text-ink-muted">
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.queue.color }} aria-hidden />
-              {ticket.queue.name}
+          {(ticket.queue || ticket.user) && (
+            <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-ink-muted">
+              {ticket.queue && (
+                <span className="inline-flex shrink-0 items-center gap-1">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: ticket.queue.color }} aria-hidden />
+                  {ticket.queue.name}
+                </span>
+              )}
+              {ticket.user && (
+                <span className="inline-flex min-w-0 items-center gap-1" title={`Técnico: ${ticket.user.name}`}>
+                  <UserRound className="h-3 w-3 shrink-0" aria-hidden />
+                  <span className="truncate">{ticket.user.name}</span>
+                </span>
+              )}
             </span>
           )}
         </span>

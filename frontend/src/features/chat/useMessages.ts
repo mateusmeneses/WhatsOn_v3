@@ -38,14 +38,20 @@ export interface SendVariables {
   temp: ChatMessage;
   body: string;
   media: StoredMedia | null;
+  /** Só para administradores: false envia sem assinatura. */
+  sign?: boolean;
 }
 
 export function useSendMessage(ticket: Ticket) {
   const update = useUpdateMessages(ticket.id);
   const local = useLocalMessages.getState;
   return useMutation({
-    mutationFn: ({ body, media }: SendVariables) =>
-      sendMessage(ticket.id, { ...(body ? { body } : {}), ...(media ? { media } : {}) }),
+    mutationFn: ({ body, media, sign }: SendVariables) =>
+      sendMessage(ticket.id, {
+        ...(body ? { body } : {}),
+        ...(media ? { media } : {}),
+        ...(sign !== undefined ? { sign } : {}),
+      }),
     onMutate: ({ temp }) => local().add(ticket.id, temp),
     onSuccess: (message, { temp }) => {
       local().remove(ticket.id, temp.tempId!);

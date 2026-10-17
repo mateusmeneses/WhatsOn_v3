@@ -33,8 +33,9 @@ export async function transferTicket(id: number, body: { queueId?: number; userI
   return data;
 }
 
-export async function closeTicket(id: number): Promise<Ticket> {
-  const { data } = await api.post<Ticket>(`/tickets/${id}/close`);
+/** `sendClosingMessage: false` encerra sem a mensagem de finalização. */
+export async function closeTicket(id: number, sendClosingMessage = true): Promise<Ticket> {
+  const { data } = await api.post<Ticket>(`/tickets/${id}/close`, { sendClosingMessage });
   return data;
 }
 

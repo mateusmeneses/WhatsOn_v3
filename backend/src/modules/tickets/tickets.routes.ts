@@ -24,6 +24,8 @@ const transferSchema = z
   .object({ queueId: z.number().int().positive().optional(), userId: z.number().int().positive().optional() })
   .refine((v) => v.queueId !== undefined || v.userId !== undefined, "informe a fila ou o atendente");
 
+const closeSchema = z.object({ sendClosingMessage: z.boolean().optional() });
+
 export const ticketRoutes = Router();
 ticketRoutes.use(isAuth);
 
@@ -49,7 +51,7 @@ ticketRoutes.post("/:id/transfer", async (req, res) => {
 });
 
 ticketRoutes.post("/:id/close", async (req, res) => {
-  res.json(await closeTicket(currentAuth(req), idParam(req)));
+  res.json(await closeTicket(currentAuth(req), idParam(req), closeSchema.parse(req.body ?? {})));
 });
 
 ticketRoutes.post("/:id/reopen", async (req, res) => {

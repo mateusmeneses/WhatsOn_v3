@@ -5,6 +5,7 @@ import { resetDb } from "../helpers/db";
 import { createCompany, createQueue, createUser } from "../helpers/factories";
 
 const app = createApp();
+const NO_ACCESS = { canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false };
 
 describe("users API", () => {
   beforeEach(resetDb);
@@ -26,12 +27,34 @@ describe("users API", () => {
     expect(res.body).toHaveLength(2);
     expect(res.body).toEqual(
       expect.arrayContaining([
-        { id: admin.id, name: admin.name, queueIds: [] },
-        { id: agent.id, name: "Agente", queueIds: [queue.id] },
+        { id: admin.id, name: admin.name, queueIds: [], ...NO_ACCESS },
+        { id: agent.id, name: "Agente", queueIds: [queue.id], ...NO_ACCESS },
       ]),
     );
-    expect(Object.keys(res.body[0]).sort()).toEqual(["id", "name", "queueIds"]);
+    expect(Object.keys(res.body[0]).sort()).toEqual(
+      ["canViewBot", "canViewOtherQueues", "canViewOthersOpen", "id", "name", "queueIds"],
+    );
     expect((await request(app).get("/api/users/options")).status).toBe(401);
+  });
+
+  it("saves the ticket visibility permissions on create and update", async () => {
+    const { admin } = await setup();
+    const created = await request(app)
+      .post("/api/users")
+      .set("Authorization", bearer(admin))
+      .send({ name: "Dani", email: "dani@test.local", profile: "agent", canViewBot: true });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ ...NO_ACCESS, canViewBot: true });
+
+    const updated = await request(app)
+      .put(`/api/users/${created.body.id}`)
+      .set("Authorization", bearer(admin))
+      .send({ canViewBot: false, canViewOtherQueues: true, canViewOthersOpen: true });
+    expect(updated.status).toBe(200);
+    expect(updated.body).toMatchObject({ canViewBot: false, canViewOtherQueues: true, canViewOthersOpen: true });
+
+    const list = await request(app).get("/api/users").set("Authorization", bearer(admin));
+    expect(list.body.find((u: { id: number }) => u.id === created.body.id)).toMatchObject({ canViewOtherQueues: true });
   });
 
   it("creates an agent linked to queues and lets them log in", async () => {

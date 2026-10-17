@@ -11,6 +11,9 @@ const userSchema = z.object({
   phone: z.string().trim().max(30).nullable().optional(),
   profile: z.enum(["admin", "supervisor", "agent"]),
   queueIds: z.array(z.number().int().positive()).optional(),
+  canViewBot: z.boolean().optional(),
+  canViewOtherQueues: z.boolean().optional(),
+  canViewOthersOpen: z.boolean().optional(),
 });
 
 export const userRoutes = Router();

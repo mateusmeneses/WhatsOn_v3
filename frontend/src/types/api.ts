@@ -48,12 +48,19 @@ export interface AuthResponse {
   user: PublicUser;
 }
 
-export interface UserView extends PublicUser {
+/** Permissões extras de visibilidade de atendimentos (só valem para atendentes). */
+export interface TicketAccess {
+  canViewBot: boolean;
+  canViewOtherQueues: boolean;
+  canViewOthersOpen: boolean;
+}
+
+export interface UserView extends PublicUser, Partial<TicketAccess> {
   profile: CompanyProfile;
   queueIds: number[];
 }
 
-export interface UserOption {
+export interface UserOption extends Partial<TicketAccess> {
   id: number;
   name: string;
   queueIds: number[];

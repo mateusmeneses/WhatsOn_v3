@@ -57,8 +57,8 @@ function networkError() {
   return new AxiosError("Network Error", "ERR_NETWORK", { headers: new AxiosHeaders() });
 }
 
-function setup(ticketPartial = {}) {
-  setTestUser({ id: 1, profile: "agent" });
+function setup(ticketPartial = {}, profile: "agent" | "admin" = "agent") {
+  setTestUser({ id: 1, profile });
   vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10] }]);
   vi.mocked(fetchTicket).mockResolvedValue(makeTicket({ status: "open", userId: 1, ...ticketPartial }));
   vi.mocked(fetchTicketAttendants).mockResolvedValue([]);
@@ -126,6 +126,37 @@ describe("ChatPanel", () => {
     await waitFor(() => expect(screen.getAllByText("Olá, tudo bem?")).toHaveLength(1));
     expect(screen.getByLabelText("Enviada")).toBeInTheDocument();
     expect(sendMessage).toHaveBeenCalledWith(1, { body: "Olá, tudo bem?" });
+  });
+
+  it("never shows the signature toggle to agents", async () => {
+    setup();
+    await screen.findByText("Bom dia");
+    expect(screen.queryByRole("button", { name: "Assinar mensagens" })).not.toBeInTheDocument();
+  });
+
+  it("lets an admin send without the signature", async () => {
+    localStorage.clear();
+    vi.mocked(sendMessage).mockResolvedValue(makeMessage({ id: 2, fromMe: true, body: "Oi" }));
+    setup({}, "admin");
+    await screen.findByText("Bom dia");
+    const toggle = screen.getByRole("button", { name: "Assinar mensagens" });
+    expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await userEvent.type(screen.getByLabelText("Mensagem"), "Oi{Enter}");
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith(1, { body: "Oi", sign: false }));
+    localStorage.clear();
+  });
+
+  it("shows the signature line in bold", async () => {
+    vi.mocked(fetchMessages).mockResolvedValueOnce({
+      items: [makeMessage({ id: 1, fromMe: true, body: "*Ana:*\nBom dia" })],
+      hasMore: false,
+    });
+    setup();
+    const name = await screen.findByText("Ana:");
+    expect(name.tagName).toBe("STRONG");
+    expect(screen.queryByText(/\*Ana:\*/)).not.toBeInTheDocument();
   });
 
   it("marks a failed send and lets the agent retry it", async () => {

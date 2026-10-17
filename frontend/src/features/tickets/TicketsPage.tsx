@@ -9,20 +9,25 @@ import { useDebounced } from "@/lib/useDebounced";
 import { useAuth } from "@/stores/auth";
 import type { TicketStatus } from "@/types/api";
 import { TicketList } from "./TicketList";
+import { useViewer } from "./useTickets";
 
 export function TicketsPage() {
   const user = useAuth((s) => s.user)!;
+  const viewer = useViewer();
   const { ticketId } = useParams();
   const selectedId = ticketId ? Number(ticketId) : null;
-  const [status, setStatus] = useState<TicketStatus>("pending");
+  const [selectedStatus, setStatus] = useState<TicketStatus>("pending");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search.trim());
 
+  const showBot = user.profile !== "agent" || Boolean(viewer?.canViewBot);
+  // Permissão retirada com a aba Bot aberta: volta para Aguardando.
+  const status = selectedStatus === "bot" && !showBot ? "pending" : selectedStatus;
   const tabs: TabItem<TicketStatus>[] = [
     { value: "pending", label: "Aguardando" },
     { value: "open", label: "Atendendo" },
     { value: "closed", label: "Finalizados" },
-    ...(user.profile !== "agent" ? [{ value: "bot" as const, label: "Bot" }] : []),
+    ...(showBot ? [{ value: "bot" as const, label: "Bot" }] : []),
   ];
 
   return (

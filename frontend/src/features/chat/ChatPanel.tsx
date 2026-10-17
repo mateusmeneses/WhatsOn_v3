@@ -16,6 +16,7 @@ import type { MessageActions } from "./MessageBubble";
 import { MessageList } from "./MessageList";
 import { ScheduledMessages } from "./ScheduledMessages";
 import { createTempMessage, flattenMessages, type ChatMessage } from "./messageCache";
+import { useSignPreference } from "./useSignPreference";
 import {
   useDeleteMessage,
   useEditMessage,
@@ -67,6 +68,10 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   }, [messagesQuery.data, localMessages]);
   const isMineOrSupervisor = user.profile !== "agent" || ticket.userId === user.id;
   const canReply = ticket.status === "open" && isMineOrSupervisor;
+  const isAdmin = user.profile === "admin";
+  const [signPreference, toggleSign] = useSignPreference();
+  // Só o administrador escolhe; para os demais o backend sempre assina.
+  const sign = isAdmin ? signPreference : undefined;
   const canSchedule = (ticket.status === "open" || ticket.status === "closed") && isMineOrSupervisor;
 
   useEffect(() => {
@@ -76,7 +81,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
   }, [ticket.id, ticket.unreadCount, applyTicket]);
 
   function onSend(body: string, media: StoredMedia | null) {
-    send.mutate({ temp: createTempMessage(ticket, body, media, user.id), body, media });
+    send.mutate({ temp: createTempMessage(ticket, body, media, user.id), body, media, sign });
   }
 
   function onRetry(message: ChatMessage) {
@@ -84,7 +89,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
       const media = message.mediaUrl
         ? { url: message.mediaUrl, mime: message.mediaMime ?? "application/octet-stream", name: message.mediaName }
         : null;
-      send.mutate({ temp: { ...message, ack: "pending", localFailed: false }, body: message.body, media });
+      send.mutate({ temp: { ...message, ack: "pending", localFailed: false }, body: message.body, media, sign });
     } else {
       resend.mutate(message.id);
     }
@@ -128,7 +133,7 @@ function ChatView({ ticket }: { ticket: Ticket }) {
       )}
       {canSchedule && <ScheduledMessages ticket={ticket} />}
       {canReply ? (
-        <Composer onSend={onSend} />
+        <Composer onSend={onSend} signature={isAdmin ? { enabled: signPreference, onToggle: toggleSign } : undefined} />
       ) : (
         <div className="border-t border-border bg-surface p-4 text-center text-sm text-ink-muted">{hint}</div>
       )}

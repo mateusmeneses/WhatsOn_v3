@@ -63,10 +63,45 @@ describe("UsersPage", () => {
         phone: "(11) 98888-7777",
         profile: "agent",
         queueIds: [20],
+        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false,
         sendAccess: false,
       }),
     );
     expect(screen.queryByText("Acesso não enviado")).not.toBeInTheDocument();
+  });
+
+  it("saves the ticket visibility permissions of an agent", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    vi.mocked(createUser).mockResolvedValue({
+      id: 3, companyId: 1, name: "Carla", email: "carla@test.local", profile: "agent", queueIds: [], access: { sent: true },
+    });
+    renderWithProviders(<UsersPage />);
+    await screen.findByText("Bruno");
+
+    await userEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
+    await userEvent.type(within(dialog).getByLabelText("Nome"), "Carla");
+    await userEvent.type(within(dialog).getByLabelText("E-mail"), "carla@test.local");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Ver atendimentos no bot (sem setor)" }));
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Ver aguardando de outros setores" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(createUser).toHaveBeenCalledWith(
+        expect.objectContaining({ canViewBot: true, canViewOtherQueues: true, canViewOthersOpen: false }),
+      ),
+    );
+  });
+
+  it("hides the ticket permissions for supervisors and admins", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    renderWithProviders(<UsersPage />);
+    await screen.findByText("Bruno");
+    await userEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
+    const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
+    expect(within(dialog).getByText("Permissões de atendimento")).toBeInTheDocument();
+    await userEvent.selectOptions(within(dialog).getByLabelText("Perfil"), "supervisor");
+    expect(within(dialog).queryByText("Permissões de atendimento")).not.toBeInTheDocument();
   });
 
   it("sends the access on creation when the admin ticks the option", async () => {
@@ -136,6 +171,7 @@ describe("UsersPage", () => {
         phone: null,
         profile: "agent",
         queueIds: [10],
+        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false,
       }),
     );
   });

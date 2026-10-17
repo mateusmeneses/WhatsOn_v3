@@ -58,7 +58,43 @@ describe("agent messages", () => {
       .set("Authorization", bearer(agent))
       .send({ body: "Bom dia!" });
     expect(res.status).toBe(201);
-    expect(res.body).toMatchObject({ body: "Bom dia!", fromMe: true, ack: "pending", sentByUserId: agent.id });
+    expect(res.body).toMatchObject({ body: `*${agent.name.split(" ")[0]}:*\nBom dia!`, fromMe: true, ack: "pending", sentByUserId: agent.id });
+  });
+
+  describe("signature", () => {
+    it("always signs messages of agents, even when they ask not to", async () => {
+      const { agent, ticket } = await setup();
+      const res = await request(app)
+        .post(`/api/tickets/${ticket.id}/messages`)
+        .set("Authorization", bearer(agent))
+        .send({ body: "Oi", sign: false });
+      expect(res.body.body).toBe(`*${agent.name.split(" ")[0]}:*\nOi`);
+    });
+
+    it("lets an admin choose to send without the signature", async () => {
+      const { company, ticket } = await setup();
+      const admin = await createUser(company.id, { profile: "admin", name: "Mateus Meneses" });
+      const signed = await request(app)
+        .post(`/api/tickets/${ticket.id}/messages`)
+        .set("Authorization", bearer(admin))
+        .send({ body: "Com assinatura" });
+      expect(signed.body.body).toBe("*Mateus:*\nCom assinatura");
+      const plain = await request(app)
+        .post(`/api/tickets/${ticket.id}/messages`)
+        .set("Authorization", bearer(admin))
+        .send({ body: "Sem assinatura", sign: false });
+      expect(plain.body.body).toBe("Sem assinatura");
+    });
+
+    it("signs media captions but not audio", async () => {
+      const { agent, ticket, company } = await setup();
+      const image = await saveBuffer(company.id, Buffer.from("img"), "image/png", "a.png");
+      const audio = await saveBuffer(company.id, Buffer.from("aud"), "audio/ogg", "a.ogg");
+      const img = await request(app).post(`/api/tickets/${ticket.id}/messages`).set("Authorization", bearer(agent)).send({ media: image });
+      expect(img.body.body).toBe(`*${agent.name.split(" ")[0]}:*`);
+      const aud = await request(app).post(`/api/tickets/${ticket.id}/messages`).set("Authorization", bearer(agent)).send({ media: audio });
+      expect(aud.body.body).toBe("");
+    });
   });
 
   it("requires the ticket to be accepted before replying", async () => {

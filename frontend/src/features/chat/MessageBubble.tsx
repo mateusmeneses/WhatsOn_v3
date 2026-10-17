@@ -15,6 +15,19 @@ const ACK_LABEL: Record<Ack, string> = {
   failed: "Falhou",
 };
 
+/** Mostra a assinatura "*Nome:*" da primeira linha em negrito, como o WhatsApp exibe. */
+function MessageText({ body }: { body: string }) {
+  const match = /^\*([^*\n]+):\*(?:\n|$)/.exec(body);
+  if (!match) return <p className="whitespace-pre-wrap break-words">{body}</p>;
+  const rest = body.slice(match[0].length);
+  return (
+    <p className="whitespace-pre-wrap break-words">
+      <strong>{match[1]}:</strong>
+      {rest && `\n${rest}`}
+    </p>
+  );
+}
+
 function AckIcon({ ack }: { ack: Ack }) {
   const props = { className: "h-3.5 w-3.5", "aria-label": ACK_LABEL[ack], role: "img" };
   if (ack === "pending") return <Clock {...props} />;
@@ -170,7 +183,7 @@ export function MessageBubble({
         ) : (
           <>
             <MediaContent message={message} />
-            {showBody && <p className="whitespace-pre-wrap break-words">{message.body}</p>}
+            {showBody && <MessageText body={message.body} />}
           </>
         )}
         <div className={cn("flex items-center justify-end gap-1 text-[11px]", out ? "text-white/70" : "text-ink-muted")}>

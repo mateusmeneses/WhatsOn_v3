@@ -6,6 +6,7 @@ import { FakeSocket } from "@/test/fakeSocket";
 import { makeContact, makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { fetchTickets } from "./ticketsApi";
+import type { Queue } from "@/types/api";
 import { TicketsPage } from "./TicketsPage";
 import { TicketRealtime } from "./useTickets";
 
@@ -50,12 +51,34 @@ describe("TicketsPage", () => {
     await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("bot", "", 1));
   });
 
+  it("shows the bot tab to agents allowed to see bot tickets", async () => {
+    vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10], canViewBot: true }]);
+    setTestUser({ id: 1, profile: "agent" });
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    await userEvent.click(await screen.findByRole("tab", { name: "Bot" }));
+    await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("bot", "", 1));
+  });
+
   it("searches by name with debounce", async () => {
     setTestUser({ id: 1, profile: "agent" });
     renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
     await screen.findByText("Maria Souza");
     await userEvent.type(screen.getByPlaceholderText("Buscar por nome ou número"), "maria");
     await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("pending", "maria", 1));
+  });
+
+  it("shows the queue and the technician of each ticket", async () => {
+    const queue = { id: 10, companyId: 1, name: "Suporte", color: "#22c55e", schedule: {} as Queue["schedule"] };
+    vi.mocked(fetchTickets).mockResolvedValue({
+      items: [makeTicket({ id: 3, queueId: 10, queue, userId: 7, user: { id: 7, name: "Mateus" } })],
+      hasMore: false,
+    });
+    setTestUser({ id: 2, profile: "supervisor" });
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    const list = await screen.findByRole("list", { name: "Lista de atendimentos" });
+    expect(await within(list).findByText("Suporte")).toBeInTheDocument();
+    expect(within(list).getByText("Mateus")).toBeInTheDocument();
+    expect(within(list).getByTitle("Técnico: Mateus")).toBeInTheDocument();
   });
 
   it("removes a ticket from the pending tab when another agent accepts it", async () => {

@@ -95,6 +95,22 @@ describe("realtime", () => {
     await Promise.all([aOld, bNew]);
   });
 
+  it("sends every ticket update to agents with extra visibility permissions", async () => {
+    const { company, connection, contact } = await scenario();
+    const queueA = await createQueue(company.id);
+    const queueB = await createQueue(company.id);
+    const watcher = await createUser(company.id, { queueIds: [queueA.id], canViewBot: true });
+    const plain = await createUser(company.id, { queueIds: [queueA.id] });
+    const [sWatcher, sPlain] = await Promise.all([watcher, plain].map((u) => connect(bearer(u).slice(7))));
+
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, queueId: queueB.id });
+    const got = nextEvent<{ id: number }>(sWatcher, "ticket:update");
+    const silent = noEvent(sPlain, "ticket:update");
+    await emitTicket(ticket.id);
+    expect((await got).id).toBe(ticket.id);
+    await silent;
+  });
+
   it("joins ticket rooms only when allowed", async () => {
     const { company } = await scenario();
     const agent = await createUser(company.id);

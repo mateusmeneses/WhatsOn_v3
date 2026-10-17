@@ -1,12 +1,12 @@
 import { api } from "@/lib/api";
-import type { AccessDelivery, CompanyProfile, UserOption, UserView } from "@/types/api";
+import type { AccessDelivery, CompanyProfile, TicketAccess, UserOption, UserView } from "@/types/api";
 
 export const userKeys = {
   all: ["users"] as const,
   options: ["users", "options"] as const,
 };
 
-export interface UserInput {
+export interface UserInput extends Partial<TicketAccess> {
   name: string;
   email: string;
   password?: string;
@@ -21,6 +21,12 @@ export const PROFILE_LABEL: Record<CompanyProfile, string> = {
   admin: "Administrador",
   supervisor: "Supervisor",
   agent: "Atendente",
+};
+
+export const TICKET_ACCESS_LABEL: Record<keyof TicketAccess, string> = {
+  canViewBot: "Ver atendimentos no bot (sem setor)",
+  canViewOtherQueues: "Ver aguardando de outros setores",
+  canViewOthersOpen: "Ver atendimentos de outros atendentes",
 };
 
 export async function fetchUserOptions(): Promise<UserOption[]> {

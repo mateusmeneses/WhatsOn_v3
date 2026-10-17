@@ -83,14 +83,81 @@ describe("tickets", () => {
     expect(second.body.error.code).toBe("TICKET_ALREADY_ACCEPTED");
   });
 
-  it("answers 409 TICKET_NOT_PENDING when a supervisor accepts a bot or closed ticket", async () => {
+  it("answers 409 TICKET_NOT_PENDING when a supervisor accepts an open or closed ticket", async () => {
     const w = await world();
-    for (const status of ["bot", "closed"]) {
+    for (const status of ["open", "closed"]) {
       const ticket = await w.ticketFor({ status });
       const res = await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.supervisor));
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("TICKET_NOT_PENDING");
     }
+  });
+
+  it("lets a supervisor take a ticket still in the bot, leaving the chatbot flow", async () => {
+    const w = await world();
+    const ticket = await w.ticketFor({ status: "bot", queueId: null, chatbotAttempts: 2 });
+    const res = await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.supervisor));
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "open", userId: w.supervisor.id, chatbotNodeId: null, chatbotAttempts: 0 });
+    expect(await TicketLog.count({ where: { ticketId: ticket.id, event: "accepted" } })).toBe(1);
+  });
+
+  describe("extra visibility permissions", () => {
+    it("keeps agents without permissions limited to their scope", async () => {
+      const w = await world();
+      const bot = await w.ticketFor({ status: "bot" });
+      const othersOpen = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.agentA2.id });
+      const inB = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      for (const t of [bot, othersOpen, inB]) {
+        expect((await request(app).get(`/api/tickets/${t.id}`).set("Authorization", bearer(w.agentA))).status).toBe(403);
+      }
+      expect((await request(app).post(`/api/tickets/${bot.id}/accept`).set("Authorization", bearer(w.agentA))).status).toBe(403);
+    });
+
+    it("canViewBot shows and lets the agent take bot tickets", async () => {
+      const w = await world();
+      const agent = await createUser(w.company.id, { queueIds: [w.queueA.id], canViewBot: true });
+      const bot = await w.ticketFor({ status: "bot" });
+      expect(ids(await request(app).get("/api/tickets?status=bot").set("Authorization", bearer(agent)))).toEqual([bot.id]);
+      expect((await request(app).get(`/api/tickets/${bot.id}`).set("Authorization", bearer(agent))).status).toBe(200);
+      const res = await request(app).post(`/api/tickets/${bot.id}/accept`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ status: "open", userId: agent.id });
+    });
+
+    it("canViewOtherQueues shows and lets the agent take pending tickets of any queue", async () => {
+      const w = await world();
+      const agent = await createUser(w.company.id, { queueIds: [w.queueA.id], canViewOtherQueues: true });
+      const inA = await w.ticketFor({ status: "pending", queueId: w.queueA.id });
+      const inB = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      await w.ticketFor({ status: "pending", queueId: w.queueB.id, userId: w.agentB.id });
+      await w.ticketFor({ status: "bot" });
+      expect(ids(await request(app).get("/api/tickets?status=pending").set("Authorization", bearer(agent)))).toEqual(
+        [inA.id, inB.id].sort(),
+      );
+      expect((await request(app).get("/api/tickets?status=bot").set("Authorization", bearer(agent))).body.items).toEqual([]);
+      const res = await request(app).post(`/api/tickets/${inB.id}/accept`).set("Authorization", bearer(agent));
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ status: "open", userId: agent.id });
+    });
+
+    it("canViewOthersOpen shows other agents' open tickets but does not let the agent handle them", async () => {
+      const w = await world();
+      const agent = await createUser(w.company.id, { queueIds: [w.queueA.id], canViewOthersOpen: true });
+      const mine = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: agent.id });
+      const others = await w.ticketFor({ status: "open", queueId: w.queueB.id, userId: w.agentB.id });
+      await w.ticketFor({ status: "closed", userId: w.agentB.id });
+      expect(ids(await request(app).get("/api/tickets?status=open").set("Authorization", bearer(agent)))).toEqual(
+        [mine.id, others.id].sort(),
+      );
+      expect((await request(app).get("/api/tickets?status=closed").set("Authorization", bearer(agent))).body.items).toEqual([]);
+      expect((await request(app).get(`/api/tickets/${others.id}`).set("Authorization", bearer(agent))).status).toBe(200);
+      const close = await request(app).post(`/api/tickets/${others.id}/close`).set("Authorization", bearer(agent));
+      expect(close.status).toBe(403);
+      await others.update({ unreadCount: 3 });
+      const read = await request(app).post(`/api/tickets/${others.id}/read`).set("Authorization", bearer(agent));
+      expect(read.body.unreadCount).toBe(3);
+    });
   });
 
   it("forbids accepting a ticket from another queue", async () => {
@@ -133,6 +200,19 @@ describe("tickets", () => {
     expect(res.body.closedAt).toBeTruthy();
     const sent = await Message.findOne({ where: { ticketId: ticket.id, fromMe: true } });
     expect(sent).toMatchObject({ body: "Obrigado pelo contato!", isBot: true, ack: "pending" });
+  });
+
+  it("closes a ticket without the closing message when asked", async () => {
+    const w = await world();
+    await w.connection.update({ closingMessage: "Obrigado pelo contato!" });
+    const ticket = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.agentA.id });
+    const res = await request(app)
+      .post(`/api/tickets/${ticket.id}/close`)
+      .set("Authorization", bearer(w.agentA))
+      .send({ sendClosingMessage: false });
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("closed");
+    expect(await Message.count({ where: { ticketId: ticket.id, fromMe: true } })).toBe(0);
   });
 
   it("hides tickets from other companies", async () => {

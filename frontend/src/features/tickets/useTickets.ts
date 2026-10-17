@@ -11,19 +11,23 @@ import type { Viewer } from "./visibility";
 const NO_QUEUES: number[] = [];
 
 /**
- * Quem está vendo as listas. Para atendentes depende das filas vindas de /users/options:
+ * Quem está vendo as listas. Para atendentes depende das filas e permissões vindas de /users/options:
  * até elas carregarem retorna null (sem filas não dá para saber se um ticket pendente é visível).
  */
 export function useViewer(): Viewer | null {
   const user = useAuth((s) => s.user);
   const { data } = useUserOptions();
   const optionsLoaded = data !== undefined;
-  const queueIds = (user && data?.find((u) => u.id === user.id)?.queueIds) || NO_QUEUES;
+  const self = user ? data?.find((u) => u.id === user.id) : undefined;
+  const queueIds = self?.queueIds || NO_QUEUES;
+  const canViewBot = self?.canViewBot ?? false;
+  const canViewOtherQueues = self?.canViewOtherQueues ?? false;
+  const canViewOthersOpen = self?.canViewOthersOpen ?? false;
   return useMemo(() => {
     if (!user) return null;
     if (user.profile === "agent" && !optionsLoaded) return null;
-    return { userId: user.id, profile: user.profile, queueIds };
-  }, [user, queueIds, optionsLoaded]);
+    return { userId: user.id, profile: user.profile, queueIds, canViewBot, canViewOtherQueues, canViewOthersOpen };
+  }, [user, queueIds, optionsLoaded, canViewBot, canViewOtherQueues, canViewOthersOpen]);
 }
 
 export function useTicketList(status: TicketStatus, search: string) {

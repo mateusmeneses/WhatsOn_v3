@@ -5,11 +5,14 @@ import { logger } from "../../shared/logger";
 import { AuthContext, SessionContext } from "../auth/auth.types";
 import { isCompanyBlocked } from "../companies/companyStatus";
 import { verifyAccessToken } from "../auth/tokens";
+import { loadAgentScope, watchesAllTickets } from "../tickets/visibility";
 import { userQueueIds } from "../users/userQueues";
 
 export const rooms = {
   company: (id: number) => `company:${id}`,
   supervisors: (companyId: number) => `company:${companyId}:supervisors`,
+  /** Atendentes com permissão de ver chamados além das suas filas (recebem todo ticket:update). */
+  ticketWatchers: (companyId: number) => `company:${companyId}:ticket-watchers`,
   queue: (id: number) => `queue:${id}`,
   user: (id: number) => `user:${id}`,
   ticket: (id: number) => `ticket:${id}`,
@@ -51,6 +54,9 @@ export function initSocket(server: http.Server, deps: SocketDeps): Server {
         socket.join(rooms.company(session.companyId));
         if (session.profile !== "agent") socket.join(rooms.supervisors(session.companyId));
         for (const queueId of await userQueueIds(session.userId)) socket.join(rooms.queue(queueId));
+        if (session.profile === "agent" && watchesAllTickets(await loadAgentScope(session as AuthContext))) {
+          socket.join(rooms.ticketWatchers(session.companyId));
+        }
       }
     } catch (err) {
       logger.error({ err, userId: session.userId }, "socket room setup failed");

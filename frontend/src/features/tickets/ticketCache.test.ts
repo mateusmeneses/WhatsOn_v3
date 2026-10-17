@@ -23,7 +23,7 @@ describe("upsertTicket", () => {
 });
 
 describe("applyTicketUpdate", () => {
-  const viewer = { userId: 1, profile: "agent" as const, queueIds: [10] };
+  const viewer = { userId: 1, profile: "agent" as const, queueIds: [10], canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false };
 
   it("moves a ticket from the pending tab to the open tab when the agent accepts it", () => {
     const qc = createTestQueryClient();

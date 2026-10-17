@@ -1,10 +1,10 @@
 import { Op } from "sequelize";
-import { Connection, Contact, Message, Ticket } from "../../models";
+import { Connection, Contact, Message, MessageType, Ticket, User } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { paginate } from "../../shared/http";
 import { logger } from "../../shared/logger";
 import { AuthContext } from "../auth/auth.types";
-import { resolveMediaPath, StoredMedia } from "../media/media.storage";
+import { mediaTypeFromMime, resolveMediaPath, StoredMedia } from "../media/media.storage";
 import { emitMessage, emitTicket } from "../tickets/ticket.events";
 import { getVisibleTicket } from "../tickets/tickets.service";
 import { getProvider } from "../whatsapp/registry";
@@ -23,10 +23,33 @@ export async function listMessages(auth: AuthContext, ticketId: number, opts: { 
   return { items: page.items.reverse(), hasMore: page.hasMore };
 }
 
+/** Tipos de mídia que aceitam legenda no WhatsApp (áudio e figurinha não). */
+const CAPTIONED: MessageType[] = ["image", "video", "document"];
+
+/**
+ * Assinatura "*Nome:*" na primeira linha. Só o administrador escolhe se assina;
+ * os demais perfis sempre assinam.
+ */
+export async function signedBody(
+  auth: AuthContext,
+  body: string | undefined,
+  media: StoredMedia | undefined,
+  sign: boolean | undefined,
+): Promise<string | undefined> {
+  if (auth.profile === "admin" && sign === false) return body;
+  const text = body?.trim() ? body : "";
+  if (!text && !(media && CAPTIONED.includes(mediaTypeFromMime(media.mime)))) return body;
+  const user = await User.findByPk(auth.userId, { attributes: ["name"] });
+  // Só o primeiro nome: "Mateus Meneses" assina "*Mateus:*".
+  const name = user?.name.trim().split(/\s+/)[0];
+  if (!name) return body;
+  return text ? `*${name}:*\n${text}` : `*${name}:*`;
+}
+
 export async function sendAgentMessage(
   auth: AuthContext,
   ticketId: number,
-  input: { body?: string; quotedMessageId?: number; media?: StoredMedia },
+  input: { body?: string; quotedMessageId?: number; media?: StoredMedia; sign?: boolean },
 ) {
   const ticket = await getVisibleTicket(auth, ticketId);
   if (ticket.status !== "open") throw new AppError("TICKET_NOT_OPEN", 409, "Aceite o atendimento antes de responder");
@@ -39,7 +62,7 @@ export async function sendAgentMessage(
     if (!quoted) throw new AppError("INVALID_QUOTED", 400, "Mensagem citada inválida");
   }
   return createOutgoingMessage(ticket, {
-    body: input.body,
+    body: await signedBody(auth, input.body, input.media, input.sign),
     media: input.media ?? null,
     quotedMessageId: input.quotedMessageId ?? null,
     sentByUserId: auth.userId,

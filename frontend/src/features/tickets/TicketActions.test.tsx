@@ -108,7 +108,24 @@ describe("TicketActions", () => {
     // confirma: reabre e clica em Finalizar dentro do diálogo
     await userEvent.click(screen.getByRole("button", { name: /finalizar/i }));
     await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Finalizar" }));
-    await waitFor(() => expect(closeTicket).toHaveBeenCalledWith(1));
+    await waitFor(() => expect(closeTicket).toHaveBeenCalledWith(1, true));
+  });
+
+  it("closes without the closing message when the box is unticked", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    vi.mocked(closeTicket).mockResolvedValue(makeTicket({ status: "closed", userId: 1 }));
+    renderWithProviders(<TicketActions ticket={makeTicket({ status: "open", userId: 1 })} />);
+    await userEvent.click(screen.getByRole("button", { name: /finalizar/i }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: "Enviar mensagem de finalização" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Finalizar" }));
+    await waitFor(() => expect(closeTicket).toHaveBeenCalledWith(1, false));
+  });
+
+  it("shows the accept button on tickets still in the bot", () => {
+    setTestUser({ id: 2, profile: "supervisor" });
+    renderWithProviders(<TicketActions ticket={makeTicket({ status: "bot" })} />);
+    expect(screen.getByRole("button", { name: /aceitar/i })).toBeInTheDocument();
   });
 
   it("reopens an own closed ticket after confirming", async () => {

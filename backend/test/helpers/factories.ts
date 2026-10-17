@@ -24,7 +24,16 @@ export function createCompany(attrs: Partial<{ name: string; timezone: string }>
 
 export async function createUser(
   companyId: number,
-  attrs: Partial<{ name: string; email: string; password: string; profile: Profile; queueIds: number[] }> = {},
+  attrs: Partial<{
+    name: string;
+    email: string;
+    password: string;
+    profile: Profile;
+    queueIds: number[];
+    canViewBot: boolean;
+    canViewOtherQueues: boolean;
+    canViewOthersOpen: boolean;
+  }> = {},
 ) {
   const n = next();
   const { password = "secret123", queueIds = [], ...rest } = attrs;
