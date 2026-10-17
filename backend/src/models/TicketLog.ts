@@ -21,4 +21,8 @@ export class TicketLog extends Model {
 
   @Column({ type: DataType.INTEGER, allowNull: true })
   toQueueId!: number | null;
+
+  /** Transferência direta para um técnico (null = para a fila). */
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  toUserId!: number | null;
 }

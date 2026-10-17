@@ -1,9 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { History, Pencil } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { EditContactDialog } from "@/features/contacts/EditContactDialog";
-import { fetchTicketAttendants, ticketKeys } from "@/features/tickets/ticketsApi";
+import { TicketHistoryDialog } from "@/features/tickets/TicketHistoryDialog";
 import { formatPhone, initials } from "@/lib/format";
 import type { Ticket, TicketStatus } from "@/types/api";
 
@@ -18,12 +17,7 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
   const contact = ticket.contact;
   const status = STATUS[ticket.status];
   const [editing, setEditing] = useState(false);
-  // refaz a busca a cada mudança do ticket (aceite, transferência, nova resposta)
-  const attendants = useQuery({
-    queryKey: [...ticketKeys.attendants(ticket.id), ticket.updatedAt],
-    queryFn: () => fetchTicketAttendants(ticket.id),
-    placeholderData: (prev) => prev,
-  }).data;
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-5 py-3">
@@ -47,22 +41,6 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
             )}
           </div>
           <p className="text-xs text-ink-muted">{contact ? formatPhone(contact.number) : ""}</p>
-          {attendants && attendants.length > 0 && (
-            <p className="truncate text-xs text-ink-muted" data-testid="ticket-attendants">
-              {attendants.length === 1 ? "Técnico: " : "Técnicos: "}
-              {attendants.map((u, i) => (
-                <span key={u.id}>
-                  {i > 0 && ", "}
-                  <span
-                    className={u.id === ticket.userId ? "font-medium text-ink" : undefined}
-                    title={u.id === ticket.userId ? "Responsável atual" : undefined}
-                  >
-                    {u.name}
-                  </span>
-                </span>
-              ))}
-            </p>
-          )}
         </div>
         <Badge tone={status.tone}>{status.label}</Badge>
         {ticket.queue && (
@@ -70,9 +48,18 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
             {ticket.queue.name}
           </Badge>
         )}
+        <button
+          type="button"
+          className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-primary-soft hover:text-primary"
+          title="Técnicos que atenderam e transferências"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="h-3.5 w-3.5" aria-hidden /> Histórico
+        </button>
       </div>
       {actions}
       {editing && contact && <EditContactDialog contact={contact} onClose={() => setEditing(false)} />}
+      {historyOpen && <TicketHistoryDialog ticket={ticket} onClose={() => setHistoryOpen(false)} />}
     </header>
   );
 }

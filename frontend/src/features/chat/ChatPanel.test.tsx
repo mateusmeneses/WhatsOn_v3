@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AxiosError, AxiosHeaders } from "axios";
 import { updateContact } from "@/features/contacts/contactsApi";
-import { fetchTicket, fetchTicketAttendants, markTicketRead } from "@/features/tickets/ticketsApi";
+import { fetchTicket, fetchTicketAttendants, fetchTicketHistory, markTicketRead } from "@/features/tickets/ticketsApi";
 import { fetchUserOptions } from "@/features/users/usersApi";
 import { FakeSocket } from "@/test/fakeSocket";
 import { makeContact, makeMessage, makeTicket } from "@/test/factories";
@@ -16,6 +16,7 @@ vi.mock("@/features/tickets/ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/tickets/ticketsApi")>()),
   fetchTicket: vi.fn(),
   fetchTicketAttendants: vi.fn(),
+  fetchTicketHistory: vi.fn(),
   markTicketRead: vi.fn(),
 }));
 vi.mock("@/features/contacts/contactsApi", async (importOriginal) => ({
@@ -82,13 +83,37 @@ describe("ChatPanel", () => {
     expect(socket.emitted.some((e) => e.event === "ticket:join" && e.args[0] === 1)).toBe(true);
   });
 
-  it("lists the technicians who handled the ticket, highlighting the current one", async () => {
+  it("opens the ticket history with the technicians and the transfer timeline", async () => {
     setup();
     vi.mocked(fetchTicketAttendants).mockResolvedValue([
       { id: 2, name: "Bruno" },
       { id: 1, name: "Ana" },
     ]);
-    const attendants = await screen.findByTestId("ticket-attendants");
+    const queue = (id: number, name: string) => ({ id, name, color: "#22c55e" });
+    vi.mocked(fetchTicketHistory).mockResolvedValue([
+      { id: 1, event: "created", createdAt: "2026-10-17T12:00:00Z", user: null, fromQueue: null, toQueue: null, toUser: null },
+      { id: 2, event: "accepted", createdAt: "2026-10-17T12:01:00Z", user: { id: 2, name: "Bruno" }, fromQueue: null, toQueue: null, toUser: null },
+      {
+        id: 3,
+        event: "transferred",
+        createdAt: "2026-10-17T12:05:00Z",
+        user: { id: 2, name: "Bruno" },
+        fromQueue: queue(10, "Suporte"),
+        toQueue: queue(20, "Financeiro"),
+        toUser: { id: 1, name: "Ana" },
+      },
+    ]);
+    await screen.findByText("Bom dia");
+    expect(screen.queryByTestId("ticket-attendants")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /histórico/i }));
+    const dialog = await screen.findByRole("dialog", { name: "Histórico do atendimento" });
+    const timeline = await within(dialog).findByRole("list", { name: "Linha do tempo do atendimento" });
+    expect(within(timeline).getByText("Atendimento iniciado pelo cliente")).toBeInTheDocument();
+    expect(within(timeline).getByText("Aceito por Bruno")).toBeInTheDocument();
+    expect(within(timeline).getByText("Transferido por Bruno")).toBeInTheDocument();
+    expect(within(timeline).getByText("Suporte → Financeiro · para Ana")).toBeInTheDocument();
+    expect(fetchTicketHistory).toHaveBeenCalledWith(1);
+    const attendants = await within(dialog).findByTestId("ticket-attendants");
     expect(attendants).toHaveTextContent("Técnicos: Bruno, Ana");
     expect(within(attendants).getByText("Ana")).toHaveAttribute("title", "Responsável atual");
     expect(fetchTicketAttendants).toHaveBeenCalledWith(1);

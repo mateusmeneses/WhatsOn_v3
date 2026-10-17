@@ -2,6 +2,17 @@
   "atualizadoEm": "2026-10-17",
   "versoes": [
     {
+      "versao": "2026.10.17.2",
+      "data": "17/10/2026",
+      "titulo": "Histórico do atendimento",
+      "novidades": [
+        "Novo: botão \"Histórico\" no cabeçalho da conversa mostra os técnicos que atenderam o cliente e a linha do tempo do atendimento: quando começou, quem aceitou, cada transferência (de qual fila para qual e para quem), finalização e reabertura."
+      ],
+      "melhorias": [
+        "A lista de técnicos saiu do cabeçalho da conversa e foi para dentro do Histórico, deixando o topo mais limpo."
+      ]
+    },
+    {
       "versao": "2026.10.17.1",
       "data": "17/10/2026",
       "titulo": "Permissões de atendimento, assinatura e finalizar sem mensagem",

@@ -1,5 +1,5 @@
 import { Op, UniqueConstraintError } from "sequelize";
-import { Connection, Contact, Message, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
+import { Connection, Contact, Message, Queue, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { PAGE_SIZE, paginate } from "../../shared/http";
@@ -13,7 +13,7 @@ import { agentQueueEligible, canView, loadAgentScope, visibilityWhere } from "./
 export async function logTicket(
   ticket: Ticket,
   event: TicketEvent,
-  extra: { userId?: number | null; fromQueueId?: number | null; toQueueId?: number | null } = {},
+  extra: { userId?: number | null; fromQueueId?: number | null; toQueueId?: number | null; toUserId?: number | null } = {},
 ): Promise<void> {
   await TicketLog.create({
     companyId: ticket.companyId,
@@ -22,11 +22,52 @@ export async function logTicket(
     userId: extra.userId ?? null,
     fromQueueId: extra.fromQueueId ?? null,
     toQueueId: extra.toQueueId ?? null,
+    toUserId: extra.toUserId ?? null,
   });
 }
 
 export function loadTicket(id: number) {
   return Ticket.findByPk(id, { include: TICKET_INCLUDE });
+}
+
+export interface TicketHistoryEntry {
+  id: number;
+  event: TicketEvent;
+  createdAt: Date;
+  /** Quem fez a ação (null = sistema/cliente). */
+  user: { id: number; name: string } | null;
+  fromQueue: { id: number; name: string; color: string } | null;
+  toQueue: { id: number; name: string; color: string } | null;
+  /** Transferência direta para um técnico. */
+  toUser: { id: number; name: string } | null;
+}
+
+/** Linha do tempo do chamado (criação, aceites, transferências, finalização), da mais antiga para a mais nova. */
+export async function ticketHistory(ticket: Ticket): Promise<TicketHistoryEntry[]> {
+  const logs = await TicketLog.findAll({ where: { ticketId: ticket.id }, order: [["createdAt", "ASC"], ["id", "ASC"]] });
+  const userIds = [...new Set(logs.flatMap((l) => [l.userId, l.toUserId]).filter((id): id is number => id !== null))];
+  const queueIds = [...new Set(logs.flatMap((l) => [l.fromQueueId, l.toQueueId]).filter((id): id is number => id !== null))];
+  const [users, queues] = await Promise.all([
+    userIds.length ? User.findAll({ where: { id: userIds }, attributes: ["id", "name"] }) : [],
+    queueIds.length ? Queue.findAll({ where: { id: queueIds, companyId: ticket.companyId }, attributes: ["id", "name", "color"] }) : [],
+  ]);
+  const userOf = (id: number | null) => {
+    const u = id === null ? undefined : users.find((x) => x.id === id);
+    return u ? { id: u.id, name: u.name } : null;
+  };
+  const queueOf = (id: number | null) => {
+    const q = id === null ? undefined : queues.find((x) => x.id === id);
+    return q ? { id: q.id, name: q.name, color: q.color } : null;
+  };
+  return logs.map((l) => ({
+    id: l.id,
+    event: l.event,
+    createdAt: l.createdAt,
+    user: userOf(l.userId),
+    fromQueue: queueOf(l.fromQueueId),
+    toQueue: queueOf(l.toQueueId),
+    toUser: userOf(l.toUserId),
+  }));
 }
 
 /**
@@ -164,7 +205,12 @@ export async function transferTicket(auth: AuthContext, id: number, input: { que
   if (updated === 0) throw ticketClosed();
   await ticket.reload();
   await cancelBotTimeout(ticket.id);
-  await logTicket(ticket, "transferred", { userId: auth.userId, fromQueueId: prev.queueId, toQueueId: queueId });
+  await logTicket(ticket, "transferred", {
+    userId: auth.userId,
+    fromQueueId: prev.queueId,
+    toQueueId: queueId,
+    toUserId: input.userId ?? null,
+  });
   await emitTicket(ticket.id, prev);
   return loadTicket(id);
 }

@@ -104,6 +104,19 @@ export interface Ticket {
   user?: { id: number; name: string } | null;
 }
 
+export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "reopened";
+
+/** Um passo da linha do tempo do atendimento (GET /tickets/:id/history). */
+export interface TicketHistoryEntry {
+  id: number;
+  event: TicketEvent;
+  createdAt: string;
+  user: { id: number; name: string } | null;
+  fromQueue: { id: number; name: string; color: string } | null;
+  toQueue: { id: number; name: string; color: string } | null;
+  toUser: { id: number; name: string } | null;
+}
+
 export interface Message {
   id: number;
   companyId: number;

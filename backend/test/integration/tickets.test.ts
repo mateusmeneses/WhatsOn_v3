@@ -336,6 +336,42 @@ describe("tickets", () => {
     });
   });
 
+  describe("history", () => {
+    it("returns the ticket timeline with who did what and the transfers", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "pending", queueId: w.queueA.id });
+      await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.agentA));
+      await request(app)
+        .post(`/api/tickets/${ticket.id}/transfer`)
+        .set("Authorization", bearer(w.agentA))
+        .send({ queueId: w.queueB.id, userId: w.agentB.id });
+      await request(app).post(`/api/tickets/${ticket.id}/accept`).set("Authorization", bearer(w.agentB));
+      await request(app)
+        .post(`/api/tickets/${ticket.id}/close`)
+        .set("Authorization", bearer(w.agentB))
+        .send({ sendClosingMessage: false });
+
+      const res = await request(app).get(`/api/tickets/${ticket.id}/history`).set("Authorization", bearer(w.supervisor));
+      expect(res.status).toBe(200);
+      expect(res.body.map((e: { event: string }) => e.event)).toEqual(["accepted", "transferred", "accepted", "closed"]);
+      expect(res.body[1]).toMatchObject({
+        user: { id: w.agentA.id, name: w.agentA.name },
+        fromQueue: { id: w.queueA.id, name: w.queueA.name },
+        toQueue: { id: w.queueB.id, name: w.queueB.name },
+        toUser: { id: w.agentB.id, name: w.agentB.name },
+      });
+      expect(res.body[3]).toMatchObject({ user: { id: w.agentB.id }, toUser: null });
+      expect(res.body[0].createdAt).toEqual(expect.any(String));
+    });
+
+    it("is hidden from agents without access to the ticket", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      const denied = await request(app).get(`/api/tickets/${ticket.id}/history`).set("Authorization", bearer(w.agentA));
+      expect(denied.status).toBe(403);
+    });
+  });
+
   describe("attendants", () => {
     it("lists who accepted, replied and holds the ticket, in order of arrival", async () => {
       const w = await world();

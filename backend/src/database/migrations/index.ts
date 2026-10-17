@@ -5,6 +5,8 @@ import * as m0003 from "./0003-reopen-user-phone-scheduled";
 import * as m0004 from "./0004-connection-api-token";
 import * as m0005 from "./0005-super-admin";
 import * as m0006 from "./0006-user-ticket-access";
+import * as m0007 from "./0007-ticket-log-to-user";
+import * as m0008 from "./0008-contact-soft-delete";
 
 export interface MigrationModule {
   name: string;
@@ -19,4 +21,6 @@ export const migrations: MigrationModule[] = [
   { name: "0004-connection-api-token", up: m0004.up, down: m0004.down },
   { name: "0005-super-admin", up: m0005.up, down: m0005.down },
   { name: "0006-user-ticket-access", up: m0006.up, down: m0006.down },
+  { name: "0007-ticket-log-to-user", up: m0007.up, down: m0007.down },
+  { name: "0008-contact-soft-delete", up: m0008.up, down: m0008.down },
 ];

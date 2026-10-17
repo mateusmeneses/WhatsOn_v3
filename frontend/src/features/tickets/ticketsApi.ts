@@ -1,12 +1,18 @@
 import { api } from "@/lib/api";
-import type { Page, Ticket, TicketStatus } from "@/types/api";
+import type { Page, Ticket, TicketHistoryEntry, TicketStatus } from "@/types/api";
 
 export const ticketKeys = {
   lists: ["tickets", "list"] as const,
   list: (status: TicketStatus, search: string) => ["tickets", "list", status, search] as const,
   detail: (id: number) => ["tickets", "detail", id] as const,
   attendants: (id: number) => ["tickets", "attendants", id] as const,
+  history: (id: number) => ["tickets", "history", id] as const,
 };
+
+export async function fetchTicketHistory(id: number): Promise<TicketHistoryEntry[]> {
+  const { data } = await api.get<TicketHistoryEntry[]>(`/tickets/${id}/history`);
+  return data;
+}
 
 export async function fetchTicketAttendants(id: number): Promise<{ id: number; name: string }[]> {
   const { data } = await api.get<{ id: number; name: string }[]>(`/tickets/${id}/attendants`);

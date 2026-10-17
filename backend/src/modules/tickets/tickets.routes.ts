@@ -11,6 +11,7 @@ import {
   markTicketRead,
   reopenTicket,
   ticketAttendants,
+  ticketHistory,
   transferTicket,
 } from "./tickets.service";
 
@@ -40,6 +41,10 @@ ticketRoutes.get("/:id", async (req, res) => {
 
 ticketRoutes.get("/:id/attendants", async (req, res) => {
   res.json(await ticketAttendants(await getVisibleTicket(currentAuth(req), idParam(req))));
+});
+
+ticketRoutes.get("/:id/history", async (req, res) => {
+  res.json(await ticketHistory(await getVisibleTicket(currentAuth(req), idParam(req))));
 });
 
 ticketRoutes.post("/:id/accept", async (req, res) => {
