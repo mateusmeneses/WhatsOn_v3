@@ -1,5 +1,6 @@
 import request from "supertest";
 import { createApp } from "../../src/app";
+import { Contact } from "../../src/models";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
 import { emitter } from "../../src/modules/realtime/socket";
@@ -37,6 +38,24 @@ describe("contacts API", () => {
       .send({ name: "Cliente VIP" });
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("Cliente VIP");
+  });
+
+  it("soft deletes a contact: hidden from the list and from GET, row kept", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const contact = await createContact(company.id, { name: "Número inválido", number: "134703227076781" });
+    await createContact(company.id, { name: "Maria", number: "5511988887777" });
+
+    const del = await request(app).delete(`/api/contacts/${contact.id}`).set("Authorization", bearer(agent));
+    expect(del.status).toBe(204);
+
+    const list = await request(app).get("/api/contacts").set("Authorization", bearer(agent));
+    expect(list.body.items.map((c: { name: string }) => c.name)).toEqual(["Maria"]);
+    const one = await request(app).get(`/api/contacts/${contact.id}`).set("Authorization", bearer(agent));
+    expect(one.status).toBe(404);
+
+    const row = await Contact.findByPk(contact.id);
+    expect(row?.deletedAt).toBeInstanceOf(Date);
   });
 
   it("hides contacts of other companies", async () => {

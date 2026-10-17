@@ -22,6 +22,8 @@ async function upsertContact(companyId: number, ev: InboundMessage): Promise<Con
     defaults: { companyId, number: ev.remoteNumber, name: pushName ?? ev.remoteNumber, isGroup: false },
   });
   if (!created && pushName && contact.name === contact.number) await contact.update({ name: pushName });
+  // contato apagado que voltou a mandar mensagem: reativa para a conversa não sumir
+  if (contact.deletedAt) await contact.update({ deletedAt: null });
   return contact;
 }
 

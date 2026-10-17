@@ -9,6 +9,7 @@ export async function listContacts(companyId: number, { search, page }: { search
   const where = {
     companyId,
     isGroup: false,
+    deletedAt: null,
     ...(term
       ? { [Op.or]: [{ name: { [Op.iLike]: `%${term}%` } }, { number: { [Op.like]: `%${term}%` } }] }
       : {}),
@@ -23,9 +24,14 @@ export async function listContacts(companyId: number, { search, page }: { search
 }
 
 export async function getContactOr404(companyId: number, id: number): Promise<Contact> {
-  const contact = await Contact.findOne({ where: { id, companyId } });
+  const contact = await Contact.findOne({ where: { id, companyId, deletedAt: null } });
   if (!contact) throw notFound("Contato");
   return contact;
+}
+
+export async function deleteContact(companyId: number, id: number): Promise<void> {
+  const contact = await getContactOr404(companyId, id);
+  await contact.update({ deletedAt: new Date() });
 }
 
 export async function updateContact(companyId: number, id: number, input: { name: string }) {

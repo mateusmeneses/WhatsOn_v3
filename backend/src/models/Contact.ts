@@ -16,4 +16,8 @@ export class Contact extends Model {
 
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   isGroup!: boolean;
+
+  /** Apagado na consulta (soft delete). Não é o `paranoid` do Sequelize: o número segue único e reativável. */
+  @Column({ type: DataType.DATE, allowNull: true })
+  deletedAt!: Date | null;
 }

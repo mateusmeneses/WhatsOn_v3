@@ -59,6 +59,7 @@ async function resolveContact(connection: Connection, rawNumber: string): Promis
     where: { companyId: connection.companyId, number },
     defaults: { companyId: connection.companyId, number, name: number, isGroup: false },
   });
+  if (contact.deletedAt) await contact.update({ deletedAt: null });
   return contact;
 }
 
