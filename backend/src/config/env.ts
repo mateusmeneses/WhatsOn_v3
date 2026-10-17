@@ -14,6 +14,10 @@ const emptyAsUndefined = (v: unknown) => (v === "" ? undefined : v);
 const schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().default(4000),
+  /** Versão do build (yyyy.MM.dd.N), vinda do version.txt pelos scripts de deploy. */
+  APP_VERSION: z.preprocess(emptyAsUndefined, z.string().default("0.0.0.0")),
+  /** Data/hora do build (dd/MM/yyyy HH:mm), gravada pelos scripts de deploy. */
+  APP_BUILD_TIME: z.preprocess(emptyAsUndefined, z.string().default("")),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   DB_HOST: z.string().default("localhost"),
   DB_PORT: z.coerce.number().int().default(5433),

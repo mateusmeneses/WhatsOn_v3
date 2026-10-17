@@ -19,5 +19,7 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     css: false,
     clearMocks: true,
+    // Testes de formulário longos passam de 5s com a máquina carregada (vários vitest em paralelo).
+    testTimeout: 15000,
   },
 });

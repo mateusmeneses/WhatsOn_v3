@@ -93,6 +93,11 @@ fi
 echo "ok"
 
 step "Build e subida dos containers"
+# Versão do build vem do version.txt commitado (gravado pelo scripts/deploy.ps1 -N).
+APP_VERSION="$(tr -d '\r\n ' < version.txt 2>/dev/null || true)"
+APP_BUILD_TIME="$(date "+%d/%m/%Y %H:%M")"
+export APP_VERSION APP_BUILD_TIME
+echo "versão: ${APP_VERSION:-sem version.txt}"
 docker compose up -d --build --remove-orphans
 docker image prune -f >/dev/null || true
 

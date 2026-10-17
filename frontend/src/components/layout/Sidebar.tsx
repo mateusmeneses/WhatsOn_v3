@@ -14,6 +14,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom";
 import logoMark from "@/assets/brand/logo-mark.webp";
 import { logout } from "@/features/auth/authApi";
+import { ChangelogButton } from "@/features/version/ChangelogButton";
 import { cn } from "@/lib/cn";
 import { initials } from "@/lib/format";
 import { useAuth } from "@/stores/auth";
@@ -78,6 +79,7 @@ export function Sidebar() {
         </NavLink>
       ))}
       <div className="mt-auto flex flex-col items-center gap-2">
+        <ChangelogButton />
         <span
           title={user.name}
           className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white"

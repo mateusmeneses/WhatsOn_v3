@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/cn";
 import { useAuth } from "@/stores/auth";
+import { useAppVersion } from "@/features/version/useAppVersion";
 import { login } from "./authApi";
 
 const delay = (ms: number): CSSProperties => ({ animationDelay: `${ms}ms` });
@@ -197,6 +198,7 @@ export function LoginPage() {
           <p className="mt-8 text-center text-xs text-ink-muted motion-safe:animate-fade-up lg:text-left" style={delay(360)}>
             © {new Date().getFullYear()} WhatsOn · Gerenciador de Atendimento
           </p>
+          <LoginVersion />
         </div>
       </section>
     </main>
@@ -325,5 +327,16 @@ function ChatPreview() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoginVersion() {
+  const { data } = useAppVersion();
+  if (!data) return null;
+  return (
+    <p className="mt-1 text-center text-[11px] text-ink-muted/80 lg:text-left">
+      Versão {data.version}
+      {data.buildTime && <> · Build: {data.buildTime}</>}
+    </p>
   );
 }

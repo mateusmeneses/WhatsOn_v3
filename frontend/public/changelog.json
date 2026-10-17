@@ -1,0 +1,20 @@
+{
+  "atualizadoEm": "2026-10-17",
+  "versoes": [
+    {
+      "versao": "2026.10.17.1",
+      "data": "17/10/2026",
+      "titulo": "Permissões de atendimento, assinatura e finalizar sem mensagem",
+      "novidades": [
+        "Novo: no cadastro do atendente, o administrador escolhe se ele vê os atendimentos ainda no bot (sem setor), os aguardando de outros setores e os que estão com outros atendentes. Os do bot e de outros setores ele também pode aceitar.",
+        "Novo: as mensagens enviadas pelo painel saem assinadas com o primeiro nome do técnico em negrito (ex.: *Mateus:*). Só o administrador pode desligar a assinatura, pelo botão de caneta ao lado do clipe.",
+        "Novo: ao finalizar um atendimento, dá para desmarcar \"Enviar mensagem de finalização\" e encerrar sem mandar nada ao cliente.",
+        "Novo: botão \"Novidades\" (estrelas) no menu lateral e versão do sistema no rodapé e na tela de login."
+      ],
+      "melhorias": [
+        "A lista de atendimentos mostra, ao lado da fila, o técnico que está atendendo.",
+        "Supervisores e administradores também podem aceitar um atendimento que ainda está no bot."
+      ]
+    }
+  ]
+}

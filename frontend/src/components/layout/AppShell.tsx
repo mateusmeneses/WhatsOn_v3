@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom";
 import { CompanyBanner } from "@/features/admin/CompanyBanner";
 import { ConnectionAlerts } from "@/features/connections/ConnectionAlerts";
 import { TicketRealtime } from "@/features/tickets/useTickets";
+import { VersionBadge } from "@/features/version/VersionBadge";
 import { RealtimeProvider, useRealtimeReconnecting } from "@/realtime/RealtimeProvider";
 import { Sidebar } from "./Sidebar";
 
@@ -20,6 +21,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      <VersionBadge />
     </RealtimeProvider>
   );
 }

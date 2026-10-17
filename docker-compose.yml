@@ -69,6 +69,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      # Preenchidos pelos scripts de deploy a partir do version.txt.
+      APP_VERSION: ${APP_VERSION:-}
+      APP_BUILD_TIME: ${APP_BUILD_TIME:-}
       DB_HOST: postgres
       DB_PORT: 5432
       REDIS_URL: redis://redis:6379/0

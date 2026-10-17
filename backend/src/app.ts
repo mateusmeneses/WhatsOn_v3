@@ -28,6 +28,10 @@ export function createApp(options: AppOptions = {}): Express {
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/health", createHealthHandler(options.healthChecks ?? {}));
+  // Pública: permite conferir o build no ar sem login (rodapé, tela de login, novidades).
+  app.get("/api/version", (_req, res) => {
+    res.json({ version: env.APP_VERSION, buildTime: env.APP_BUILD_TIME });
+  });
   app.use(
     "/media",
     express.static(path.resolve(env.MEDIA_DIR), {
