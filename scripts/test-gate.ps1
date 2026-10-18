@@ -27,6 +27,10 @@ function Get-CodeFingerprint {
     git -C $root read-tree HEAD 2>$null
     git -C $root -c core.autocrlf=false -c core.safecrlf=false add -A -- . @excluded 2>$null
     if ($LASTEXITCODE -ne 0) { return $null }
+    # O índice parte do HEAD: tira também a cópia commitada dos excluídos (senão commitar o
+    # version.txt novo mudaria a impressão digital de um código idêntico).
+    git -C $root rm -r -q --cached --ignore-unmatch -- version.txt .claude 2>$null
+    if ($LASTEXITCODE -ne 0) { return $null }
     $tree = (git -C $root write-tree 2>$null)
     if ($LASTEXITCODE -ne 0 -or -not $tree) { return $null }
     return $tree.Trim()
