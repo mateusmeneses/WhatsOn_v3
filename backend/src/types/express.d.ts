@@ -1,4 +1,4 @@
-import type { Connection } from "../models";
+import type { Connection, Partner } from "../models";
 import { AuthContext, SessionContext } from "../modules/auth/auth.types";
 
 declare global {
@@ -10,6 +10,8 @@ declare global {
       authSession?: SessionContext;
       /** Conexão autenticada pelo token da API externa (/api/v1). */
       apiConnection?: Connection;
+      /** Sistema parceiro autenticado pela chave da API de parceiros (/api/partner/v1). */
+      partner?: Partner;
     }
   }
 }

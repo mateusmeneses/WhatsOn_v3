@@ -7,6 +7,7 @@ import helmet from "helmet";
 import { env } from "./config/env";
 import { isInlineMediaFile } from "./modules/media/media.storage";
 import { externalApiRoutes } from "./modules/externalApi/externalApi.routes";
+import { partnerApiRoutes } from "./modules/partners/partnerApi.routes";
 import { webhookRoutes } from "./modules/inbound/webhook.routes";
 import { apiRoutes } from "./routes";
 import { errorHandler } from "./shared/errors/errorHandler";
@@ -46,6 +47,7 @@ export function createApp(options: AppOptions = {}): Express {
   app.use("/webhooks", webhookRoutes);
   // Antes de /api: rotas internas montadas na raiz de /api exigiriam o JWT do painel.
   app.use("/api/v1", externalApiRoutes);
+  app.use("/api/partner/v1", partnerApiRoutes);
   app.use("/api", apiRoutes);
 
   options.beforeErrorHandler?.(app);

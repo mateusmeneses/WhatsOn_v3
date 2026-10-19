@@ -37,6 +37,7 @@ const schema = z.object({
   OUTBOUND_SHARDS: z.coerce.number().int().min(1).default(8),
   /** Requisições por minuto por token na API externa (/api/v1). */
   EXTERNAL_API_RATE_LIMIT: z.coerce.number().int().min(1).default(60),
+  PARTNER_API_RATE_LIMIT: z.coerce.number().int().min(1).default(60),
   BULL_BOARD_USER: z.string().optional(),
   BULL_BOARD_PASS: z.string().optional(),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@whatson.local"),

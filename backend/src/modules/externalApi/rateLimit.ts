@@ -3,13 +3,18 @@ import { AppError } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger";
 import { getRedis } from "../../shared/redis";
 
-/** Janela fixa por conexão (token) no Redis, para valer entre instâncias do backend. */
-export function rateLimitByConnection(limit: number, windowSeconds = 60): RequestHandler {
+/** Janela fixa no Redis por identificador (conexão, parceiro...), para valer entre instâncias do backend. */
+export function rateLimitBy(
+  prefix: string,
+  idOf: (req: Request) => number | undefined,
+  limit: number,
+  windowSeconds = 60,
+): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const connection = req.apiConnection;
-    if (!connection) return next();
+    const id = idOf(req);
+    if (id === undefined) return next();
     const now = Math.floor(Date.now() / 1000);
-    const key = `extapi:rl:${connection.id}:${Math.floor(now / windowSeconds)}`;
+    const key = `${prefix}:${id}:${Math.floor(now / windowSeconds)}`;
     let count: number;
     try {
       const redis = getRedis();
@@ -17,7 +22,7 @@ export function rateLimitByConnection(limit: number, windowSeconds = 60): Reques
       if (count === 1) await redis.expire(key, windowSeconds);
     } catch (err) {
       // Redis fora do ar não derruba a API: segue sem limite e registra.
-      logger.warn({ err: (err as Error).message, connectionId: connection.id }, "rate limit unavailable");
+      logger.warn({ err: (err as Error).message, prefix, id }, "rate limit unavailable");
       return next();
     }
     res.setHeader("X-RateLimit-Limit", String(limit));
@@ -28,4 +33,9 @@ export function rateLimitByConnection(limit: number, windowSeconds = 60): Reques
     }
     next();
   };
+}
+
+/** Janela fixa por conexão (token da API externa). */
+export function rateLimitByConnection(limit: number, windowSeconds = 60): RequestHandler {
+  return rateLimitBy("extapi:rl", (req) => req.apiConnection?.id, limit, windowSeconds);
 }
