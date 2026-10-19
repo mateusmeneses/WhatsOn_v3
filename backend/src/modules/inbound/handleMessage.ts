@@ -64,12 +64,20 @@ async function matchPendingEcho(connectionId: number, contactId: number, ev: Inb
   return true;
 }
 
-export async function findOrCreateTicket(connection: Connection, contact: Contact, fromMe: boolean): Promise<Ticket> {
+/** `viaApi`: envio automático pela API externa (notificação) abre direto como "open", sem entrar na fila de espera. */
+export async function findOrCreateTicket(
+  connection: Connection,
+  contact: Contact,
+  fromMe: boolean,
+  viaApi = false,
+): Promise<Ticket> {
   const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
   const open = await Ticket.findOne({ where });
   if (open) return open;
 
-  const status: TicketStatus = fromMe ? "open" : (await hasBot(connection.id)) ? "bot" : "pending";
+  // Conversa iniciada pelo celular da empresa não passa pelo bot. Fica pendente (e não "open" sem dono,
+  // invisível para atendentes) até alguém aceitar.
+  const status: TicketStatus = viaApi ? "open" : fromMe || !(await hasBot(connection.id)) ? "pending" : "bot";
   try {
     const ticket = await Ticket.create({
       companyId: connection.companyId,
@@ -162,7 +170,13 @@ export async function handleInboundMessage(
         : 0;
       if (ev.fromMe && ownPending === 0) {
         const [n] = await Ticket.update(
-          { status: "open", userId: null, chatbotNodeId: null, chatbotAttempts: 0 },
+          {
+            status: "pending",
+            userId: null,
+            queueId: ticket.queueId ?? connection.defaultQueueId,
+            chatbotNodeId: null,
+            chatbotAttempts: 0,
+          },
           { where: { id: ticket.id, status: "bot" }, transaction },
         );
         took = n === 1;
@@ -177,7 +191,10 @@ export async function handleInboundMessage(
   emitMessage(message, "message:new");
   if (tookOver) {
     await cancelBotTimeout(ticket.id);
-    await logTicket(ticket, "accepted");
+    await logTicket(ticket, "transferred", {
+      fromQueueId: ticket.queueId,
+      toQueueId: ticket.queueId ?? connection.defaultQueueId,
+    });
   }
   await emitTicket(ticket.id);
 

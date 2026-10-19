@@ -71,7 +71,7 @@ const summary = (m: Message) => ({ id: m.id, type: m.type, ack: m.ack });
  */
 async function sendToTicket(connection: Connection, rawNumber: string, items: OutgoingItem[]) {
   const contact = await resolveContact(connection, rawNumber);
-  const ticket = await findOrCreateTicket(connection, contact, true);
+  const ticket = await findOrCreateTicket(connection, contact, true, true);
   const messages: Message[] = [];
   for (const item of items) messages.push(await createOutgoingMessage(ticket, item));
   return { ticketId: ticket.id, contactId: contact.id, number: contact.number, messages: messages.map(summary) };

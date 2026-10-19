@@ -105,14 +105,22 @@ describe("inbound pipeline", () => {
     expect(messages.map((m) => m.body)).toEqual(["alguém aí?"]);
   });
 
-  it("takes the ticket out of the bot when the company replies from the phone", async () => {
+  it("takes the ticket out of the bot into the waiting list when the company replies from the phone", async () => {
     const { company, connection, queue, contact } = await scenario();
     await withBot(connection, queue.id);
     const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "bot" });
     await deliver(connection, textMessage({ from: contact.number, fromMe: true, text: "já te atendo" }));
     await ticket.reload();
-    expect(ticket).toMatchObject({ status: "open", userId: null, chatbotNodeId: null });
+    // Pendente (e não "open" sem dono): atendentes só enxergam "open" se for deles.
+    expect(ticket).toMatchObject({ status: "pending", userId: null, chatbotNodeId: null, queueId: connection.defaultQueueId });
     expect(await Message.count({ where: { isBot: true } })).toBe(0);
+  });
+
+  it("creates a waiting ticket, not an ownerless open one, when the conversation starts from the phone", async () => {
+    const { connection, contact } = await scenario();
+    await deliver(connection, textMessage({ from: contact.number, fromMe: true, text: "Olá!" }));
+    const ticket = await Ticket.findOne({ where: { contactId: contact.id } });
+    expect(ticket).toMatchObject({ status: "pending", userId: null, queueId: connection.defaultQueueId });
   });
 
   it("reconciles the echo of a message we sent instead of duplicating it", async () => {
