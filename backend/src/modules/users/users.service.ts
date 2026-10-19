@@ -20,16 +20,18 @@ export interface UserInput {
   canViewBot?: boolean;
   canViewOtherQueues?: boolean;
   canViewOthersOpen?: boolean;
+  canClaimTickets?: boolean;
 }
 
-/** Permissões extras de visibilidade de atendimentos (só fazem diferença para atendentes). */
-export const TICKET_ACCESS_KEYS = ["canViewBot", "canViewOtherQueues", "canViewOthersOpen"] as const;
+/** Permissões extras de atendimento: visibilidade (só atendentes) e requerer (atendentes e supervisores). */
+export const TICKET_ACCESS_KEYS = ["canViewBot", "canViewOtherQueues", "canViewOthersOpen", "canClaimTickets"] as const;
 export type TicketAccess = Pick<User, (typeof TICKET_ACCESS_KEYS)[number]>;
 
 const ticketAccess = (u: User): TicketAccess => ({
   canViewBot: u.canViewBot,
   canViewOtherQueues: u.canViewOtherQueues,
   canViewOthersOpen: u.canViewOthersOpen,
+  canClaimTickets: u.canClaimTickets,
 });
 
 function ticketAccessPatch(input: Partial<UserInput>): Partial<TicketAccess> {

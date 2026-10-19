@@ -33,3 +33,18 @@ export function emitMessage(message: Message, event: "message:new" | "message:up
 export function emitMessageDeleted(message: Message): void {
   emitter.toRooms([rooms.ticket(message.ticketId)], "message:delete", { id: message.id, ticketId: message.ticketId });
 }
+
+/** Aviso só para o técnico que perdeu o atendimento ao ser requerido (com o recado interno, se houver). */
+export async function emitTicketClaimed(ticketId: number, fromUserId: number, byUserId: number, note: string | null): Promise<void> {
+  const [ticket, by] = await Promise.all([
+    Ticket.findByPk(ticketId, { include: [{ model: Contact, attributes: ["id", "name"] }] }),
+    User.findByPk(byUserId, { attributes: ["id", "name"] }),
+  ]);
+  if (!ticket || !by) return;
+  emitter.toRooms([rooms.user(fromUserId)], "ticket:claimed", {
+    ticketId,
+    contactName: ticket.contact?.name ?? null,
+    by: { id: by.id, name: by.name },
+    note,
+  });
+}

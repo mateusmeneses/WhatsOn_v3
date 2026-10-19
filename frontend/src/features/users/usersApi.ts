@@ -27,6 +27,7 @@ export const TICKET_ACCESS_LABEL: Record<keyof TicketAccess, string> = {
   canViewBot: "Ver atendimentos no bot (sem setor)",
   canViewOtherQueues: "Ver aguardando de outros setores",
   canViewOthersOpen: "Ver atendimentos de outros atendentes",
+  canClaimTickets: "Requerer atendimentos (traz para si; também vê todos)",
 };
 
 export async function fetchUserOptions(): Promise<UserOption[]> {

@@ -7,7 +7,7 @@ import { fetchUserOptions } from "@/features/users/usersApi";
 import { makeTicket } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { TicketActions } from "./TicketActions";
-import { acceptTicket, closeTicket, reopenTicket, transferTicket } from "./ticketsApi";
+import { acceptTicket, claimTicket, closeTicket, reopenTicket, transferTicket } from "./ticketsApi";
 
 vi.mock("./ticketsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./ticketsApi")>()),
@@ -15,6 +15,7 @@ vi.mock("./ticketsApi", async (importOriginal) => ({
   closeTicket: vi.fn(),
   transferTicket: vi.fn(),
   reopenTicket: vi.fn(),
+  claimTicket: vi.fn(),
 }));
 vi.mock("@/features/queues/queuesApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/queues/queuesApi")>()),
@@ -150,5 +151,47 @@ describe("TicketActions", () => {
     setTestUser({ id: 1, profile: "agent" });
     renderWithProviders(<TicketActions ticket={makeTicket({ status: "open", userId: 9 })} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  describe("claim", () => {
+    const withAna = makeTicket({ status: "open", userId: 9, user: { id: 9, name: "Nadilson" } });
+
+    it("lets an agent with the permission take someone else's ticket with a note only the holder sees", async () => {
+      setTestUser({ id: 1, profile: "agent" });
+      vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [10], canClaimTickets: true }]);
+      vi.mocked(claimTicket).mockResolvedValue(makeTicket({ status: "open", userId: 1 }));
+      renderWithProviders(<TicketActions ticket={withAna} />);
+
+      await userEvent.click(await screen.findByRole("button", { name: /requerer/i }));
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).getByText(/só nadilson vê o recado/i)).toBeInTheDocument();
+      await userEvent.type(within(dialog).getByRole("textbox"), "Cliente da minha carteira");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Requerer" }));
+      await waitFor(() => expect(claimTicket).toHaveBeenCalledWith(1, "Cliente da minha carteira"));
+      expect(toast.success).toHaveBeenCalledWith("Atendimento requerido: agora está com você");
+    });
+
+    it("lets admins claim without the permission and without a note", async () => {
+      setTestUser({ id: 2, profile: "admin" });
+      vi.mocked(claimTicket).mockResolvedValue(makeTicket({ status: "open", userId: 2 }));
+      renderWithProviders(<TicketActions ticket={withAna} />);
+      await userEvent.click(await screen.findByRole("button", { name: /requerer/i }));
+      await userEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Requerer" }));
+      await waitFor(() => expect(claimTicket).toHaveBeenCalledWith(1, undefined));
+    });
+
+    it("is hidden without the permission, on own tickets and on closed ones", async () => {
+      setTestUser({ id: 1, profile: "supervisor" });
+      vi.mocked(fetchUserOptions).mockResolvedValue([{ id: 1, name: "Ana", queueIds: [], canClaimTickets: false }]);
+      const { unmount } = renderWithProviders(<TicketActions ticket={withAna} />);
+      await waitFor(() => expect(fetchUserOptions).toHaveBeenCalled());
+      expect(screen.queryByRole("button", { name: /requerer/i })).not.toBeInTheDocument();
+      unmount();
+
+      setTestUser({ id: 2, profile: "admin" });
+      renderWithProviders(<TicketActions ticket={makeTicket({ status: "open", userId: 2 })} />);
+      renderWithProviders(<TicketActions ticket={makeTicket({ status: "closed", userId: 9 })} />);
+      expect(screen.queryByRole("button", { name: /requerer/i })).not.toBeInTheDocument();
+    });
   });
 });

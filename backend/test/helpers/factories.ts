@@ -33,6 +33,7 @@ export async function createUser(
     canViewBot: boolean;
     canViewOtherQueues: boolean;
     canViewOthersOpen: boolean;
+    canClaimTickets: boolean;
   }> = {},
 ) {
   const n = next();

@@ -191,10 +191,8 @@ export async function handleInboundMessage(
   emitMessage(message, "message:new");
   if (tookOver) {
     await cancelBotTimeout(ticket.id);
-    await logTicket(ticket, "transferred", {
-      fromQueueId: ticket.queueId,
-      toQueueId: ticket.queueId ?? connection.defaultQueueId,
-    });
+    // Sem usuário: o Histórico mostra "Assumido por mensagem enviada direto do WhatsApp".
+    await logTicket(ticket, "accepted");
   }
   await emitTicket(ticket.id);
 

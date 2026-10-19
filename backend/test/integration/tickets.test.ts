@@ -2,6 +2,7 @@ import request from "supertest";
 import { createApp } from "../../src/app";
 import { Message, Ticket, TicketLog } from "../../src/models";
 import { closeTicketInternal, moveToPending } from "../../src/modules/tickets/tickets.service";
+import { emitter, rooms } from "../../src/modules/realtime/socket";
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
@@ -19,11 +20,12 @@ async function world() {
   const agentA2 = await createUser(s.company.id, { queueIds: [s.queue.id] });
   const agentB = await createUser(s.company.id, { queueIds: [queueB.id] });
   const supervisor = await createUser(s.company.id, { profile: "supervisor" });
+  const admin = await createUser(s.company.id, { profile: "admin" });
   const ticketFor = async (attrs: Record<string, unknown>) => {
     const contact = await createContact(s.company.id);
     return createTicket({ companyId: s.company.id, contactId: contact.id, connectionId: s.connection.id, ...attrs });
   };
-  return { ...s, queueA: s.queue, queueB, agentA, agentA2, agentB, supervisor, ticketFor };
+  return { ...s, queueA: s.queue, queueB, agentA, agentA2, agentB, supervisor, admin, ticketFor };
 }
 
 const ids = (res: request.Response) => res.body.items.map((t: { id: number }) => t.id).sort();
@@ -333,6 +335,85 @@ describe("tickets", () => {
       const res = await request(app).post(`/api/tickets/${closed.id}/reopen`).set("Authorization", bearer(w.agentA));
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe("TICKET_ACTIVE_EXISTS");
+    });
+  });
+
+  describe("claim", () => {
+    const claim = (id: number, user: Parameters<typeof bearer>[0], body: Record<string, unknown> = {}) =>
+      request(app).post(`/api/tickets/${id}/claim`).set("Authorization", bearer(user)).send(body);
+
+    it("takes a ticket from another agent at once and leaves an internal note for them", async () => {
+      const w = await world();
+      const claimer = await createUser(w.company.id, { canClaimTickets: true });
+      const ticket = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.agentA.id });
+      const toRooms = jest.spyOn(emitter, "toRooms");
+
+      const res = await claim(ticket.id, claimer, { note: "Cliente é meu, pode deixar" });
+      expect(res.status).toBe(200);
+      expect(res.body).toMatchObject({ id: ticket.id, status: "open", userId: claimer.id, queueId: w.queueA.id });
+
+      const notice = toRooms.mock.calls.find(([, event]) => event === "ticket:claimed");
+      expect(notice).toBeDefined();
+      expect(notice![0]).toEqual([rooms.user(w.agentA.id)]);
+      expect(notice![2]).toMatchObject({ ticketId: ticket.id, by: { id: claimer.id, name: claimer.name }, note: "Cliente é meu, pode deixar" });
+      // O recado é interno: nada vai para o WhatsApp do cliente.
+      expect(await Message.count({ where: { ticketId: ticket.id } })).toBe(0);
+      expect(fake.sent).toEqual([]);
+
+      const history = await request(app).get(`/api/tickets/${ticket.id}/history`).set("Authorization", bearer(claimer));
+      expect(history.body.at(-1)).toMatchObject({
+        event: "claimed",
+        user: { id: claimer.id },
+        fromUser: { id: w.agentA.id, name: w.agentA.name },
+        note: "Cliente é meu, pode deixar",
+      });
+    });
+
+    it("takes a ticket out of the bot and out of the waiting list", async () => {
+      const w = await world();
+      const bot = await w.ticketFor({ status: "bot", chatbotAttempts: 2 });
+      const pending = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      const res1 = await claim(bot.id, w.admin);
+      expect(res1.body).toMatchObject({ status: "open", userId: w.admin.id, chatbotNodeId: null, chatbotAttempts: 0 });
+      const res2 = await claim(pending.id, w.admin);
+      expect(res2.body).toMatchObject({ status: "open", userId: w.admin.id, queueId: w.queueB.id });
+      const log = await TicketLog.findOne({ where: { ticketId: pending.id, event: "claimed" } });
+      expect(log).toMatchObject({ userId: w.admin.id, fromUserId: null, note: null });
+    });
+
+    it("is allowed to admins always and to others only with the permission", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.agentA.id });
+      expect((await claim(ticket.id, w.supervisor)).status).toBe(403);
+      expect((await claim(ticket.id, w.agentA2)).status).toBe(403);
+      const supervisor = await createUser(w.company.id, { profile: "supervisor", canClaimTickets: true });
+      expect((await claim(ticket.id, supervisor)).status).toBe(200);
+    });
+
+    it("refuses closed tickets and tickets already yours", async () => {
+      const w = await world();
+      const closed = await w.ticketFor({ status: "closed", userId: w.agentA.id, closedAt: new Date() });
+      expect((await claim(closed.id, w.admin)).body.error.code).toBe("TICKET_CLOSED");
+      const mine = await w.ticketFor({ status: "open", userId: w.admin.id });
+      expect((await claim(mine.id, w.admin)).body.error.code).toBe("TICKET_ALREADY_YOURS");
+    });
+
+    it("rejects notes longer than 1000 characters", async () => {
+      const w = await world();
+      const ticket = await w.ticketFor({ status: "open", userId: w.agentA.id });
+      expect((await claim(ticket.id, w.admin, { note: "x".repeat(1001) })).status).toBe(400);
+    });
+
+    it("lets agents with the permission see every ticket so they can find it", async () => {
+      const w = await world();
+      const claimer = await createUser(w.company.id, { canClaimTickets: true });
+      const bot = await w.ticketFor({ status: "bot" });
+      const others = await w.ticketFor({ status: "open", queueId: w.queueB.id, userId: w.agentB.id });
+      const otherQueue = await w.ticketFor({ status: "pending", queueId: w.queueB.id });
+      const list = (status: string) => request(app).get(`/api/tickets?status=${status}`).set("Authorization", bearer(claimer));
+      expect(ids(await list("bot"))).toEqual([bot.id]);
+      expect(ids(await list("open"))).toEqual([others.id]);
+      expect(ids(await list("pending"))).toEqual([otherQueue.id]);
     });
   });
 

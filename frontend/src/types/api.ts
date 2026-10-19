@@ -48,11 +48,13 @@ export interface AuthResponse {
   user: PublicUser;
 }
 
-/** Permissões extras de visibilidade de atendimentos (só valem para atendentes). */
+/** Permissões extras de atendimento: visibilidade (só atendentes) e requerer (atendentes e supervisores). */
 export interface TicketAccess {
   canViewBot: boolean;
   canViewOtherQueues: boolean;
   canViewOthersOpen: boolean;
+  /** Pode requerer atendimentos (atendente e supervisor; admin sempre pode). Também faz ver todos. */
+  canClaimTickets: boolean;
 }
 
 export interface UserView extends PublicUser, Partial<TicketAccess> {
@@ -104,7 +106,7 @@ export interface Ticket {
   user?: { id: number; name: string } | null;
 }
 
-export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "reopened";
+export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "reopened" | "claimed";
 
 /** Um passo da linha do tempo do atendimento (GET /tickets/:id/history). */
 export interface TicketHistoryEntry {
@@ -115,6 +117,10 @@ export interface TicketHistoryEntry {
   fromQueue: { id: number; name: string; color: string } | null;
   toQueue: { id: number; name: string; color: string } | null;
   toUser: { id: number; name: string } | null;
+  /** Requerido: técnico de quem o atendimento foi tirado. */
+  fromUser: { id: number; name: string } | null;
+  /** Recado interno deixado ao requerer. */
+  note: string | null;
 }
 
 export interface Message {

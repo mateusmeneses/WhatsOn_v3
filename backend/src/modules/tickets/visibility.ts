@@ -47,14 +47,16 @@ export function visibilityWhere(auth: AuthContext, scope: AgentScope, status: Ti
 export async function loadAgentScope(auth: AuthContext): Promise<AgentScope> {
   if (auth.profile !== "agent") return NO_SCOPE;
   const [user, queueIds] = await Promise.all([
-    User.findByPk(auth.userId, { attributes: ["canViewBot", "canViewOtherQueues", "canViewOthersOpen"] }),
+    User.findByPk(auth.userId, { attributes: ["canViewBot", "canViewOtherQueues", "canViewOthersOpen", "canClaimTickets"] }),
     userQueueIds(auth.userId),
   ]);
+  // Quem pode requerer precisa enxergar todos os atendimentos para achar o que quer requerer.
+  const all = user?.canClaimTickets ?? false;
   return {
     queueIds,
-    canViewBot: user?.canViewBot ?? false,
-    canViewOtherQueues: user?.canViewOtherQueues ?? false,
-    canViewOthersOpen: user?.canViewOthersOpen ?? false,
+    canViewBot: all || (user?.canViewBot ?? false),
+    canViewOtherQueues: all || (user?.canViewOtherQueues ?? false),
+    canViewOthersOpen: all || (user?.canViewOthersOpen ?? false),
   };
 }
 

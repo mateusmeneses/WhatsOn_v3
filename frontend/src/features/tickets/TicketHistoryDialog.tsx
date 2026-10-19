@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRightLeft, Bot, Check, CheckCircle2, MessageCircle, RotateCcw, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Bot, Check, CheckCircle2, Hand, MessageCircle, RotateCcw, type LucideIcon } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type { Ticket, TicketEvent, TicketHistoryEntry } from "@/types/api";
@@ -12,6 +12,7 @@ const ICON: Record<TicketEvent, LucideIcon> = {
   closed: CheckCircle2,
   bot_timeout: Bot,
   reopened: RotateCcw,
+  claimed: Hand,
 };
 
 const dateTime = (iso: string) =>
@@ -37,6 +38,11 @@ function describe(entry: TicketHistoryEntry): { title: string; detail?: string }
       return { title: "Encerrado por falta de resposta no chatbot" };
     case "reopened":
       return { title: by ? `Reaberto por ${by}` : "Reaberto, voltou para a fila" };
+    case "claimed":
+      return {
+        title: `Requerido por ${by ?? "outro técnico"}`,
+        detail: entry.fromUser ? `Estava com ${entry.fromUser.name}` : undefined,
+      };
   }
 }
 
@@ -96,6 +102,11 @@ export function TicketHistoryDialog({ ticket, onClose }: { ticket: Ticket; onClo
                   <div className={last ? "pb-1" : "pb-4"}>
                     <p className="text-sm font-medium">{title}</p>
                     {detail && <p className="text-xs text-ink-muted">{detail}</p>}
+                    {entry.note && (
+                      <p className="mt-1 whitespace-pre-wrap rounded-md bg-primary-soft px-2 py-1 text-xs" title="Recado interno">
+                        Recado: {entry.note}
+                      </p>
+                    )}
                     <p className="text-xs text-ink-muted">{dateTime(entry.createdAt)}</p>
                   </div>
                 </li>

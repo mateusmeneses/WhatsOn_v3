@@ -14,6 +14,7 @@ const userSchema = z.object({
   canViewBot: z.boolean().optional(),
   canViewOtherQueues: z.boolean().optional(),
   canViewOthersOpen: z.boolean().optional(),
+  canClaimTickets: z.boolean().optional(),
 });
 
 export const userRoutes = Router();

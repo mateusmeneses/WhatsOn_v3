@@ -45,6 +45,10 @@ export class User extends Model {
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   canViewOthersOpen!: boolean;
 
+  /** Pode requerer qualquer atendimento não finalizado (admin sempre pode). Também passa a ver todos. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  canClaimTickets!: boolean;
+
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
   tokenVersion!: number;
 }

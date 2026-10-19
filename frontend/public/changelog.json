@@ -1,6 +1,19 @@
 {
-  "atualizadoEm": "2026-10-17",
+  "atualizadoEm": "2026-10-19",
   "versoes": [
+    {
+      "versao": "2026.10.19.1",
+      "data": "19/10/2026",
+      "titulo": "Requerer atendimento",
+      "novidades": [
+        "Novo: botão \"Requerer\" na conversa traz para você, na hora, um atendimento que está com outro técnico. Dá para deixar um recado para ele: só ele vê, o cliente não recebe nada.",
+        "O técnico que perdeu o atendimento recebe um aviso na tela com quem requereu e o recado. O recado também fica no Histórico do atendimento.",
+        "Novo: no cadastro do usuário, a permissão \"Requerer atendimentos\" para atendentes e supervisores. Quem tem essa permissão passa a ver todos os atendimentos. Administradores sempre podem requerer."
+      ],
+      "melhorias": [
+        "Conversa iniciada ou respondida pelo celular do WhatsApp agora vai para \"Aguardando\" em vez de ficar aberta sem técnico. Assim os atendentes da fila passam a vê-la."
+      ]
+    },
     {
       "versao": "2026.10.17.2",
       "data": "17/10/2026",

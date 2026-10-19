@@ -5,7 +5,7 @@ import { resetDb } from "../helpers/db";
 import { createCompany, createQueue, createUser } from "../helpers/factories";
 
 const app = createApp();
-const NO_ACCESS = { canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false };
+const NO_ACCESS = { canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false, canClaimTickets: false };
 
 describe("users API", () => {
   beforeEach(resetDb);
@@ -32,7 +32,7 @@ describe("users API", () => {
       ]),
     );
     expect(Object.keys(res.body[0]).sort()).toEqual(
-      ["canViewBot", "canViewOtherQueues", "canViewOthersOpen", "id", "name", "queueIds"],
+      ["canClaimTickets", "canViewBot", "canViewOtherQueues", "canViewOthersOpen", "id", "name", "queueIds"],
     );
     expect((await request(app).get("/api/users/options")).status).toBe(401);
   });

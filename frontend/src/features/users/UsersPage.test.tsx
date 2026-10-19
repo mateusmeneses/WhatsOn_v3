@@ -63,7 +63,7 @@ describe("UsersPage", () => {
         phone: "(11) 98888-7777",
         profile: "agent",
         queueIds: [20],
-        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false,
+        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false, canClaimTickets: false,
         sendAccess: false,
       }),
     );
@@ -93,14 +93,18 @@ describe("UsersPage", () => {
     );
   });
 
-  it("hides the ticket permissions for supervisors and admins", async () => {
+  it("shows supervisors only the claim permission and admins none", async () => {
     setTestUser({ id: 1, profile: "admin" });
     renderWithProviders(<UsersPage />);
     await screen.findByText("Bruno");
     await userEvent.click(screen.getByRole("button", { name: "Novo usuário" }));
     const dialog = screen.getByRole("dialog", { name: "Novo usuário" });
-    expect(within(dialog).getByText("Permissões de atendimento")).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("checkbox", { name: /ver |requerer/i })).toHaveLength(4);
     await userEvent.selectOptions(within(dialog).getByLabelText("Perfil"), "supervisor");
+    expect(within(dialog).getAllByRole("checkbox", { name: /ver |requerer/i }).map((c) => c.closest("label")!.textContent)).toEqual([
+      expect.stringMatching(/requerer atendimentos/i),
+    ]);
+    await userEvent.selectOptions(within(dialog).getByLabelText("Perfil"), "admin");
     expect(within(dialog).queryByText("Permissões de atendimento")).not.toBeInTheDocument();
   });
 
@@ -171,7 +175,7 @@ describe("UsersPage", () => {
         phone: null,
         profile: "agent",
         queueIds: [10],
-        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false,
+        canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false, canClaimTickets: false,
       }),
     );
   });

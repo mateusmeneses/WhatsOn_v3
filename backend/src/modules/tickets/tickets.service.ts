@@ -7,13 +7,20 @@ import { AuthContext } from "../auth/auth.types";
 import { createOutgoingMessage } from "../messages/messages.service";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { getUserOr404 } from "../users/users.service";
-import { emitTicket, TICKET_INCLUDE } from "./ticket.events";
+import { emitTicket, emitTicketClaimed, TICKET_INCLUDE } from "./ticket.events";
 import { agentQueueEligible, canView, loadAgentScope, visibilityWhere } from "./visibility";
 
 export async function logTicket(
   ticket: Ticket,
   event: TicketEvent,
-  extra: { userId?: number | null; fromQueueId?: number | null; toQueueId?: number | null; toUserId?: number | null } = {},
+  extra: {
+    userId?: number | null;
+    fromQueueId?: number | null;
+    toQueueId?: number | null;
+    toUserId?: number | null;
+    fromUserId?: number | null;
+    note?: string | null;
+  } = {},
 ): Promise<void> {
   await TicketLog.create({
     companyId: ticket.companyId,
@@ -23,6 +30,8 @@ export async function logTicket(
     fromQueueId: extra.fromQueueId ?? null,
     toQueueId: extra.toQueueId ?? null,
     toUserId: extra.toUserId ?? null,
+    fromUserId: extra.fromUserId ?? null,
+    note: extra.note ?? null,
   });
 }
 
@@ -40,12 +49,16 @@ export interface TicketHistoryEntry {
   toQueue: { id: number; name: string; color: string } | null;
   /** Transferência direta para um técnico. */
   toUser: { id: number; name: string } | null;
+  /** Requerido: técnico de quem o atendimento foi tirado. */
+  fromUser: { id: number; name: string } | null;
+  /** Recado interno deixado ao requerer. */
+  note: string | null;
 }
 
 /** Linha do tempo do chamado (criação, aceites, transferências, finalização), da mais antiga para a mais nova. */
 export async function ticketHistory(ticket: Ticket): Promise<TicketHistoryEntry[]> {
   const logs = await TicketLog.findAll({ where: { ticketId: ticket.id }, order: [["createdAt", "ASC"], ["id", "ASC"]] });
-  const userIds = [...new Set(logs.flatMap((l) => [l.userId, l.toUserId]).filter((id): id is number => id !== null))];
+  const userIds = [...new Set(logs.flatMap((l) => [l.userId, l.toUserId, l.fromUserId]).filter((id): id is number => id !== null))];
   const queueIds = [...new Set(logs.flatMap((l) => [l.fromQueueId, l.toQueueId]).filter((id): id is number => id !== null))];
   const [users, queues] = await Promise.all([
     userIds.length ? User.findAll({ where: { id: userIds }, attributes: ["id", "name"] }) : [],
@@ -67,6 +80,8 @@ export async function ticketHistory(ticket: Ticket): Promise<TicketHistoryEntry[
     fromQueue: queueOf(l.fromQueueId),
     toQueue: queueOf(l.toQueueId),
     toUser: userOf(l.toUserId),
+    fromUser: userOf(l.fromUserId),
+    note: l.note,
   }));
 }
 
@@ -77,7 +92,7 @@ export async function ticketHistory(ticket: Ticket): Promise<TicketHistoryEntry[
 export async function ticketAttendants(ticket: Ticket): Promise<{ id: number; name: string }[]> {
   const [logs, messages] = await Promise.all([
     TicketLog.findAll({
-      where: { ticketId: ticket.id, event: ["accepted", "reopened"], userId: { [Op.ne]: null } },
+      where: { ticketId: ticket.id, event: ["accepted", "reopened", "claimed"], userId: { [Op.ne]: null } },
       attributes: ["userId", "createdAt"],
     }),
     Message.findAll({
@@ -212,6 +227,40 @@ export async function transferTicket(auth: AuthContext, id: number, input: { que
     toUserId: input.userId ?? null,
   });
   await emitTicket(ticket.id, prev);
+  return loadTicket(id);
+}
+
+/**
+ * Requerer: traz para quem pede qualquer atendimento não finalizado (bot, aguardando ou com outro técnico),
+ * na hora e sem aprovação. Admin sempre pode; os demais só com `canClaimTickets`.
+ * O recado vai só para o técnico anterior (aviso em tempo real + histórico), nunca para o cliente.
+ */
+export async function claimTicket(auth: AuthContext, id: number, input: { note?: string }) {
+  if (auth.profile !== "admin") {
+    const me = await User.findByPk(auth.userId, { attributes: ["canClaimTickets"] });
+    if (!me?.canClaimTickets) throw new AppError("FORBIDDEN", 403, "Sem permissão para requerer atendimentos");
+  }
+  const ticket = await Ticket.findOne({ where: { id, companyId: auth.companyId } });
+  if (!ticket) throw notFound("Ticket");
+  if (ticket.status === "closed") throw ticketClosed();
+  if (ticket.status === "open" && ticket.userId === auth.userId) {
+    throw new AppError("TICKET_ALREADY_YOURS", 409, "Este atendimento já está com você");
+  }
+
+  const prev = { queueId: ticket.queueId, userId: ticket.userId };
+  // Só leva quem viu o estado atual: dois pedidos simultâneos não tiram o atendimento um do outro.
+  const [updated] = await Ticket.update(
+    { status: "open", userId: auth.userId, chatbotNodeId: null, chatbotAttempts: 0 },
+    { where: { id, companyId: auth.companyId, status: ticket.status, userId: ticket.userId } },
+  );
+  if (updated === 0) throw new AppError("TICKET_CHANGED", 409, "O atendimento mudou enquanto você requeria; tente de novo");
+  if (ticket.status === "bot") await cancelBotTimeout(ticket.id);
+
+  const note = input.note?.trim() || null;
+  const fromUserId = prev.userId !== auth.userId ? prev.userId : null;
+  await logTicket(ticket, "claimed", { userId: auth.userId, fromUserId, note });
+  await emitTicket(id, prev);
+  if (fromUserId !== null) await emitTicketClaimed(id, fromUserId, auth.userId, note);
   return loadTicket(id);
 }
 

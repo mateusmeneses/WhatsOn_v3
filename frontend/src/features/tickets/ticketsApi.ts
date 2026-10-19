@@ -54,3 +54,9 @@ export async function markTicketRead(id: number): Promise<Ticket> {
   const { data } = await api.post<Ticket>(`/tickets/${id}/read`);
   return data;
 }
+
+/** Traz o atendimento para quem pede; o recado (opcional) vai só para o técnico anterior. */
+export async function claimTicket(id: number, note?: string): Promise<Ticket> {
+  const { data } = await api.post<Ticket>(`/tickets/${id}/claim`, note ? { note } : {});
+  return data;
+}

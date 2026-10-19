@@ -1,7 +1,7 @@
 import { makeContact, makeTicket } from "@/test/factories";
 import { matchesSearch, ticketVisibleIn, type Viewer } from "./visibility";
 
-const NO_ACCESS = { canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false };
+const NO_ACCESS = { canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false, canClaimTickets: false };
 const agent: Viewer = { userId: 1, profile: "agent", queueIds: [10], ...NO_ACCESS };
 const supervisor: Viewer = { userId: 2, profile: "supervisor", queueIds: [], ...NO_ACCESS };
 

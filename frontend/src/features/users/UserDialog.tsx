@@ -42,6 +42,7 @@ export function UserDialog({
     canViewBot: user?.canViewBot ?? false,
     canViewOtherQueues: user?.canViewOtherQueues ?? false,
     canViewOthersOpen: user?.canViewOthersOpen ?? false,
+    canClaimTickets: user?.canClaimTickets ?? false,
   });
 
   const passwordError = password.length > 0 && password.length < 6 ? "A senha precisa ter pelo menos 6 caracteres." : null;
@@ -161,11 +162,14 @@ export function UserDialog({
               ))}
             </div>
           </fieldset>
-          {profile === "agent" && (
+          {profile !== "admin" && (
             <fieldset>
               <legend className="mb-1.5 text-sm font-medium">Permissões de atendimento</legend>
               <div className="space-y-2">
-                {(Object.keys(TICKET_ACCESS_LABEL) as (keyof TicketAccess)[]).map((key) => (
+                {/* Supervisor já vê tudo: para ele só faz diferença poder requerer. */}
+                {(Object.keys(TICKET_ACCESS_LABEL) as (keyof TicketAccess)[])
+                  .filter((key) => profile === "agent" || key === "canClaimTickets")
+                  .map((key) => (
                   <label key={key} className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
@@ -178,7 +182,8 @@ export function UserDialog({
                 ))}
               </div>
               <p className="mt-1 text-xs text-ink-muted">
-                Além das filas marcadas acima. Supervisores e administradores já veem tudo.
+                Além das filas marcadas acima. Supervisores e administradores já veem tudo; administradores
+                sempre podem requerer.
               </p>
             </fieldset>
           )}

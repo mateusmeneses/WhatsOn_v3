@@ -81,6 +81,6 @@ describe("useTicketRealtime", () => {
     const qc = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
     const { result } = renderHook(() => useViewer(), { wrapper });
-    expect(result.current).toEqual({ userId: 2, profile: "supervisor", queueIds: [], canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false });
+    expect(result.current).toEqual({ userId: 2, profile: "supervisor", queueIds: [], canViewBot: false, canViewOtherQueues: false, canViewOthersOpen: false, canClaimTickets: false });
   });
 });

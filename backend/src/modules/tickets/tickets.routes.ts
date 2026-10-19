@@ -4,6 +4,7 @@ import { idParam } from "../../shared/http";
 import { currentAuth, isAuth } from "../auth/auth.middleware";
 import {
   acceptTicket,
+  claimTicket,
   closeTicket,
   getVisibleTicket,
   listTickets,
@@ -27,6 +28,8 @@ const transferSchema = z
 
 const closeSchema = z.object({ sendClosingMessage: z.boolean().optional() });
 
+const claimSchema = z.object({ note: z.string().max(1000).optional() });
+
 export const ticketRoutes = Router();
 ticketRoutes.use(isAuth);
 
@@ -49,6 +52,10 @@ ticketRoutes.get("/:id/history", async (req, res) => {
 
 ticketRoutes.post("/:id/accept", async (req, res) => {
   res.json(await acceptTicket(currentAuth(req), idParam(req)));
+});
+
+ticketRoutes.post("/:id/claim", async (req, res) => {
+  res.json(await claimTicket(currentAuth(req), idParam(req), claimSchema.parse(req.body ?? {})));
 });
 
 ticketRoutes.post("/:id/transfer", async (req, res) => {

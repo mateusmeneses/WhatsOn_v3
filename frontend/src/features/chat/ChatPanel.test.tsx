@@ -91,8 +91,8 @@ describe("ChatPanel", () => {
     ]);
     const queue = (id: number, name: string) => ({ id, name, color: "#22c55e" });
     vi.mocked(fetchTicketHistory).mockResolvedValue([
-      { id: 1, event: "created", createdAt: "2026-10-17T12:00:00Z", user: null, fromQueue: null, toQueue: null, toUser: null },
-      { id: 2, event: "accepted", createdAt: "2026-10-17T12:01:00Z", user: { id: 2, name: "Bruno" }, fromQueue: null, toQueue: null, toUser: null },
+      { id: 1, event: "created", createdAt: "2026-10-17T12:00:00Z", user: null, fromQueue: null, toQueue: null, toUser: null, fromUser: null, note: null },
+      { id: 2, event: "accepted", createdAt: "2026-10-17T12:01:00Z", user: { id: 2, name: "Bruno" }, fromQueue: null, toQueue: null, toUser: null, fromUser: null, note: null },
       {
         id: 3,
         event: "transferred",
@@ -101,6 +101,8 @@ describe("ChatPanel", () => {
         fromQueue: queue(10, "Suporte"),
         toQueue: queue(20, "Financeiro"),
         toUser: { id: 1, name: "Ana" },
+        fromUser: null,
+        note: null,
       },
     ]);
     await screen.findByText("Bom dia");
