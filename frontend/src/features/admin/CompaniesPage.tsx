@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { useConfirm } from "@/components/ui/confirm";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
+import { formatCnpj } from "@/lib/format";
 import { useAuth } from "@/stores/auth";
 import type { AdminCompany } from "@/types/api";
 import { adminKeys, enterCompany, fetchCompanies, setCompanyBlocked, type CreatedCompany } from "./adminApi";
@@ -136,8 +137,15 @@ export function CompaniesPage() {
                     role="row"
                     className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 p-4 md:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_auto] md:items-center md:gap-4 md:px-5 md:py-3"
                   >
-                    <span role="cell" className="min-w-0 break-words font-medium">
-                      {company.name}
+                    <span role="cell" className="min-w-0 break-words">
+                      <span className="font-medium">{company.name}</span>
+                      {(company.cnpj || company.partner) && (
+                        <span className="block text-xs text-ink-muted">
+                          {company.cnpj && formatCnpj(company.cnpj)}
+                          {company.cnpj && company.partner && " · "}
+                          {company.partner && `via ${company.partner.name}`}
+                        </span>
+                      )}
                     </span>
                     <span role="cell" className="justify-self-end md:justify-self-start">
                       <StatusBadge company={company} />

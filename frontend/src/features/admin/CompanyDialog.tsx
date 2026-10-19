@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { TIMEZONES } from "@/features/settings/companyApi";
 import { errorMessage } from "@/lib/apiError";
+import { formatCnpj } from "@/lib/format";
 import type { AdminCompany } from "@/types/api";
 import { adminKeys, createCompany, updateCompany, type CreatedCompany } from "./adminApi";
 
@@ -23,6 +24,7 @@ export function CompanyDialog({
   const queryClient = useQueryClient();
   const [name, setName] = useState(company?.name ?? "");
   const [timezone, setTimezone] = useState(company?.timezone ?? "America/Sao_Paulo");
+  const [cnpj, setCnpj] = useState(company?.cnpj ? formatCnpj(company.cnpj) : "");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
@@ -33,9 +35,10 @@ export function CompanyDialog({
   const mutation = useMutation({
     mutationFn: (): Promise<AdminCompany | CreatedCompany> => {
       const base = { name: name.trim(), timezone };
-      if (company) return updateCompany(company.id, base);
+      if (company) return updateCompany(company.id, { ...base, cnpj: cnpj.trim() || null });
       return createCompany({
         ...base,
+        ...(cnpj.trim() ? { cnpj: cnpj.trim() } : {}),
         admin: { name: adminName.trim(), email: adminEmail.trim(), phone: adminPhone.trim() || null },
       });
     },
@@ -61,6 +64,18 @@ export function CompanyDialog({
           <div>
             <Label htmlFor="company-name">Nome da empresa</Label>
             <Input id="company-name" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="company-cnpj">CNPJ (opcional)</Label>
+            <Input
+              id="company-cnpj"
+              placeholder="12.345.678/0001-95"
+              value={cnpj}
+              onChange={(e) => setCnpj(e.target.value)}
+            />
+            <p className="mt-1 text-xs text-ink-muted">
+              Informe para que um sistema parceiro não crie outra empresa com o mesmo CNPJ.
+            </p>
           </div>
           <div>
             <Label htmlFor="company-timezone">Fuso horário</Label>

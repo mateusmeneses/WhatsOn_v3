@@ -200,6 +200,21 @@ export interface Company {
 export interface AdminCompany extends Company {
   createdAt: string;
   userCount: number;
+  /** CNPJ sem pontuação (14 caracteres). */
+  cnpj: string | null;
+  /** Sistema parceiro que criou a empresa pela API de parceiros. */
+  partner: { id: number; name: string } | null;
+}
+
+export interface AdminPartner {
+  id: number;
+  name: string;
+  /** Início da chave, para reconhecê-la; a chave completa só aparece ao criar/regenerar. */
+  keyPrefix: string;
+  status: "active" | "revoked";
+  lastUsedAt: string | null;
+  createdAt: string;
+  companyCount: number;
 }
 
 export interface BotState {

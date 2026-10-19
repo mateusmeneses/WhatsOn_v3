@@ -28,3 +28,9 @@ export function initials(name: string): string {
 export function mediaSrc(url: string): string {
   return `${API_URL}${url}`;
 }
+
+/** 14 caracteres sem pontuação → 12.345.678/0001-95 (também o CNPJ alfanumérico). */
+export function formatCnpj(cnpj: string): string {
+  if (cnpj.length !== 14) return cnpj;
+  return `${cnpj.slice(0, 2)}.${cnpj.slice(2, 5)}.${cnpj.slice(5, 8)}/${cnpj.slice(8, 12)}-${cnpj.slice(12)}`;
+}

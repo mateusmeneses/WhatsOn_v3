@@ -25,6 +25,8 @@ const company = (partial: Partial<AdminCompany> = {}): AdminCompany => ({
   timezone: "America/Sao_Paulo",
   createdAt: "2026-10-01T12:00:00.000Z",
   userCount: 3,
+  cnpj: null,
+  partner: null,
   ...partial,
 });
 

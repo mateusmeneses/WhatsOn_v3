@@ -1,11 +1,13 @@
 import { api } from "@/lib/api";
-import type { AdminCompany, AuthResponse, PublicUser } from "@/types/api";
+import type { AdminCompany, AdminPartner, AuthResponse, PublicUser } from "@/types/api";
 
-export const adminKeys = { companies: ["admin", "companies"] as const };
+export const adminKeys = { companies: ["admin", "companies"] as const, partners: ["admin", "partners"] as const };
 
 export interface CompanyInput {
   name: string;
   timezone: string;
+  /** Na edição, vazio limpa; na criação, só vai quando informado. */
+  cnpj?: string | null;
 }
 
 export interface CreateCompanyInput extends CompanyInput {
@@ -46,5 +48,36 @@ export async function enterCompany(id: number): Promise<AuthResponse> {
 
 export async function exitCompany(): Promise<AuthResponse> {
   const { data } = await api.post<AuthResponse>("/admin/exit");
+  return data;
+}
+
+/** Parceiro com a chave completa, devolvida só ao criar ou regenerar. */
+export interface PartnerWithKey {
+  partner: AdminPartner;
+  key: string;
+}
+
+export async function fetchPartners(): Promise<AdminPartner[]> {
+  const { data } = await api.get<AdminPartner[]>("/admin/partners");
+  return data;
+}
+
+export async function createPartner(name: string): Promise<PartnerWithKey> {
+  const { data } = await api.post<PartnerWithKey>("/admin/partners", { name });
+  return data;
+}
+
+export async function updatePartner(id: number, name: string): Promise<AdminPartner> {
+  const { data } = await api.put<AdminPartner>(`/admin/partners/${id}`, { name });
+  return data;
+}
+
+export async function regeneratePartnerKey(id: number): Promise<PartnerWithKey> {
+  const { data } = await api.post<PartnerWithKey>(`/admin/partners/${id}/regenerate-key`);
+  return data;
+}
+
+export async function setPartnerRevoked(id: number, revoked: boolean): Promise<AdminPartner> {
+  const { data } = await api.post<AdminPartner>(`/admin/partners/${id}/${revoked ? "revoke" : "activate"}`);
   return data;
 }

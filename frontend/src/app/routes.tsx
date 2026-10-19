@@ -6,6 +6,7 @@ import { ChangePasswordPage } from "@/features/auth/ChangePasswordPage";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { AdminShell } from "@/features/admin/AdminShell";
 import { CompaniesPage } from "@/features/admin/CompaniesPage";
+import { PartnersPage } from "@/features/admin/PartnersPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
@@ -27,6 +28,7 @@ export function AppRoutes() {
         }
       >
         <Route path="empresas" element={<CompaniesPage />} />
+        <Route path="parceiros" element={<PartnersPage />} />
       </Route>
       <Route
         element={
