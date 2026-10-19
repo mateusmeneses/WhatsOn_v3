@@ -6,6 +6,7 @@ import {
   Connection,
   Contact,
   Message,
+  Partner,
   Profile,
   Queue,
   Ticket,
@@ -14,12 +15,22 @@ import {
   UserQueue,
   WeekSchedule,
 } from "../../src/models";
+import { generatePartnerKey } from "../../src/modules/partners/partnerKey";
 
 let seq = 0;
 const next = () => ++seq;
 
-export function createCompany(attrs: Partial<{ name: string; timezone: string }> = {}) {
+export function createCompany(
+  attrs: Partial<{ name: string; timezone: string; status: string; cnpj: string | null; partnerId: number | null }> = {},
+) {
   return Company.create({ name: `Empresa ${next()}`, ...attrs });
+}
+
+/** Parceiro com a chave em claro (o banco guarda só o hash). */
+export async function createPartner(attrs: Partial<{ name: string; status: "active" | "revoked" }> = {}) {
+  const { key, keyHash, keyPrefix } = generatePartnerKey();
+  const partner = await Partner.create({ name: `Parceiro ${next()}`, keyHash, keyPrefix, ...attrs });
+  return { partner, key };
 }
 
 export async function createUser(
