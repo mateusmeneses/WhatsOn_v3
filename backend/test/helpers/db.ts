@@ -1,6 +1,7 @@
 import { sequelize } from "../../src/database/sequelize";
 
 const TABLES = [
+  "partners",
   "companies",
   "users",
   "user_queues",

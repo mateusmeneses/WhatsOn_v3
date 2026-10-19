@@ -8,6 +8,7 @@ import * as m0006 from "./0006-user-ticket-access";
 import * as m0007 from "./0007-ticket-log-to-user";
 import * as m0008 from "./0008-contact-soft-delete";
 import * as m0009 from "./0009-ticket-claim";
+import * as m0010 from "./0010-partners";
 
 export interface MigrationModule {
   name: string;
@@ -25,4 +26,5 @@ export const migrations: MigrationModule[] = [
   { name: "0007-ticket-log-to-user", up: m0007.up, down: m0007.down },
   { name: "0008-contact-soft-delete", up: m0008.up, down: m0008.down },
   { name: "0009-ticket-claim", up: m0009.up, down: m0009.down },
+  { name: "0010-partners", up: m0010.up, down: m0010.down },
 ];
