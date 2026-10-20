@@ -163,7 +163,7 @@ export function PartnersPage() {
     );
   }
 
-  const cols = "md:grid-cols-[minmax(0,2fr)_8rem_7rem_6rem_9rem_auto]";
+  const cols = "md:grid-cols-[minmax(0,2fr)_8rem_7rem_6rem_9rem_7.5rem]";
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <PageHeader

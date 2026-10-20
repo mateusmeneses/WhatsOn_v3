@@ -123,7 +123,7 @@ export function CompaniesPage() {
             <p className="p-6 text-sm text-ink-muted">Nenhuma empresa cadastrada.</p>
           ) : (
             <div role="table" aria-label="Empresas" className="text-sm">
-              <div role="row" className="hidden border-b border-border px-5 py-3 text-ink-muted md:grid md:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_auto] md:gap-4">
+              <div role="row" className="hidden border-b border-border px-5 py-3 text-ink-muted md:grid md:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_11rem] md:gap-4">
                 <span role="columnheader" className="font-medium">Empresa</span>
                 <span role="columnheader" className="font-medium">Situação</span>
                 <span role="columnheader" className="font-medium">Usuários</span>
@@ -135,7 +135,7 @@ export function CompaniesPage() {
                   <div
                     key={company.id}
                     role="row"
-                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 p-4 md:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_auto] md:items-center md:gap-4 md:px-5 md:py-3"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-2 p-4 md:grid-cols-[minmax(0,2fr)_7rem_6rem_7rem_11rem] md:items-center md:gap-4 md:px-5 md:py-3"
                   >
                     <span role="cell" className="min-w-0 break-words">
                       <span className="font-medium">{company.name}</span>
