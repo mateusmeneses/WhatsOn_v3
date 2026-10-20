@@ -6,9 +6,9 @@ import { createApp } from "../../src/app";
 import { TicketLog } from "../../src/models";
 import { closeSocket, initSocket } from "../../src/modules/realtime/socket";
 import { resolveRange, todayIn } from "../../src/modules/dashboard/dashboard.service";
-import { bearer } from "../helpers/auth";
+import { bearer, superAdminBearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createContact, createMessage, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
+import { createCompany, createContact, createMessage, createPartner, createQueue, createSuperAdmin, createTicket, createUser, scenario } from "../helpers/factories";
 
 const app = createApp();
 const sec = 1000;
@@ -164,5 +164,101 @@ describe("dashboard API", () => {
       socket.disconnect();
       await closeSocket();
     }
+  });
+});
+
+describe("my performance API", () => {
+  beforeEach(resetDb);
+
+  it("returns only the logged user's numbers, for any profile", async () => {
+    const { company, connection, contact } = await scenario();
+    await company.update({ timezone: "UTC" });
+    const queue = await createQueue(company.id, { name: "Suporte" });
+    const ana = await createUser(company.id, { name: "Ana" });
+    const bia = await createUser(company.id, { name: "Bia" });
+    const t0 = Date.now() - 2 * 3600 * sec;
+    const at = (offset: number) => new Date(t0 + offset * sec);
+
+    const mine = await createTicket({
+      companyId: company.id, contactId: contact.id, connectionId: connection.id, queueId: queue.id,
+      userId: ana.id, status: "closed", createdAt: at(0), closedAt: at(600),
+    });
+    await TicketLog.create({ companyId: company.id, ticketId: mine.id, event: "created", createdAt: at(0) });
+    await TicketLog.create({ companyId: company.id, ticketId: mine.id, event: "accepted", userId: ana.id, createdAt: at(60) });
+    await TicketLog.create({ companyId: company.id, ticketId: mine.id, event: "closed", userId: ana.id, createdAt: at(600) });
+    await createMessage(mine, { createdAt: at(0) });
+    await createMessage(mine, { createdAt: at(120), fromMe: true, sentByUserId: ana.id }); // 120 s
+
+    const contactB = await createContact(company.id);
+    const theirs = await createTicket({
+      companyId: company.id, contactId: contactB.id, connectionId: connection.id, queueId: queue.id,
+      userId: bia.id, status: "closed", createdAt: at(0), closedAt: at(900),
+    });
+    await TicketLog.create({ companyId: company.id, ticketId: theirs.id, event: "closed", userId: bia.id, createdAt: at(900) });
+    await createMessage(theirs, { createdAt: at(0) });
+    await createMessage(theirs, { createdAt: at(1000), fromMe: true, sentByUserId: bia.id }); // 1000 s
+
+    const contactC = await createContact(company.id, { name: "Cliente em espera" });
+    const waiting = await createTicket({ companyId: company.id, contactId: contactC.id, connectionId: connection.id, userId: ana.id, status: "open" });
+    await createMessage(waiting, { createdAt: ago(10 * 60 * sec) });
+
+    const res = await request(app).get("/api/dashboard/me?period=7d").set("Authorization", bearer(ana)).expect(200);
+    const d = res.body;
+    expect(d.kpis.ticketsClosed.value).toBe(1);
+    expect(d.kpis.ticketsAccepted.value).toBe(1);
+    expect(d.kpis.messagesSent.value).toBe(1);
+    expect(d.kpis.medianResponse.value).toBeCloseTo(120, 0);
+    expect(d.kpis.responseWithinSla.value).toBe(100);
+    expect(d.kpis.avgResolution.value).toBeCloseTo(600, 0);
+    expect(d.live).toMatchObject({ openNow: 1, waitingReply: 1 });
+    expect(d.waitingNow[0].contactName).toBe("Cliente em espera");
+    expect(d.slowestResponses).toHaveLength(1);
+    expect(d.byQueue).toEqual([expect.objectContaining({ name: "Suporte", closed: 1 })]);
+    // Equipe: mediana entre 120 s e 1000 s; média de 1 finalizado por atendente.
+    expect(d.team.agents).toBe(2);
+    expect(d.team.avgClosedPerAgent).toBe(1);
+    expect(d.team.medianResponse).toBeCloseTo(560, 0);
+
+    const admin = await createUser(company.id, { profile: "admin" });
+    const adminRes = await request(app).get("/api/dashboard/me").set("Authorization", bearer(admin)).expect(200);
+    expect(adminRes.body.kpis.ticketsClosed.value).toBe(0);
+  });
+});
+
+describe("platform overview API", () => {
+  beforeEach(resetDb);
+
+  it("is restricted to the super-admin", async () => {
+    const company = await createCompany();
+    const admin = await createUser(company.id, { profile: "admin" });
+    await request(app).get("/api/admin/overview").set("Authorization", bearer(admin)).expect(403);
+  });
+
+  it("aggregates companies, partners, traffic and presence across the platform", async () => {
+    const superAdmin = await createSuperAdmin();
+    const a = await scenario();
+    const b = await scenario();
+    await b.company.update({ status: "blocked" });
+    const { partner } = await createPartner({ name: "ERP Parceiro" });
+    await a.company.update({ partnerId: partner.id });
+    await createUser(a.company.id, { profile: "admin" });
+    await createUser(a.company.id);
+    const t = await createTicket({ companyId: a.company.id, contactId: a.contact.id, connectionId: a.connection.id });
+    await createMessage(t, { createdAt: ago(60 * sec) });
+    await createMessage(t, { createdAt: ago(30 * sec), fromMe: true });
+
+    const res = await request(app).get("/api/admin/overview?period=30d").set("Authorization", superAdminBearer(superAdmin)).expect(200);
+    const d = res.body;
+    expect(d.totals).toMatchObject({ companies: 2, activeCompanies: 1, blockedCompanies: 1, users: 2, partners: 1 });
+    expect(d.totals.connections.connected).toBe(2);
+    expect(d.kpis.ticketsCreated.value).toBe(1);
+    expect(d.kpis.messagesIn.value).toBe(1);
+    expect(d.kpis.messagesOut.value).toBe(1);
+    expect(d.kpis.activeCompaniesWithTraffic.value).toBe(1);
+    expect(d.timeline).toHaveLength(30);
+    expect(d.companies[0]).toMatchObject({ id: a.company.id, partner: "ERP Parceiro", users: 2, tickets: 1, messages: 2 });
+    expect(d.partners[0]).toMatchObject({ name: "ERP Parceiro", companies: 1, tickets: 1 });
+
+    await request(app).get("/api/admin/overview?period=custom").set("Authorization", superAdminBearer(superAdmin)).expect(400);
   });
 });

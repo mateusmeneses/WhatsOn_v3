@@ -7,10 +7,12 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { AdminShell } from "@/features/admin/AdminShell";
 import { CompaniesPage } from "@/features/admin/CompaniesPage";
 import { PartnersPage } from "@/features/admin/PartnersPage";
+import { PlatformOverviewPage } from "@/features/admin/PlatformOverviewPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
 import { DashboardPage } from "@/features/dashboard/DashboardPage";
+import { MyPerformancePage } from "@/features/dashboard/MyPerformancePage";
 import { QueuesPage } from "@/features/queues/QueuesPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
@@ -28,6 +30,7 @@ export function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        <Route path="visao-geral" element={<PlatformOverviewPage />} />
         <Route path="empresas" element={<CompaniesPage />} />
         <Route path="parceiros" element={<PartnersPage />} />
       </Route>
@@ -47,6 +50,7 @@ export function AppRoutes() {
             </RequireProfile>
           }
         />
+        <Route path="meu-desempenho" element={<MyPerformancePage />} />
         <Route path="atendimento" element={<TicketsPage />} />
         <Route path="atendimento/:ticketId" element={<TicketsPage />} />
         <Route path="contatos" element={<ContactsPage />} />

@@ -105,11 +105,12 @@ describe("CompaniesPage", () => {
 });
 
 describe("super-admin routing", () => {
-  it("sends a super-admin without a company to the companies panel", async () => {
+  it("sends a super-admin without a company to the platform panel", async () => {
     superAdmin();
     renderWithProviders(<AppRoutes />, { route: "/atendimento" });
-    expect(await screen.findByRole("heading", { name: "Empresas" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Visão geral da plataforma" })).toBeInTheDocument();
     expect(screen.getByText("Painel da plataforma")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Empresas" })).toBeInTheDocument();
   });
 
   it("keeps company users out of the companies panel", () => {

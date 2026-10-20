@@ -121,3 +121,51 @@ export function useDashboard(params: DashboardParams, enabled = true) {
     placeholderData: keepPreviousData,
   });
 }
+
+/** Desempenho do próprio usuário (qualquer perfil). */
+export interface MyPerformance {
+  range: { from: string; to: string; days: number; timezone: string; generatedAt: string };
+  live: { openNow: number; pendingForMe: number; waitingReply: number };
+  kpis: {
+    ticketsClosed: Metric;
+    ticketsAccepted: Metric;
+    messagesSent: Metric;
+    medianResponse: DurationMetric;
+    avgResponse: DurationMetric;
+    avgAcceptWait: DurationMetric;
+    avgResolution: DurationMetric;
+    responseWithinSla: DurationMetric;
+    slaSeconds: number;
+  };
+  team: { medianResponse: number | null; avgClosedPerAgent: number | null; agents: number };
+  timeline: { date: string; closed: number; accepted: number; messages: number }[];
+  byQueue: { id: number | null; name: string; color: string; closed: number }[];
+  slowestResponses: {
+    messageId: number;
+    ticketId: number;
+    contactName: string;
+    queueName: string | null;
+    askedAt: string;
+    answeredAt: string;
+    seconds: number;
+  }[];
+  waitingNow: { ticketId: number; contactName: string; queueName: string | null; queueColor: string | null; since: string }[];
+}
+
+export const performanceKeys = { all: ["performance"] as const, params: (p: DashboardParams) => ["performance", p] as const };
+
+export async function fetchMyPerformance(params: DashboardParams): Promise<MyPerformance> {
+  const { data } = await api.get<MyPerformance>("/dashboard/me", {
+    params: params.period === "custom" ? params : { period: params.period },
+  });
+  return data;
+}
+
+export function useMyPerformance(params: DashboardParams) {
+  return useQuery({
+    queryKey: performanceKeys.params(params),
+    queryFn: () => fetchMyPerformance(params),
+    refetchInterval: DASHBOARD_REFRESH_MS,
+    placeholderData: keepPreviousData,
+  });
+}

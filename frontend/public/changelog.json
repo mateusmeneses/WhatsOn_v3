@@ -8,7 +8,9 @@
       "novidades": [
         "Novo: tela Dashboard (administradores e supervisores) com atendimentos criados e finalizados, tempo de resposta, espera até aceitar, tempo de resolução, mensagens por dia, mapa de calor dos horários de maior movimento e comparação com o período anterior.",
         "Novo: no Dashboard, quem está online agora, a produtividade de cada atendente, as mensagens mais demoradas, os clientes aguardando resposta, os clientes mais ativos, a movimentação dos chamados, o resultado do bot e a situação das conexões.",
-        "Novo: exportação do Dashboard em planilha (CSV) e atualização automática em tempo real."
+        "Novo: exportação do Dashboard em planilha (CSV) e atualização automática em tempo real.",
+        "Novo: tela Meu desempenho, para cada pessoa acompanhar os próprios atendimentos, tempos de resposta e como está em relação à média da equipe.",
+        "Novo: no painel da plataforma, a Visão geral com todas as empresas, uso, conexões, parceiros e quem está online."
       ],
       "melhorias": [
         "Menu lateral com nomes, grupos e o usuário logado, que pode ser recolhido; botões, abas e cartões com visual mais limpo.",

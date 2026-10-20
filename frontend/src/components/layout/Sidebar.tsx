@@ -12,6 +12,7 @@ import {
   Settings,
   Smartphone,
   UserCog,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -38,6 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard, profiles: ["admin", "supervisor"], group: "operacao" },
   { to: "/atendimento", label: "Atendimento", icon: MessagesSquare, profiles: ALL, group: "operacao" },
   { to: "/contatos", label: "Contatos", icon: BookUser, profiles: ALL, group: "operacao" },
+  { to: "/meu-desempenho", label: "Meu desempenho", icon: UserRound, profiles: ALL, group: "operacao" },
   { to: "/filas", label: "Filas", icon: Layers, profiles: ["admin"], group: "gestao" },
   { to: "/usuarios", label: "Usuários", icon: UserCog, profiles: ["admin", "supervisor"], group: "gestao" },
   { to: "/conexoes", label: "Conexões", icon: Smartphone, profiles: ["admin"], group: "gestao" },

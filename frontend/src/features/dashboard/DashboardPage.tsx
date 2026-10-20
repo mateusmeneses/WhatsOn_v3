@@ -20,7 +20,7 @@ import {
   Users,
   Zap,
 } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { BarList, SplitBar } from "@/components/charts/BarList";
@@ -32,27 +32,18 @@ import { SERIES } from "@/components/charts/theme";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PresenceDot } from "@/components/ui/presence-dot";
-import { Tabs } from "@/components/ui/tabs";
 import { errorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/cn";
 import { formatDuration, formatDurationShort, nf, secondsSince, timeAgo } from "@/lib/duration";
 import { formatPhone, initials } from "@/lib/format";
+import { useNow } from "@/lib/useNow";
 import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
 import { useAuth } from "@/stores/auth";
-import { dashboardKeys, useDashboard, type DashboardAgent, type DashboardData, type DashboardPeriod } from "./dashboardApi";
+import { dashboardKeys, useDashboard, type DashboardAgent, type DashboardData } from "./dashboardApi";
 import { downloadCsv } from "./exportCsv";
+import { formatDay, PeriodFilter, usePeriodFilter } from "./PeriodFilter";
 import { Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "./widgets";
-
-const PERIODS: { value: DashboardPeriod; label: string }[] = [
-  { value: "today", label: "Hoje" },
-  { value: "yesterday", label: "Ontem" },
-  { value: "7d", label: "7 dias" },
-  { value: "30d", label: "30 dias" },
-  { value: "90d", label: "90 dias" },
-  { value: "custom", label: "Período" },
-];
 
 const PROFILE_LABEL: Record<string, string> = { admin: "Administrador", supervisor: "Supervisor", agent: "Atendente" };
 
@@ -82,27 +73,14 @@ const CONNECTION_STATUS: Record<string, { label: string; tone: "success" | "warn
   disconnected: { label: "Desconectada", tone: "danger" },
 };
 
-function todayLocal(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
-
 export function DashboardPage() {
   const user = useAuth((s) => s.user)!;
-  const [period, setPeriod] = useState<DashboardPeriod>("7d");
-  const [from, setFrom] = useState(todayLocal);
-  const [to, setTo] = useState(todayLocal);
-  const [applied, setApplied] = useState({ from: todayLocal(), to: todayLocal() });
-  const customReady = period !== "custom" || (applied.from !== "" && applied.to !== "");
-  const query = useDashboard(period === "custom" ? { period, ...applied } : { period }, customReady);
+  const filter = usePeriodFilter("7d");
+  const query = useDashboard(filter.params);
   const data = query.data;
   // Entrada/saída de usuários e movimento nos chamados atualizam o painel na hora (no máximo a cada 4 s).
   useLiveInvalidate(dashboardKeys.all, ["presence:changed", "ticket:update"]);
-  // Relógio para os "há X min" e as esperas ao vivo.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), 15_000);
-    return () => window.clearInterval(id);
-  }, []);
+  const now = useNow();
 
   const rangeLabel = data ? (data.range.days === 1 ? formatDay(data.range.from) : `${formatDay(data.range.from)} – ${formatDay(data.range.to)}`) : "";
 
@@ -149,28 +127,7 @@ export function DashboardPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-[1500px] space-y-5 p-4 sm:p-6">
-          <div className="flex flex-wrap items-center gap-3">
-            <Tabs value={period} onChange={setPeriod} items={PERIODS} className="min-w-0 max-w-full [&_button]:!px-3 [&_button]:!text-sm" />
-            {period === "custom" && (
-              <form
-                className="flex flex-wrap items-center gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (from && to) setApplied({ from, to });
-                }}
-              >
-                <label className="sr-only" htmlFor="dash-from">Data inicial</label>
-                <Input id="dash-from" type="date" className="h-9 w-auto" max={to || undefined} value={from} onChange={(e) => setFrom(e.target.value)} />
-                <span className="text-sm text-ink-muted">até</span>
-                <label className="sr-only" htmlFor="dash-to">Data final</label>
-                <Input id="dash-to" type="date" className="h-9 w-auto" min={from || undefined} value={to} onChange={(e) => setTo(e.target.value)} />
-                <Button type="submit" size="sm">Aplicar</Button>
-              </form>
-            )}
-            <p className="ml-auto hidden text-xs text-ink-muted md:block">
-              Compara com o período anterior de mesma duração · atualiza sozinho a cada 30 s
-            </p>
-          </div>
+          <PeriodFilter filter={filter} hint="Compara com o período anterior de mesma duração · atualiza sozinho a cada 30 s" />
 
           {query.isError && !data ? (
             <div role="alert" className="rounded-xl border border-danger/30 bg-red-50 p-6 text-center">
@@ -189,10 +146,6 @@ export function DashboardPage() {
       </div>
     </div>
   );
-}
-
-function formatDay(iso: string): string {
-  return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 }
 
 function DashboardSkeleton() {

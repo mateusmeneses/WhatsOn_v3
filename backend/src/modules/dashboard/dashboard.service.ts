@@ -49,8 +49,8 @@ export function resolveRange(
   return { from, to, days };
 }
 
-const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
-const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
+export const num = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
+export const numOrNull = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v));
 
 export interface Metric {
   value: number;
@@ -141,10 +141,10 @@ export interface DashboardData {
   }[];
 }
 
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 
 /** Mensagem do cliente que abre uma "rodada" (a anterior foi nossa ou não existe) e a próxima resposta enviada. */
-const ASKS_CTE = `
+export const ASKS_CTE = `
   seq AS (
     SELECT id, "ticketId", "fromMe", "createdAt",
            LAG("fromMe") OVER (PARTITION BY "ticketId" ORDER BY "createdAt", id) AS "prevFromMe"
@@ -168,7 +168,7 @@ const ASKS_CTE = `
   )`;
 
 /** Tempo entre o chamado ficar aguardando (criado/transferido/reaberto) e um atendente aceitá-lo. */
-const ACCEPTS_CTE = `
+export const ACCEPTS_CTE = `
   accepts AS (
     SELECT a.id, a."userId", a."createdAt",
            EXTRACT(EPOCH FROM (a."createdAt" - p."createdAt")) AS secs
@@ -189,11 +189,18 @@ function fillDays(from: string, to: string): string[] {
   return out;
 }
 
-export async function getDashboard(companyId: number, range: DashboardRange): Promise<DashboardData> {
-  const company = await Company.findByPk(companyId, { attributes: ["id", "timezone"] });
-  if (!company) throw notFound("Empresa");
-  const tz = company.timezone;
+export type Bounds = {
+  companyId: number;
+  tz: string;
+  start: Date;
+  end: Date;
+  prevStart: Date;
+  todayStart: Date;
+  todayEnd: Date;
+};
 
+/** Converte as datas locais do período (e do anterior, de mesma duração) em instantes no fuso informado. */
+export async function computeBounds(companyId: number, tz: string, range: DashboardRange): Promise<Bounds> {
   const prevFrom = msToDay(dayToMs(range.from) - range.days * DAY_MS);
   const [bounds] = await sequelize.query<{ start: Date; end: Date; prevStart: Date; todayStart: Date; todayEnd: Date }>(
     `SELECT (CAST(:from AS date))::timestamp AT TIME ZONE :tz AS "start",
@@ -203,15 +210,16 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
             (CAST(:today AS date) + 1)::timestamp AT TIME ZONE :tz AS "todayEnd"`,
     { type: QueryTypes.SELECT, replacements: { from: range.from, to: range.to, prevFrom, tz, today: todayIn(tz) } },
   );
-  const r = {
-    companyId,
-    tz,
-    start: bounds.start,
-    end: bounds.end,
-    prevStart: bounds.prevStart,
-    todayStart: bounds.todayStart,
-    todayEnd: bounds.todayEnd,
-  };
+  return { companyId, tz, ...bounds! };
+}
+
+export const dayList = fillDays;
+export const sqlRows = <T extends Row = Row>(sql: string, replacements: object) =>
+  sequelize.query<T>(sql, { type: QueryTypes.SELECT, replacements: replacements as Record<string, unknown> });
+
+export async function getDashboard(companyId: number, range: DashboardRange): Promise<DashboardData> {
+  const tz = await companyTimezone(companyId);
+  const r = await computeBounds(companyId, tz, range);
   const q = <T extends Row = Row>(sql: string) => sequelize.query<T>(sql, { type: QueryTypes.SELECT, replacements: r });
 
   const [

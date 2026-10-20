@@ -139,6 +139,19 @@ export async function onlineUsers(companyId: number): Promise<OnlineUser[]> {
   return [...byUser.values()];
 }
 
+/** Usuários distintos online por empresa, em toda a plataforma (visão do super-admin). */
+export async function onlineCountsByCompany(): Promise<Map<number, number>> {
+  const counts = new Map<number, Set<number>>();
+  if (!io) return new Map();
+  for (const socket of await io.fetchSockets()) {
+    const session = socket.data.auth as SessionContext | undefined;
+    if (!session || session.superAdmin || session.companyId === null) continue;
+    if (!counts.has(session.companyId)) counts.set(session.companyId, new Set());
+    counts.get(session.companyId)!.add(session.userId);
+  }
+  return new Map([...counts].map(([companyId, users]) => [companyId, users.size]));
+}
+
 export const emitter = {
   toRooms(targets: string[], event: string, payload: unknown): void {
     if (io && targets.length) io.to(targets).emit(event, payload);
