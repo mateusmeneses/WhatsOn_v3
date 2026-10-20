@@ -1,6 +1,14 @@
 {
-  "atualizadoEm": "2026-10-19",
+  "atualizadoEm": "2026-10-20",
   "versoes": [
+    {
+      "versao": "2026.10.20.1",
+      "data": "20/10/2026",
+      "titulo": "Mensagens da API não abrem atendimento",
+      "melhorias": [
+        "Mensagens enviadas por outros sistemas pela API (avisos, boletos, notificações) não abrem mais atendimento: ficam registradas como finalizadas no histórico do contato. Se o cliente responder, abre um atendimento normal."
+      ]
+    },
     {
       "versao": "2026.10.19.2",
       "data": "19/10/2026",
