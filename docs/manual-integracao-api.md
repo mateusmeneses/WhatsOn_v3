@@ -23,8 +23,9 @@ conectar um número de WhatsApp e enviar mensagens por ele.
 
 - API REST sobre HTTPS, JSON em UTF-8.
 - Um **token por conexão** (número de WhatsApp). Tudo que é feito com o token usa aquele número.
-- Toda mensagem enviada entra no **atendimento do contato** e aparece no histórico do painel, como se um
-  atendente tivesse enviado. As respostas do cliente chegam no painel e a equipe atende normalmente.
+- Mensagem enviada pela API **não abre atendimento**: se o contato já tem um em andamento, entra nele; senão
+  fica registrada num atendimento já **finalizado**. Aparece no histórico do painel, como se um atendente tivesse
+  enviado. A resposta do cliente abre um atendimento normal e a equipe atende pelo painel.
 - O envio é **assíncrono**: a API aceita e registra a mensagem (HTTP 201) e a entrega ao WhatsApp ocorre em
   seguida, por fila.
 

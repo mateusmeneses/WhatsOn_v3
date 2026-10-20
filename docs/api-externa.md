@@ -113,7 +113,7 @@ Resposta `201`:
 }
 ```
 
-A mensagem entra no atendimento do contato (o aberto, ou um novo) e aparece no histórico do painel.
+A mensagem não abre atendimento: se o contato tem um em andamento, entra nele; senão fica registrada num atendimento já finalizado. Aparece no histórico do painel, e a resposta do contato abre um atendimento normal.
 O envio ao WhatsApp é assíncrono: `ack` começa em `pending` e passa a `sent`/`delivered`/`read` no painel.
 
 ### Enviar arquivos (multipart)

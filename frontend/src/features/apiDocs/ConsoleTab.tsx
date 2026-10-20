@@ -211,7 +211,7 @@ export function ConsoleTab({
               <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden />
               {endpoint.destructive
                 ? "Esta chamada desconecta o número de verdade."
-                : "Esta chamada envia uma mensagem real pelo WhatsApp e abre/atualiza o atendimento do contato."}
+                : "Esta chamada envia uma mensagem real pelo WhatsApp e registra no histórico do contato."}
             </p>
           )}
 

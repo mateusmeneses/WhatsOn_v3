@@ -64,20 +64,14 @@ async function matchPendingEcho(connectionId: number, contactId: number, ev: Inb
   return true;
 }
 
-/** `viaApi`: envio automático pela API externa (notificação) abre direto como "open", sem entrar na fila de espera. */
-export async function findOrCreateTicket(
-  connection: Connection,
-  contact: Contact,
-  fromMe: boolean,
-  viaApi = false,
-): Promise<Ticket> {
+export async function findOrCreateTicket(connection: Connection, contact: Contact, fromMe: boolean): Promise<Ticket> {
   const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
   const open = await Ticket.findOne({ where });
   if (open) return open;
 
   // Conversa iniciada pelo celular da empresa não passa pelo bot. Fica pendente (e não "open" sem dono,
   // invisível para atendentes) até alguém aceitar.
-  const status: TicketStatus = viaApi ? "open" : fromMe || !(await hasBot(connection.id)) ? "pending" : "bot";
+  const status: TicketStatus = fromMe || !(await hasBot(connection.id)) ? "pending" : "bot";
   try {
     const ticket = await Ticket.create({
       companyId: connection.companyId,

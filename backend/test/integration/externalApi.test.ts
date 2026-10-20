@@ -70,7 +70,7 @@ describe("external API (/api/v1)", () => {
   });
 
   describe("send", () => {
-    it("sends text through the outbound flow and records it on a ticket", async () => {
+    it("sends text through the outbound flow and records it on an already closed ticket", async () => {
       const { connection } = await apiConnection();
       const res = await request(app)
         .post("/api/v1/messages/send")
@@ -80,7 +80,15 @@ describe("external API (/api/v1)", () => {
       expect(res.body).toMatchObject({ number: "5511988887777", messages: [{ type: "text", ack: "pending" }] });
 
       const ticket = await Ticket.findByPk(res.body.ticketId);
-      expect(ticket).toMatchObject({ connectionId: connection.id, status: "open", lastMessage: "Seu pedido saiu para entrega" });
+      expect(ticket).toMatchObject({
+        connectionId: connection.id,
+        status: "closed",
+        userId: null,
+        queueId: null,
+        unreadCount: 0,
+        lastMessage: "Seu pedido saiu para entrega",
+      });
+      expect(ticket!.closedAt).toBeInstanceOf(Date);
       const contact = await Contact.findByPk(ticket!.contactId);
       expect(contact!.number).toBe("5511988887777");
 
@@ -104,6 +112,21 @@ describe("external API (/api/v1)", () => {
       expect(res.body.ticketId).toBe(ticket.id);
       expect(res.body.contactId).toBe(contact.id);
       expect(await Ticket.count()).toBe(1);
+      expect((await ticket.reload()).status).toBe("pending");
+    });
+
+    it("does not reuse a closed ticket and leaves the next reply free to open a new one", async () => {
+      const { company, connection } = await apiConnection();
+      const contact = await createContact(company.id, { number: "5511988887777" });
+      const old = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "closed" });
+      const res = await request(app)
+        .post("/api/v1/messages/send")
+        .set("Authorization", auth())
+        .send({ number: "11988887777", body: "boleto disponível" });
+      expect(res.status).toBe(201);
+      expect(res.body.ticketId).not.toBe(old.id);
+      expect(await Ticket.count({ where: { contactId: contact.id, status: "closed" } })).toBe(2);
+      expect(await Ticket.count({ where: { contactId: contact.id } })).toBe(2);
     });
 
     it("sends multipart medias with the body as caption of the first file", async () => {

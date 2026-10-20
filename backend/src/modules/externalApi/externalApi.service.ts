@@ -1,9 +1,10 @@
-import { Connection, Contact, Message } from "../../models";
+import { Op } from "sequelize";
+import { Connection, Contact, Message, Ticket } from "../../models";
 import { AppError } from "../../shared/errors/AppError";
 import { disconnectConnection, getConnectionQrCode } from "../connections/connections.service";
-import { findOrCreateTicket } from "../inbound/handleMessage";
 import { saveBuffer, StoredMedia } from "../media/media.storage";
 import { createOutgoingMessage } from "../messages/messages.service";
+import { logTicket } from "../tickets/tickets.service";
 import { normalizePhone } from "../users/welcome";
 import { getProvider } from "../whatsapp/registry";
 import { fetchRemoteMedia } from "./remoteMedia";
@@ -66,12 +67,32 @@ async function resolveContact(connection: Connection, rawNumber: string): Promis
 const summary = (m: Message) => ({ id: m.id, type: m.type, ack: m.ack });
 
 /**
- * Envia pelo fluxo normal de saída: a mensagem entra no ticket do contato (criado se preciso)
+ * Mensagem de outro sistema (notificação) não abre atendimento: sem um em andamento com o contato,
+ * fica registrada num ticket já finalizado. A resposta do contato abre um novo, pelo fluxo normal.
+ */
+async function apiTicket(connection: Connection, contact: Contact): Promise<Ticket> {
+  const active = await Ticket.findOne({
+    where: { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } },
+  });
+  if (active) return active;
+  const ticket = await Ticket.create({
+    companyId: connection.companyId,
+    contactId: contact.id,
+    connectionId: connection.id,
+    status: "closed",
+    closedAt: new Date(),
+  });
+  await logTicket(ticket, "created");
+  return ticket;
+}
+
+/**
+ * Envia pelo fluxo normal de saída: a mensagem entra no ticket do contato
  * e é despachada pela fila de outbound, como se o atendimento tivesse enviado.
  */
 async function sendToTicket(connection: Connection, rawNumber: string, items: OutgoingItem[]) {
   const contact = await resolveContact(connection, rawNumber);
-  const ticket = await findOrCreateTicket(connection, contact, true, true);
+  const ticket = await apiTicket(connection, contact);
   const messages: Message[] = [];
   for (const item of items) messages.push(await createOutgoingMessage(ticket, item));
   return { ticketId: ticket.id, contactId: contact.id, number: contact.number, messages: messages.map(summary) };

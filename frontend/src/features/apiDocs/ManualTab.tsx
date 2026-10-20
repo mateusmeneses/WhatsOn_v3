@@ -76,8 +76,8 @@ export function ManualTab({ baseUrl }: { baseUrl: string }) {
       <Section id="visao-geral" title="Visão geral">
         <p>
           A API externa permite que qualquer sistema (ERP, e-commerce, CRM, automações) conecte um número de WhatsApp e envie
-          mensagens por ele. É uma API REST: HTTPS, JSON em UTF-8 e autenticação por token no cabeçalho. Toda mensagem enviada
-          entra no atendimento do contato e aparece no histórico do WhatsOn, como se um atendente tivesse enviado.
+          mensagens por ele. É uma API REST: HTTPS, JSON em UTF-8 e autenticação por token no cabeçalho. Mensagem enviada não abre
+          atendimento: fica no histórico do WhatsOn, como se um atendente tivesse enviado.
         </p>
         <p className="font-medium">URL base</p>
         <CodeBlock code={baseUrl} label="Copiar URL base" />
@@ -134,7 +134,7 @@ export function ManualTab({ baseUrl }: { baseUrl: string }) {
             <InlineCode>ack</InlineCode> começa em <InlineCode>pending</InlineCode> e evolui para <InlineCode>sent</InlineCode>,{" "}
             <InlineCode>delivered</InlineCode> e <InlineCode>read</InlineCode> (acompanhe pelo painel).
           </li>
-          <li>Se o contato já tem atendimento aberto, a mensagem entra nele; senão um novo é aberto.</li>
+          <li>Se o contato já tem atendimento em andamento, a mensagem entra nele; senão fica num atendimento já finalizado.</li>
           <li>
             Respostas do cliente chegam no WhatsOn como qualquer conversa, e a equipe atende normalmente pelo painel.
           </li>
