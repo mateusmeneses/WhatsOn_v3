@@ -379,7 +379,7 @@ Campo de número (pré-preenchido com o celular do usuário logado, se houver) e
 
 ## Apêndice A — ERP MultiComércio
 
-Repositório `D:\PROJETOS\MULTICOMERCIO` (branch `main`). ASP.NET Core MVC, Dapper (SQL parametrizado), SQL
+Repositório do MultiComércio, branch `main`. ASP.NET Core MVC, Dapper (SQL parametrizado), SQL
 Server com **um banco por empresa (tenant)** e o banco central **MULTIMASTER**. Leia `ARCHITECTURE.md`,
 `ARMADILHAS.md` e `DESIGN-SYSTEM.md` do repositório antes de codar.
 
