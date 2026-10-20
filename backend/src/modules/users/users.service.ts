@@ -6,6 +6,7 @@ import { AppError, notFound } from "../../shared/errors/AppError";
 import { AuthContext } from "../auth/auth.types";
 import { PublicUser, toPublicUser } from "../auth/auth.service";
 import { assertQueuesBelong } from "../queues/queues.service";
+import { onlineUsers } from "../realtime/socket";
 import { setUserQueues, userQueueIds } from "./userQueues";
 import { generateTemporaryPassword, normalizePhone, sendAccessMessage } from "./welcome";
 
@@ -47,6 +48,10 @@ export interface CreateUserInput extends UserInput {
 
 export interface UserView extends PublicUser, TicketAccess {
   queueIds: number[];
+  /** Presença: só preenchida na listagem. */
+  online?: boolean;
+  lastLoginAt?: Date | null;
+  lastSeenAt?: Date | null;
 }
 
 /** Resultado do envio do acesso. A senha só volta quando foi gerada e não chegou por WhatsApp. */
@@ -87,8 +92,16 @@ async function assertEmailFree(email: string, exceptId?: number): Promise<void> 
 }
 
 export async function listUsers(companyId: number): Promise<UserView[]> {
-  const users = await User.findAll({ where: { companyId }, order: [["name", "ASC"]] });
-  return Promise.all(users.map(view));
+  const [users, online] = await Promise.all([User.findAll({ where: { companyId }, order: [["name", "ASC"]] }), onlineUsers(companyId)]);
+  const onlineIds = new Set(online.map((o) => o.userId));
+  return Promise.all(
+    users.map(async (u) => ({
+      ...(await view(u)),
+      online: onlineIds.has(u.id),
+      lastLoginAt: u.lastLoginAt,
+      lastSeenAt: u.lastSeenAt,
+    })),
+  );
 }
 
 export interface UserOption extends TicketAccess {

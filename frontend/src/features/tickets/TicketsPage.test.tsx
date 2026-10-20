@@ -33,6 +33,32 @@ beforeEach(() => {
   );
 });
 
+describe("TicketsPage waiting time", () => {
+  it("shows how long a pending customer has been waiting", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    const waiting = makeTicket({ id: 9, status: "pending", lastMessageAt: new Date(Date.now() - 12 * 60_000).toISOString(), contact: makeContact({ id: 9, name: "Cliente Esperando" }) });
+    vi.mocked(fetchTickets).mockResolvedValue({ items: [waiting], hasMore: false });
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    expect(await screen.findByText("Cliente Esperando")).toBeInTheDocument();
+    expect(screen.getByTitle("Tempo desde a última mensagem do cliente")).toHaveTextContent("12m");
+  });
+});
+
+describe("TicketsPage deep links", () => {
+  it("opens the tab named in ?aba= (shortcuts from the dashboard and queues)", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    renderWithProviders(<TicketsPage />, { route: "/atendimento?aba=open", socket: new FakeSocket() });
+    await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("open", expect.anything(), expect.anything()));
+    expect(screen.getByRole("tab", { name: "Atendendo", selected: true })).toBeInTheDocument();
+  });
+
+  it("falls back to the waiting tab for unknown values", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    renderWithProviders(<TicketsPage />, { route: "/atendimento?aba=xyz", socket: new FakeSocket() });
+    expect(await screen.findByRole("tab", { name: "Aguardando", selected: true })).toBeInTheDocument();
+  });
+});
+
 describe("TicketsPage", () => {
   it("lists pending tickets and hides the bot tab from agents", async () => {
     setTestUser({ id: 1, profile: "agent" });

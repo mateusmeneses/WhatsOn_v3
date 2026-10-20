@@ -16,9 +16,9 @@
   --color-border: #e3e9f2;
   --color-ink: #0f1d36;
   --color-ink-muted: #5a6880;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-success: #15803d; /* texto sobre fundo claro: 5:1 (AA) */
+  --color-warning: #b45309; /* idem */
+  --color-danger: #c81e1e; /* idem */
 }
 
 html,
@@ -29,4 +29,42 @@ body,
 
 body {
   @apply bg-background font-sans text-ink antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: rgba(10, 106, 214, 0.18);
+}
+
+/* Foco visível e consistente para quem navega pelo teclado. */
+:where(a, button, [role="tab"], summary):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Rolagem discreta nos painéis internos. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5cfde transparent;
+}
+
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-border/70;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

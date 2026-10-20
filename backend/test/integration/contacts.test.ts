@@ -4,7 +4,7 @@ import { Contact } from "../../src/models";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
 import { emitter } from "../../src/modules/realtime/socket";
-import { createCompany, createConnection, createContact, createTicket, createUser } from "../helpers/factories";
+import { createCompany, createConnection, createContact, createMessage, createTicket, createUser } from "../helpers/factories";
 
 const app = createApp();
 
@@ -82,5 +82,33 @@ describe("contacts API", () => {
     expect(updates).toHaveLength(1);
     expect(updates[0][2]).toMatchObject({ id: open.id, contact: { name: "Cliente VIP" } });
     spy.mockRestore();
+  });
+});
+
+describe("contact stats", () => {
+  beforeEach(resetDb);
+
+  it("summarizes tickets, last contact and the active ticket of the requested contacts", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const connection = await createConnection(company.id);
+    const busy = await createContact(company.id);
+    const quiet = await createContact(company.id);
+    const foreign = await createContact((await createCompany()).id);
+    const old = await createTicket({ companyId: company.id, contactId: busy.id, connectionId: connection.id, status: "closed" });
+    await createMessage(old, { createdAt: new Date("2026-10-01T10:00:00Z") });
+    const current = await createTicket({ companyId: company.id, contactId: busy.id, connectionId: connection.id, status: "open" });
+    await createMessage(current, { createdAt: new Date("2026-10-10T10:00:00Z") });
+
+    const res = await request(app)
+      .get(`/api/contacts/stats?ids=${busy.id},${quiet.id},${foreign.id},abc`)
+      .set("Authorization", bearer(agent))
+      .expect(200);
+    expect(res.body).toHaveLength(2); // o contato de outra empresa não aparece
+    expect(res.body.find((c: { id: number }) => c.id === busy.id)).toEqual({
+      id: busy.id, tickets: 2, lastContactAt: "2026-10-10T10:00:00.000Z", activeStatus: "open",
+    });
+    expect(res.body.find((c: { id: number }) => c.id === quiet.id)).toEqual({ id: quiet.id, tickets: 0, lastContactAt: null, activeStatus: null });
+    await request(app).get("/api/contacts/stats").set("Authorization", bearer(agent)).expect(200, []);
   });
 });

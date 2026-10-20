@@ -3,11 +3,12 @@ import userEvent from "@testing-library/user-event";
 import { AppRoutes } from "@/app/routes";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { QueuesPage } from "./QueuesPage";
-import { createQueue, deleteQueue, fetchQueues } from "./queuesApi";
+import { createQueue, deleteQueue, fetchQueues, fetchQueueStats } from "./queuesApi";
 
 vi.mock("./queuesApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./queuesApi")>()),
   fetchQueues: vi.fn(),
+  fetchQueueStats: vi.fn(),
   createQueue: vi.fn(),
   updateQueue: vi.fn(),
   deleteQueue: vi.fn(),
@@ -15,12 +16,23 @@ vi.mock("./queuesApi", async (importOriginal) => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 beforeEach(() => {
+  vi.mocked(fetchQueueStats).mockResolvedValue([]);
   vi.mocked(fetchQueues).mockResolvedValue([
     { id: 10, companyId: 1, name: "Suporte", color: "#6d5dfc", schedule: { "1": ["08:00-18:00"] } },
   ]);
 });
 
 describe("QueuesPage", () => {
+  it("shows each queue's live situation: opening hours, team and waiting line", async () => {
+    vi.mocked(fetchQueueStats).mockResolvedValue([{ id: 10, members: 3, pending: 4, open: 2, openNow: false }]);
+    setTestUser({ profile: "admin" });
+    renderWithProviders(<QueuesPage />);
+    expect(await screen.findByText("Fora do expediente")).toBeInTheDocument();
+    expect(screen.getByText("3 atendentes")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "4 aguardando" })).toHaveAttribute("href", "/atendimento?aba=pending");
+    expect(screen.getByRole("link", { name: "2 em atendimento" })).toHaveAttribute("href", "/atendimento?aba=open");
+  });
+
   it("lists queues with their schedule summary", async () => {
     setTestUser({ profile: "admin" });
     renderWithProviders(<QueuesPage />);

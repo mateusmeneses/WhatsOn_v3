@@ -207,7 +207,7 @@ export function LoginPage() {
 
 const inputClass =
   "peer h-12 w-full rounded-xl border border-border bg-surface pl-11 pr-3.5 text-[15px] text-ink shadow-sm " +
-  "placeholder:text-ink-muted/60 transition duration-200 " +
+  "placeholder:text-ink-muted transition duration-200 " +
   "hover:border-brand-blue/40 focus:border-brand-blue focus:outline-none focus:ring-4 focus:ring-brand-blue/15 " +
   "aria-[invalid]:border-red-300 aria-[invalid]:focus:ring-red-500/15";
 
@@ -334,7 +334,7 @@ function LoginVersion() {
   const { data } = useAppVersion();
   if (!data) return null;
   return (
-    <p className="mt-1 text-center text-[11px] text-ink-muted/80 lg:text-left">
+    <p className="mt-1 text-center text-[11px] text-ink-muted lg:text-left">
       Versão {data.version}
       {data.buildTime && <> · Build: {data.buildTime}</>}
     </p>

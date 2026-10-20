@@ -3,17 +3,34 @@ import userEvent from "@testing-library/user-event";
 import { makeContact } from "@/test/factories";
 import { renderWithProviders, setTestUser } from "@/test/utils";
 import { ContactsPage } from "./ContactsPage";
-import { fetchContacts, updateContact } from "./contactsApi";
+import { fetchContacts, fetchContactStats, updateContact } from "./contactsApi";
 
 vi.mock("./contactsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./contactsApi")>()),
   fetchContacts: vi.fn(),
+  fetchContactStats: vi.fn(),
   updateContact: vi.fn(),
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+describe("ContactsPage history columns", () => {
+  it("shows ticket count, last contact and the active ticket status", async () => {
+    setTestUser();
+    vi.mocked(fetchContacts).mockResolvedValue({ items: [makeContact({ id: 7, name: "Maria Souza" })], hasMore: false });
+    vi.mocked(fetchContactStats).mockResolvedValue([{ id: 7, tickets: 5, lastContactAt: new Date().toISOString(), activeStatus: "open" }]);
+    renderWithProviders(<ContactsPage />);
+    const row = (await screen.findByText("Maria Souza")).closest("tr")!;
+    expect(await within(row).findByText("5")).toBeInTheDocument();
+    expect(within(row).getByText("agora")).toBeInTheDocument();
+    expect(within(row).getByText("Em atendimento")).toBeInTheDocument();
+  });
+});
+
 describe("ContactsPage", () => {
-  beforeEach(() => setTestUser());
+  beforeEach(() => {
+    setTestUser();
+    vi.mocked(fetchContactStats).mockResolvedValue([]);
+  });
 
   it("lists, searches and paginates contacts", async () => {
     vi.mocked(fetchContacts).mockImplementation(async (_search, page) =>

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { idParam } from "../../shared/http";
 import { currentAuth, isAuth, requireProfile } from "../auth/auth.middleware";
-import { createQueue, deleteQueue, listQueues, updateQueue } from "./queues.service";
+import { createQueue, deleteQueue, listQueues, queueStats, updateQueue } from "./queues.service";
 
 /** Fim pode ser "24:00" (meia-noite do dia seguinte, exclusivo). */
 const RANGE = /^([01]\d|2[0-3]):[0-5]\d-(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
@@ -34,6 +34,10 @@ queueRoutes.use(isAuth);
 
 queueRoutes.get("/", async (req, res) => {
   res.json(await listQueues(currentAuth(req).companyId));
+});
+
+queueRoutes.get("/stats", requireProfile("admin", "supervisor"), async (req, res) => {
+  res.json(await queueStats(currentAuth(req).companyId));
 });
 
 queueRoutes.post("/", requireProfile("admin"), async (req, res) => {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { idParam } from "../../shared/http";
 import { currentAuth, isAuth, requireProfile } from "../auth/auth.middleware";
 import {
+  connectionStats,
   createConnection,
   deleteConnection,
   disconnectConnection,
@@ -30,6 +31,10 @@ connectionRoutes.use(isAuth);
 connectionRoutes.get("/", async (req, res) => {
   const connections = await listConnections(currentAuth(req).companyId);
   res.json(connections.map(publicConnection));
+});
+
+connectionRoutes.get("/stats", requireProfile("admin"), async (req, res) => {
+  res.json(await connectionStats(currentAuth(req).companyId));
 });
 
 connectionRoutes.post("/", requireProfile("admin"), async (req, res) => {

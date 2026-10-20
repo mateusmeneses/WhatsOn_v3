@@ -367,3 +367,26 @@ export async function closeTicketInternal(
   await emitTicket(ticket.id, prev);
   return true;
 }
+
+export interface TicketSummary {
+  /** Aguardando atendimento que o usuário enxerga. */
+  pending: number;
+  /** Em atendimento com o próprio usuário. */
+  mine: number;
+  /** Mensagens não lidas somando esses dois grupos. */
+  unread: number;
+}
+
+/** Contadores do menu e do título da aba: o que está esperando por este usuário agora. */
+export async function ticketSummary(auth: AuthContext): Promise<TicketSummary> {
+  const visibility = visibilityWhere(auth, await loadAgentScope(auth), "pending") ?? { id: null };
+  const pendingWhere = { companyId: auth.companyId, status: "pending", ...visibility };
+  const mineWhere = { companyId: auth.companyId, status: "open", userId: auth.userId };
+  const [pending, mine, pendingUnread, mineUnread] = await Promise.all([
+    Ticket.count({ where: pendingWhere }),
+    Ticket.count({ where: mineWhere }),
+    Ticket.sum("unreadCount", { where: pendingWhere }),
+    Ticket.sum("unreadCount", { where: mineWhere }),
+  ]);
+  return { pending, mine, unread: (pendingUnread || 0) + (mineUnread || 0) };
+}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { idParam, pageParam } from "../../shared/http";
 import { currentAuth, isAuth } from "../auth/auth.middleware";
-import { deleteContact, getContactOr404, listContacts, updateContact } from "./contacts.service";
+import { contactStats, deleteContact, getContactOr404, listContacts, updateContact } from "./contacts.service";
 
 export const contactRoutes = Router();
 contactRoutes.use(isAuth);
@@ -10,6 +10,15 @@ contactRoutes.use(isAuth);
 contactRoutes.get("/", async (req, res) => {
   const search = typeof req.query.search === "string" ? req.query.search : undefined;
   res.json(await listContacts(currentAuth(req).companyId, { search, page: pageParam(req.query.page) }));
+});
+
+// Antes de "/:id". ?ids=1,2,3
+contactRoutes.get("/stats", async (req, res) => {
+  const ids = String(req.query.ids ?? "")
+    .split(",")
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0);
+  res.json(await contactStats(currentAuth(req).companyId, ids));
 });
 
 contactRoutes.get("/:id", async (req, res) => {

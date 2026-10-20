@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { AppError } from "../../shared/errors/AppError";
 import { idParam } from "../../shared/http";
 import { currentSession, isSession, requireSuperAdmin } from "../auth/auth.middleware";
 import { normalizeCnpj } from "../../shared/cnpj";
@@ -11,6 +12,11 @@ import {
   setPartnerStatus,
   updatePartner,
 } from "../partners/partners.service";
+import { MAX_RANGE_DAYS } from "../dashboard/dashboard.service";
+import { createTtlCache } from "../../shared/ttlCache";
+import { getPlatformOverview } from "./platform.service";
+
+const overviewCache = createTtlCache({ ttlMs: 30_000, enabled: process.env.NODE_ENV !== "test" });
 import { createCompany, enterCompany, exitCompany, listCompanies, setCompanyBlocked, updateCompany } from "./admin.service";
 
 const name = z.string().trim().min(1).max(80);
@@ -37,6 +43,27 @@ const createSchema = z.object({
 /** Painel do super-admin: empresas da plataforma. */
 export const adminRoutes = Router();
 adminRoutes.use(isSession, requireSuperAdmin);
+
+const overviewDay = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "use o formato AAAA-MM-DD")
+  .refine((v) => !Number.isNaN(Date.parse(`${v}T00:00:00Z`)), "data inválida");
+const overviewSchema = z.object({
+  period: z.enum(["today", "yesterday", "7d", "30d", "90d", "custom"]).default("30d"),
+  from: overviewDay.optional(),
+  to: overviewDay.optional(),
+});
+
+/** Indicadores de toda a plataforma (todas as empresas, parceiros e conexões). */
+adminRoutes.get("/overview", async (req, res) => {
+  const query = overviewSchema.parse(req.query);
+  if (query.period === "custom" && (!query.from || !query.to)) {
+    throw new AppError("INVALID_RANGE", 400, "Informe a data inicial e a final");
+  }
+  const days = query.period === "custom" ? Math.abs(Date.parse(`${query.to}T00:00:00Z`) - Date.parse(`${query.from}T00:00:00Z`)) / 86_400_000 + 1 : 0;
+  if (days > MAX_RANGE_DAYS) throw new AppError("INVALID_RANGE", 400, `O período máximo é de ${MAX_RANGE_DAYS} dias`);
+  res.json(await overviewCache.get(`${query.period}:${query.from ?? ""}:${query.to ?? ""}`, () => getPlatformOverview(query.period, query)));
+});
 
 adminRoutes.get("/companies", async (_req, res) => {
   res.json(await listCompanies());

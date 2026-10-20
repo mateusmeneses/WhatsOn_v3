@@ -16,16 +16,18 @@ export function SettingsPage() {
   const company = useQuery({ queryKey: companyKeys.current, queryFn: fetchCompany });
   const [name, setName] = useState("");
   const [timezone, setTimezone] = useState("America/Sao_Paulo");
+  const [sla, setSla] = useState("5");
 
   useEffect(() => {
     if (company.data) {
       setName(company.data.name);
       setTimezone(company.data.timezone);
+      setSla(String(company.data.responseSlaMinutes ?? 5));
     }
   }, [company.data]);
 
   const mutation = useMutation({
-    mutationFn: () => updateCompany({ name: name.trim(), timezone }),
+    mutationFn: () => updateCompany({ name: name.trim(), timezone, responseSlaMinutes: Number(sla) }),
     onSuccess: (saved) => {
       queryClient.setQueryData(companyKeys.current, saved);
       toast.success("Configurações salvas");
@@ -33,6 +35,8 @@ export function SettingsPage() {
     onError: (err) => toast.error(errorMessage(err)),
   });
 
+  const slaNumber = Number(sla);
+  const slaValid = Number.isInteger(slaNumber) && slaNumber >= 1 && slaNumber <= 240;
   const zones = TIMEZONES.some((z) => z.value === timezone) ? TIMEZONES : [{ value: timezone, label: timezone }, ...TIMEZONES];
 
   return (
@@ -67,8 +71,25 @@ export function SettingsPage() {
                 </Select>
                 <p className="mt-1 text-xs text-ink-muted">Usado para calcular o horário de expediente das filas.</p>
               </div>
+              <div>
+                <Label htmlFor="company-sla">Meta de primeira resposta (minutos)</Label>
+                <Input
+                  id="company-sla"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={240}
+                  step={1}
+                  value={sla}
+                  onChange={(e) => setSla(e.target.value)}
+                  className="max-w-[8rem]"
+                />
+                <p className="mt-1 text-xs text-ink-muted">
+                  O Dashboard mostra a porcentagem de clientes respondidos dentro dessa meta (de 1 a 240 minutos).
+                </p>
+              </div>
               <div className="flex justify-end">
-                <Button type="submit" loading={mutation.isPending} disabled={!name.trim()}>
+                <Button type="submit" loading={mutation.isPending} disabled={!name.trim() || !slaValid}>
                   Salvar
                 </Button>
               </div>

@@ -62,3 +62,24 @@ describe("ui primitives", () => {
     expect(screen.getByText("Tudo em dia")).toBeInTheDocument();
   });
 });
+
+describe("Tabs keyboard support", () => {
+  it("moves the selection with arrow keys, Home and End, and keeps only the active tab in the tab order", async () => {
+    const onChange = vi.fn();
+    const items = [{ value: "a", label: "Alfa" }, { value: "b", label: "Beta" }, { value: "c", label: "Gama" }];
+    render(<Tabs value="a" onChange={onChange} items={items} />);
+    const [alfa, beta, gama] = screen.getAllByRole("tab");
+    expect(alfa).toHaveAttribute("tabindex", "0");
+    expect(beta).toHaveAttribute("tabindex", "-1");
+    alfa!.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith("b");
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(onChange).toHaveBeenLastCalledWith("c"); // volta circular
+    await userEvent.keyboard("{End}");
+    expect(onChange).toHaveBeenLastCalledWith("c");
+    await userEvent.keyboard("{Home}");
+    expect(onChange).toHaveBeenLastCalledWith("a");
+    expect(gama).toBeInTheDocument();
+  });
+});

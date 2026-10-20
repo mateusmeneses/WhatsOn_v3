@@ -15,3 +15,16 @@ export async function updateContact(id: number, body: { name: string }): Promise
   const { data } = await api.put<Contact>(`/contacts/${id}`, body);
   return data;
 }
+
+export interface ContactStats {
+  id: number;
+  tickets: number;
+  lastContactAt: string | null;
+  activeStatus: "bot" | "pending" | "open" | null;
+}
+
+export async function fetchContactStats(ids: number[]): Promise<ContactStats[]> {
+  if (ids.length === 0) return [];
+  const { data } = await api.get<ContactStats[]>("/contacts/stats", { params: { ids: ids.join(",") } });
+  return data;
+}

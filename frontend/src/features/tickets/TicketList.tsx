@@ -1,8 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
+import { companyKeys, fetchCompany } from "@/features/settings/companyApi";
 import { errorMessage } from "@/lib/apiError";
+import { useNow } from "@/lib/useNow";
 import type { Ticket, TicketStatus } from "@/types/api";
 import { TicketListItem } from "./TicketListItem";
 import { useTicketList } from "./useTickets";
@@ -19,6 +22,10 @@ function uniqueById(tickets: Ticket[]): Ticket[] {
 
 export function TicketList({ status, search, selectedId }: { status: TicketStatus; search: string; selectedId: number | null }) {
   const query = useTicketList(status, search);
+  const now = useNow(30_000);
+  // Meta de resposta da empresa (opcional): sem ela o tempo aparece sem alerta de cor.
+  const company = useQuery({ queryKey: companyKeys.current, queryFn: fetchCompany, staleTime: 5 * 60_000, enabled: status === "pending" });
+  const goalSeconds = company.data?.responseSlaMinutes ? company.data.responseSlaMinutes * 60 : undefined;
   const tickets = uniqueById(query.data?.pages.flatMap((page) => page.items) ?? []);
 
   if (query.isLoading) {
@@ -42,7 +49,7 @@ export function TicketList({ status, search, selectedId }: { status: TicketStatu
   return (
     <ul aria-label="Lista de atendimentos" className="flex-1 divide-y divide-border overflow-y-auto">
       {tickets.map((ticket) => (
-        <TicketListItem key={ticket.id} ticket={ticket} selected={ticket.id === selectedId} />
+        <TicketListItem key={ticket.id} ticket={ticket} selected={ticket.id === selectedId} now={now} goalSeconds={goalSeconds} />
       ))}
       {query.hasNextPage && (
         <li className="p-3">

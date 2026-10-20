@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { env } from "../../config/env";
-import { Connection, ConnectionStatus, Ticket } from "../../models";
+import { sequelize } from "../../database/sequelize";
+import { Company, Connection, ConnectionStatus, Ticket } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger";
 import { assertQueuesBelong } from "../queues/queues.service";
@@ -158,4 +159,29 @@ export async function checkConnectionsHealth(): Promise<void> {
       logger.warn({ err, connectionId: connection.id }, "connection health check failed");
     }
   }
+}
+
+export interface ConnectionStats {
+  id: number;
+  ticketsToday: number;
+  messagesInToday: number;
+  messagesOutToday: number;
+  lastMessageAt: Date | null;
+}
+
+/** Atividade de hoje (fuso da empresa) de cada conexão, para os cartões da tela Conexões. */
+export async function connectionStats(companyId: number): Promise<ConnectionStats[]> {
+  const company = await Company.findByPk(companyId, { attributes: ["timezone"] });
+  const tz = company?.timezone ?? "America/Sao_Paulo";
+  const rows = await sequelize.query<ConnectionStats>(
+    `WITH bounds AS (SELECT date_trunc('day', now() AT TIME ZONE :tz) AT TIME ZONE :tz AS "start")
+     SELECT c.id,
+       (SELECT count(*) FROM tickets t, bounds b WHERE t."connectionId" = c.id AND t."createdAt" >= b."start")::int AS "ticketsToday",
+       (SELECT count(*) FROM messages m, bounds b WHERE m."connectionId" = c.id AND NOT m."fromMe" AND m."createdAt" >= b."start")::int AS "messagesInToday",
+       (SELECT count(*) FROM messages m, bounds b WHERE m."connectionId" = c.id AND m."fromMe" AND m."createdAt" >= b."start")::int AS "messagesOutToday",
+       (SELECT max(m."createdAt") FROM messages m WHERE m."connectionId" = c.id) AS "lastMessageAt"
+     FROM connections c WHERE c."companyId" = :companyId ORDER BY c.name`,
+    { type: QueryTypes.SELECT, replacements: { companyId, tz } },
+  );
+  return rows;
 }

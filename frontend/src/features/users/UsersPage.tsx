@@ -7,10 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConfirm } from "@/components/ui/confirm";
+import { PresenceDot } from "@/components/ui/presence-dot";
 import { Spinner } from "@/components/ui/spinner";
 import { useQueues } from "@/features/queues/useQueues";
 import { errorMessage } from "@/lib/apiError";
+import { timeAgo } from "@/lib/duration";
 import { formatPhone } from "@/lib/format";
+import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
 import { useAuth } from "@/stores/auth";
 import type { UserView } from "@/types/api";
 import { AccessResultDialog } from "./AccessResultDialog";
@@ -24,6 +27,7 @@ export function UsersPage() {
   const queryClient = useQueryClient();
   const users = useQuery({ queryKey: [...userKeys.all, "list"], queryFn: fetchUsers });
   const queues = useQueues();
+  useLiveInvalidate(userKeys.all, ["presence:changed"], 500);
   const [dialog, setDialog] = useState<{ user?: UserView } | null>(null);
   const [accessResult, setAccessResult] = useState<UserWithAccess | null>(null);
 
@@ -74,17 +78,28 @@ export function UsersPage() {
               <thead className="border-b border-border text-left text-ink-muted">
                 <tr>
                   <th className="px-5 py-3 font-medium">Nome</th>
+                  <th className="px-5 py-3 font-medium">Presença</th>
                   <th className="px-5 py-3 font-medium">E-mail</th>
                   <th className="px-5 py-3 font-medium">WhatsApp</th>
                   <th className="px-5 py-3 font-medium">Perfil</th>
                   <th className="px-5 py-3 font-medium">Filas</th>
-                  {isAdmin && <th className="px-5 py-3" />}
+                  {isAdmin && <th className="px-5 py-3"><span className="sr-only">Ações</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {users.data!.map((user) => (
                   <tr key={user.id}>
                     <td className="px-5 py-3 font-medium">{user.name}</td>
+                    <td className="px-5 py-3">
+                      <span className="flex items-center gap-2 text-xs">
+                        <PresenceDot online={Boolean(user.online)} />
+                        {user.online ? (
+                          <span className="font-medium text-success">Online</span>
+                        ) : (
+                          <span className="text-ink-muted">{user.lastSeenAt ? `Visto ${timeAgo(user.lastSeenAt)}` : "Nunca acessou"}</span>
+                        )}
+                      </span>
+                    </td>
                     <td className="px-5 py-3 text-ink-muted">{user.email}</td>
                     <td className="px-5 py-3 text-ink-muted">{user.phone ? formatPhone(user.phone) : "—"}</td>
                     <td className="px-5 py-3">

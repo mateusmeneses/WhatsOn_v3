@@ -16,6 +16,7 @@ export const isTimeZone = (tz: string) => {
 const companySchema = z.object({
   name: z.string().trim().min(1).max(80).optional(),
   timezone: z.string().refine(isTimeZone, "fuso horário inválido").optional(),
+  responseSlaMinutes: z.number().int().min(1).max(240).optional(),
 });
 
 async function myCompany(companyId: number): Promise<Company> {

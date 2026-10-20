@@ -9,14 +9,18 @@ describe("Sidebar", () => {
     renderWithProviders(<AppRoutes />, { route: "/atendimento" });
     expect(screen.getByRole("link", { name: "Atendimento" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Contatos" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Meu desempenho" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Conexões" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Usuários" })).not.toBeInTheDocument();
   });
 
   it("gives admins every page and supervisors the user list", () => {
     expect(navItemsFor("admin").map((i) => i.label)).toEqual([
+      "Dashboard",
       "Atendimento",
       "Contatos",
+      "Meu desempenho",
       "Filas",
       "Usuários",
       "Conexões",
@@ -24,6 +28,6 @@ describe("Sidebar", () => {
       "Integração API",
       "Configurações",
     ]);
-    expect(navItemsFor("supervisor").map((i) => i.label)).toEqual(["Atendimento", "Contatos", "Usuários"]);
+    expect(navItemsFor("supervisor").map((i) => i.label)).toEqual(["Dashboard", "Atendimento", "Contatos", "Meu desempenho", "Usuários"]);
   });
 });

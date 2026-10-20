@@ -1,6 +1,7 @@
 import http from "node:http";
 import { Server } from "socket.io";
 import { env } from "../../config/env";
+import { User } from "../../models";
 import { logger } from "../../shared/logger";
 import { AuthContext, SessionContext } from "../auth/auth.types";
 import { isCompanyBlocked } from "../companies/companyStatus";
@@ -70,6 +71,17 @@ export function initSocket(server: http.Server, deps: SocketDeps): Server {
     }
     const auth = session as AuthContext;
 
+    if (!session.superAdmin) {
+      socket.data.connectedAt = Date.now();
+      touchLastSeen(session.userId);
+      // O dashboard dos supervisores acompanha quem entra e sai sem precisar de polling.
+      emitter.toSupervisors(auth.companyId, "presence:changed", { userId: session.userId, online: true });
+      socket.on("disconnect", () => {
+        touchLastSeen(session.userId);
+        emitter.toSupervisors(auth.companyId, "presence:changed", { userId: session.userId, online: false });
+      });
+    }
+
     socket.on("ticket:join", async (ticketId: unknown, ack?: (ok: boolean) => void) => {
       const id = Number(ticketId);
       let ok = false;
@@ -92,6 +104,52 @@ export function initSocket(server: http.Server, deps: SocketDeps): Server {
   });
 
   return io;
+}
+
+function touchLastSeen(userId: number): void {
+  User.update({ lastSeenAt: new Date() }, { where: { id: userId }, silent: true }).catch((err) =>
+    logger.warn({ err, userId }, "lastSeenAt update failed"),
+  );
+}
+
+export interface OnlineUser {
+  userId: number;
+  /** Mais antiga entre as abas/dispositivos conectados. */
+  connectedSince: number;
+  connections: number;
+}
+
+/** Quem está com o painel aberto agora (sockets da empresa; o super-admin não conta). */
+export async function onlineUsers(companyId: number): Promise<OnlineUser[]> {
+  if (!io) return [];
+  const sockets = await io.in(rooms.company(companyId)).fetchSockets();
+  const byUser = new Map<number, OnlineUser>();
+  for (const socket of sockets) {
+    const session = socket.data.auth as SessionContext | undefined;
+    if (!session || session.superAdmin) continue;
+    const since = (socket.data.connectedAt as number | undefined) ?? Date.now();
+    const current = byUser.get(session.userId);
+    if (current) {
+      current.connections += 1;
+      current.connectedSince = Math.min(current.connectedSince, since);
+    } else {
+      byUser.set(session.userId, { userId: session.userId, connectedSince: since, connections: 1 });
+    }
+  }
+  return [...byUser.values()];
+}
+
+/** Usuários distintos online por empresa, em toda a plataforma (visão do super-admin). */
+export async function onlineCountsByCompany(): Promise<Map<number, number>> {
+  const counts = new Map<number, Set<number>>();
+  if (!io) return new Map();
+  for (const socket of await io.fetchSockets()) {
+    const session = socket.data.auth as SessionContext | undefined;
+    if (!session || session.superAdmin || session.companyId === null) continue;
+    if (!counts.has(session.companyId)) counts.set(session.companyId, new Set());
+    counts.get(session.companyId)!.add(session.userId);
+  }
+  return new Map([...counts].map(([companyId, users]) => [companyId, users.size]));
 }
 
 export const emitter = {

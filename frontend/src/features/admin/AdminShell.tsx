@@ -26,6 +26,7 @@ export function AdminShell() {
         <span className="hidden truncate text-sm font-semibold sm:inline">Painel da plataforma</span>
         <nav aria-label="Painel da plataforma" className="flex min-w-0 gap-1">
           {[
+            { to: "/visao-geral", label: "Visão geral" },
             { to: "/empresas", label: "Empresas" },
             { to: "/parceiros", label: "Parceiros" },
           ].map((item) => (

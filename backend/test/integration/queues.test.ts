@@ -2,7 +2,7 @@ import request from "supertest";
 import { createApp } from "../../src/app";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createQueue, createUser } from "../helpers/factories";
+import { createCompany, createContact, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
 
 const app = createApp();
 
@@ -83,5 +83,27 @@ describe("queues API", () => {
       .set("Authorization", bearer(admin))
       .send({ name: "Hack" });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("queue stats", () => {
+  beforeEach(resetDb);
+
+  it("reports members, waiting and in-progress tickets and whether the queue is open now", async () => {
+    const { company, connection, contact, queue } = await scenario();
+    const closedQueue = await createQueue(company.id, { name: "Noturna", schedule: { "0": [], "1": [], "2": [], "3": [], "4": [], "5": [], "6": [] } });
+    const admin = await createUser(company.id, { profile: "admin" });
+    await createUser(company.id, { queueIds: [queue.id] });
+    await createUser(company.id, { queueIds: [queue.id, closedQueue.id] });
+    await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, queueId: queue.id, status: "pending" });
+    const other = await createContact(company.id);
+    await createTicket({ companyId: company.id, contactId: other.id, connectionId: connection.id, queueId: queue.id, status: "open" });
+
+    const res = await request(app).get("/api/queues/stats").set("Authorization", bearer(admin)).expect(200);
+    expect(res.body.find((q: { id: number }) => q.id === queue.id)).toEqual({ id: queue.id, members: 2, pending: 1, open: 1, openNow: true });
+    expect(res.body.find((q: { id: number }) => q.id === closedQueue.id)).toMatchObject({ members: 1, pending: 0, openNow: false });
+
+    const agent = await createUser(company.id);
+    await request(app).get("/api/queues/stats").set("Authorization", bearer(agent)).expect(403);
   });
 });
