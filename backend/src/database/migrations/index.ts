@@ -9,6 +9,7 @@ import * as m0007 from "./0007-ticket-log-to-user";
 import * as m0008 from "./0008-contact-soft-delete";
 import * as m0009 from "./0009-ticket-claim";
 import * as m0010 from "./0010-partners";
+import * as m0011 from "./0011-dashboard-metrics";
 
 export interface MigrationModule {
   name: string;
@@ -27,4 +28,5 @@ export const migrations: MigrationModule[] = [
   { name: "0008-contact-soft-delete", up: m0008.up, down: m0008.down },
   { name: "0009-ticket-claim", up: m0009.up, down: m0009.down },
   { name: "0010-partners", up: m0010.up, down: m0010.down },
+  { name: "0011-dashboard-metrics", up: m0011.up, down: m0011.down },
 ];

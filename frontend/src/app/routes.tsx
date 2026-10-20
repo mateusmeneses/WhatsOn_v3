@@ -10,6 +10,7 @@ import { PartnersPage } from "@/features/admin/PartnersPage";
 import { ChatbotPage } from "@/features/chatbot/ChatbotPage";
 import { ConnectionsPage } from "@/features/connections/ConnectionsPage";
 import { ContactsPage } from "@/features/contacts/ContactsPage";
+import { DashboardPage } from "@/features/dashboard/DashboardPage";
 import { QueuesPage } from "@/features/queues/QueuesPage";
 import { SettingsPage } from "@/features/settings/SettingsPage";
 import { TicketsPage } from "@/features/tickets/TicketsPage";
@@ -38,6 +39,14 @@ export function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="/atendimento" replace />} />
+        <Route
+          path="dashboard"
+          element={
+            <RequireProfile profiles={["admin", "supervisor"]}>
+              <DashboardPage />
+            </RequireProfile>
+          }
+        />
         <Route path="atendimento" element={<TicketsPage />} />
         <Route path="atendimento/:ticketId" element={<TicketsPage />} />
         <Route path="contatos" element={<ContactsPage />} />

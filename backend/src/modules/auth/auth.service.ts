@@ -58,6 +58,7 @@ export async function login(email: string, password: string) {
     throw new AppError("INVALID_CREDENTIALS", 401, "E-mail ou senha inválidos");
   }
   await assertCompanyActive(user, companyBlocked());
+  await user.update({ lastLoginAt: new Date() });
   return issueSession(user);
 }
 

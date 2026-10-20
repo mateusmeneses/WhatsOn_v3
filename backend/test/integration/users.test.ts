@@ -17,6 +17,16 @@ describe("users API", () => {
     return { company, admin, queue };
   }
 
+  it("shows presence data in the user list", async () => {
+    const { company, admin } = await setup();
+    const seen = new Date("2026-10-01T12:00:00Z");
+    const agent = await createUser(company.id, { name: "Visto" });
+    await agent.update({ lastSeenAt: seen, lastLoginAt: seen });
+    const res = await request(app).get("/api/users").set("Authorization", bearer(admin)).expect(200);
+    const row = res.body.find((u: { id: number }) => u.id === agent.id);
+    expect(row).toMatchObject({ online: false, lastSeenAt: seen.toISOString(), lastLoginAt: seen.toISOString() });
+  });
+
   it("lists user options of the caller's company for every profile", async () => {
     const { company, admin, queue } = await setup();
     const agent = await createUser(company.id, { name: "Agente", queueIds: [queue.id] });

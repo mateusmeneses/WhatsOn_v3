@@ -29,4 +29,42 @@ body,
 
 body {
   @apply bg-background font-sans text-ink antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+::selection {
+  background: rgba(10, 106, 214, 0.18);
+}
+
+/* Foco visível e consistente para quem navega pelo teclado. */
+:where(a, button, [role="tab"], summary):focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Rolagem discreta nos painéis internos. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c5cfde transparent;
+}
+
+@layer utilities {
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-border/70;
+  }
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent;
+    animation: shimmer 1.4s infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

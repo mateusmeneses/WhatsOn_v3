@@ -6,10 +6,10 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "icon";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-primary text-white hover:brightness-95",
-  secondary: "border border-border bg-surface text-ink hover:bg-background",
+  primary: "bg-primary text-white shadow-sm hover:brightness-95 active:brightness-90",
+  secondary: "border border-border bg-surface text-ink shadow-sm hover:border-primary/40 hover:bg-primary-soft/60",
   ghost: "text-ink hover:bg-primary-soft",
-  danger: "bg-danger text-white hover:brightness-95",
+  danger: "bg-danger text-white shadow-sm hover:brightness-95 active:brightness-90",
 };
 
 const sizes: Record<Size, string> = {
@@ -31,7 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       type={type}
       disabled={disabled || loading}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium transition",
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-lg font-medium transition active:scale-[0.98]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
         "disabled:pointer-events-none disabled:opacity-50",
         variants[variant],

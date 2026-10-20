@@ -60,6 +60,10 @@ export interface TicketAccess {
 export interface UserView extends PublicUser, Partial<TicketAccess> {
   profile: CompanyProfile;
   queueIds: number[];
+  /** Presença (só na listagem). */
+  online?: boolean;
+  lastLoginAt?: string | null;
+  lastSeenAt?: string | null;
 }
 
 export interface UserOption extends Partial<TicketAccess> {

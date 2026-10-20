@@ -111,6 +111,19 @@ describe("realtime", () => {
     await silent;
   });
 
+  it("tells supervisors when someone connects or disconnects", async () => {
+    const { company } = await scenario();
+    const supervisor = await createUser(company.id, { profile: "supervisor" });
+    const agent = await createUser(company.id);
+    const sSup = await connect(bearer(supervisor).slice(7));
+    const joined = nextEvent<{ userId: number; online: boolean }>(sSup, "presence:changed");
+    const sAgent = await connect(bearer(agent).slice(7));
+    await expect(joined).resolves.toEqual({ userId: agent.id, online: true });
+    const left = nextEvent<{ userId: number; online: boolean }>(sSup, "presence:changed");
+    sAgent.disconnect();
+    await expect(left).resolves.toEqual({ userId: agent.id, online: false });
+  });
+
   it("joins ticket rooms only when allowed", async () => {
     const { company } = await scenario();
     const agent = await createUser(company.id);

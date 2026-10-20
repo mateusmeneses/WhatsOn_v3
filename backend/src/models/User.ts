@@ -51,4 +51,12 @@ export class User extends Model {
 
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
   tokenVersion!: number;
+
+  /** Último login com senha (alimenta o dashboard). */
+  @Column({ type: DataType.DATE, allowNull: true })
+  lastLoginAt!: Date | null;
+
+  /** Última vez que o painel dele esteve conectado (atualizado ao conectar e desconectar). */
+  @Column({ type: DataType.DATE, allowNull: true })
+  lastSeenAt!: Date | null;
 }

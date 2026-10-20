@@ -2,6 +2,20 @@
   "atualizadoEm": "2026-10-20",
   "versoes": [
     {
+      "versao": "2026.10.20.2",
+      "data": "20/10/2026",
+      "titulo": "Dashboard de acompanhamento e novo visual",
+      "novidades": [
+        "Novo: tela Dashboard (administradores e supervisores) com atendimentos criados e finalizados, tempo de resposta, espera até aceitar, tempo de resolução, mensagens por dia, mapa de calor dos horários de maior movimento e comparação com o período anterior.",
+        "Novo: no Dashboard, quem está online agora, a produtividade de cada atendente, as mensagens mais demoradas, os clientes aguardando resposta, os clientes mais ativos, a movimentação dos chamados, o resultado do bot e a situação das conexões.",
+        "Novo: exportação do Dashboard em planilha (CSV) e atualização automática em tempo real."
+      ],
+      "melhorias": [
+        "Menu lateral com nomes, grupos e o usuário logado, que pode ser recolhido; botões, abas e cartões com visual mais limpo.",
+        "Na tela Usuários aparece quem está online e quando cada pessoa foi vista pela última vez."
+      ]
+    },
+    {
       "versao": "2026.10.20.1",
       "data": "20/10/2026",
       "titulo": "Mensagens da API não abrem atendimento",
@@ -19,45 +33,6 @@
       ],
       "melhorias": [
         "A tela Empresas mostra o CNPJ e o sistema parceiro de cada empresa, e o CNPJ pode ser informado ao criar ou editar uma empresa."
-      ]
-    },
-    {
-      "versao": "2026.10.19.1",
-      "data": "19/10/2026",
-      "titulo": "Requerer atendimento",
-      "novidades": [
-        "Novo: botão \"Requerer\" na conversa traz para você, na hora, um atendimento que está com outro técnico. Dá para deixar um recado para ele: só ele vê, o cliente não recebe nada.",
-        "O técnico que perdeu o atendimento recebe um aviso na tela com quem requereu e o recado. O recado também fica no Histórico do atendimento.",
-        "Novo: no cadastro do usuário, a permissão \"Requerer atendimentos\" para atendentes e supervisores. Quem tem essa permissão passa a ver todos os atendimentos. Administradores sempre podem requerer."
-      ],
-      "melhorias": [
-        "Conversa iniciada ou respondida pelo celular do WhatsApp agora vai para \"Aguardando\" em vez de ficar aberta sem técnico. Assim os atendentes da fila passam a vê-la."
-      ]
-    },
-    {
-      "versao": "2026.10.17.2",
-      "data": "17/10/2026",
-      "titulo": "Histórico do atendimento",
-      "novidades": [
-        "Novo: botão \"Histórico\" no cabeçalho da conversa mostra os técnicos que atenderam o cliente e a linha do tempo do atendimento: quando começou, quem aceitou, cada transferência (de qual fila para qual e para quem), finalização e reabertura."
-      ],
-      "melhorias": [
-        "A lista de técnicos saiu do cabeçalho da conversa e foi para dentro do Histórico, deixando o topo mais limpo."
-      ]
-    },
-    {
-      "versao": "2026.10.17.1",
-      "data": "17/10/2026",
-      "titulo": "Permissões de atendimento, assinatura e finalizar sem mensagem",
-      "novidades": [
-        "Novo: no cadastro do atendente, o administrador escolhe se ele vê os atendimentos ainda no bot (sem setor), os aguardando de outros setores e os que estão com outros atendentes. Os do bot e de outros setores ele também pode aceitar.",
-        "Novo: as mensagens enviadas pelo painel saem assinadas com o primeiro nome do técnico em negrito (ex.: *Mateus:*). Só o administrador pode desligar a assinatura, pelo botão de caneta ao lado do clipe.",
-        "Novo: ao finalizar um atendimento, dá para desmarcar \"Enviar mensagem de finalização\" e encerrar sem mandar nada ao cliente.",
-        "Novo: botão \"Novidades\" (estrelas) no menu lateral e versão do sistema no rodapé e na tela de login."
-      ],
-      "melhorias": [
-        "A lista de atendimentos mostra, ao lado da fila, o técnico que está atendendo.",
-        "Supervisores e administradores também podem aceitar um atendimento que ainda está no bot."
       ]
     }
   ]

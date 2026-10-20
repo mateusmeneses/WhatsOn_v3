@@ -31,7 +31,7 @@ export function Tabs<T extends string>({
             className={cn(
               // flex-auto + nowrap: rótulos não quebram na coluna de 320px (tablet, 768px); texto maior a partir de lg.
               "flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-1.5 text-xs font-medium text-ink-muted transition lg:px-2 lg:text-sm",
-              selected && "bg-surface text-ink shadow-sm",
+              selected ? "bg-surface font-semibold text-primary shadow-card" : "hover:text-ink",
             )}
           >
             {item.label}

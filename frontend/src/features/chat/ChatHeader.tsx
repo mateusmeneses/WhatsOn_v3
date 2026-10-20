@@ -20,12 +20,12 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
   const [historyOpen, setHistoryOpen] = useState(false);
 
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-border bg-surface px-5 py-3">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-surface px-5 py-3">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary">
           {initials(contact?.name ?? "?")}
         </span>
-        <div className="min-w-0">
+        <div className="min-w-[10rem] max-w-full">
           <div className="flex min-w-0 items-center gap-1">
             <p className="truncate font-semibold">{contact?.name ?? "Contato"}</p>
             {contact && (
