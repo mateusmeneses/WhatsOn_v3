@@ -33,6 +33,17 @@ beforeEach(() => {
   );
 });
 
+describe("TicketsPage waiting time", () => {
+  it("shows how long a pending customer has been waiting", async () => {
+    setTestUser({ id: 1, profile: "admin" });
+    const waiting = makeTicket({ id: 9, status: "pending", lastMessageAt: new Date(Date.now() - 12 * 60_000).toISOString(), contact: makeContact({ id: 9, name: "Cliente Esperando" }) });
+    vi.mocked(fetchTickets).mockResolvedValue({ items: [waiting], hasMore: false });
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    expect(await screen.findByText("Cliente Esperando")).toBeInTheDocument();
+    expect(screen.getByTitle("Tempo desde a última mensagem do cliente")).toHaveTextContent("12m");
+  });
+});
+
 describe("TicketsPage deep links", () => {
   it("opens the tab named in ?aba= (shortcuts from the dashboard and queues)", async () => {
     setTestUser({ id: 1, profile: "admin" });

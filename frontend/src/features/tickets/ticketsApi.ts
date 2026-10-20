@@ -5,6 +5,7 @@ export const ticketKeys = {
   lists: ["tickets", "list"] as const,
   list: (status: TicketStatus, search: string) => ["tickets", "list", status, search] as const,
   detail: (id: number) => ["tickets", "detail", id] as const,
+  summary: ["tickets", "summary"] as const,
   attendants: (id: number) => ["tickets", "attendants", id] as const,
   history: (id: number) => ["tickets", "history", id] as const,
 };
@@ -58,5 +59,16 @@ export async function markTicketRead(id: number): Promise<Ticket> {
 /** Traz o atendimento para quem pede; o recado (opcional) vai só para o técnico anterior. */
 export async function claimTicket(id: number, note?: string): Promise<Ticket> {
   const { data } = await api.post<Ticket>(`/tickets/${id}/claim`, note ? { note } : {});
+  return data;
+}
+
+export interface TicketSummary {
+  pending: number;
+  mine: number;
+  unread: number;
+}
+
+export async function fetchTicketSummary(): Promise<TicketSummary> {
+  const { data } = await api.get<TicketSummary>("/tickets/summary");
   return data;
 }

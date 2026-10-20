@@ -1,11 +1,25 @@
-import { UserRound } from "lucide-react";
+import { Clock3, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
+import { formatDurationShort, secondsSince } from "@/lib/duration";
 import { formatTime, initials } from "@/lib/format";
 import type { Ticket } from "@/types/api";
 
-export function TicketListItem({ ticket, selected }: { ticket: Ticket; selected: boolean }) {
+export function TicketListItem({
+  ticket,
+  selected,
+  now,
+  goalSeconds,
+}: {
+  ticket: Ticket;
+  selected: boolean;
+  /** Relógio da lista (para mostrar há quanto tempo o cliente espera). */
+  now?: number;
+  /** Meta de primeira resposta da empresa; passar dela deixa o tempo em alerta. */
+  goalSeconds?: number;
+}) {
   const name = ticket.contact?.name ?? "Contato";
+  const waited = ticket.status === "pending" && now !== undefined && ticket.lastMessageAt ? secondsSince(ticket.lastMessageAt, now) : null;
   return (
     <li>
       <Link
@@ -21,7 +35,25 @@ export function TicketListItem({ ticket, selected }: { ticket: Ticket; selected:
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-2">
             <span className="truncate font-semibold">{name}</span>
-            <span className="shrink-0 text-xs text-ink-muted">{formatTime(ticket.lastMessageAt)}</span>
+            <span className="flex shrink-0 items-center gap-2 text-xs text-ink-muted">
+              {waited !== null && waited >= 60 && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-semibold tabular-nums",
+                    goalSeconds && waited > goalSeconds * 3
+                      ? "bg-red-50 text-danger"
+                      : goalSeconds && waited > goalSeconds
+                        ? "bg-amber-50 text-warning"
+                        : "bg-background text-ink-muted",
+                  )}
+                  title="Tempo desde a última mensagem do cliente"
+                >
+                  <Clock3 className="h-3 w-3" aria-hidden />
+                  {formatDurationShort(waited)}
+                </span>
+              )}
+              {formatTime(ticket.lastMessageAt)}
+            </span>
           </span>
           <span className="mt-0.5 flex items-center justify-between gap-2">
             <span className="truncate text-sm text-ink-muted">{ticket.lastMessage || "Sem mensagens"}</span>

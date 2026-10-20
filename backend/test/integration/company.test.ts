@@ -23,6 +23,18 @@ describe("company settings", () => {
     expect(res.body).toMatchObject({ name: "Loja Y", timezone: "America/Manaus" });
   });
 
+  it("lets admins set the first-response goal, within 1 to 240 minutes", async () => {
+    const company = await createCompany();
+    const admin = await createUser(company.id, { profile: "admin" });
+    const get = await request(app).get("/api/company").set("Authorization", bearer(admin));
+    expect(get.body.responseSlaMinutes).toBe(5);
+    const put = (minutes: number) => request(app).put("/api/company").set("Authorization", bearer(admin)).send({ responseSlaMinutes: minutes });
+    expect((await put(10)).body.responseSlaMinutes).toBe(10);
+    await put(0).expect(400);
+    await put(241).expect(400);
+    await put(2.5).expect(400);
+  });
+
   it("rejects invalid time zones and non-admin updates", async () => {
     const company = await createCompany();
     const admin = await createUser(company.id, { profile: "admin" });

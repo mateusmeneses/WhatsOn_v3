@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { CompanyBanner } from "@/features/admin/CompanyBanner";
 import { ConnectionAlerts } from "@/features/connections/ConnectionAlerts";
-import { TicketRealtime } from "@/features/tickets/useTickets";
+import { TicketRealtime, useTicketSummary } from "@/features/tickets/useTickets";
 import { VersionBadge } from "@/features/version/VersionBadge";
 import { RealtimeProvider, useRealtimeReconnecting } from "@/realtime/RealtimeProvider";
 import { NAV_ITEMS, Sidebar } from "./Sidebar";
@@ -10,10 +10,12 @@ import { NAV_ITEMS, Sidebar } from "./Sidebar";
 /** Título da aba do navegador acompanha a tela atual ("Dashboard · WhatsOn"). */
 function usePageTitle() {
   const { pathname } = useLocation();
+  const unread = useTicketSummary()?.unread ?? 0;
   useEffect(() => {
     const item = NAV_ITEMS.find((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
-    document.title = item ? `${item.label} · WhatsOn` : "WhatsOn";
-  }, [pathname]);
+    const base = item ? `${item.label} · WhatsOn` : "WhatsOn";
+    document.title = unread > 0 ? `(${unread > 99 ? "99+" : unread}) ${base}` : base;
+  }, [pathname, unread]);
 }
 
 export function AppShell() {

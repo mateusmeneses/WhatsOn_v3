@@ -2,6 +2,7 @@ import { act, screen, waitFor } from "@testing-library/react";
 import { io } from "socket.io-client";
 import { AppRoutes } from "@/app/routes";
 import { fetchContacts } from "@/features/contacts/contactsApi";
+import { api } from "@/lib/api";
 import { ticketKeys } from "@/features/tickets/ticketsApi";
 import type { TicketPages } from "@/features/tickets/ticketCache";
 import { fetchUserOptions } from "@/features/users/usersApi";
@@ -64,6 +65,21 @@ describe("AppShell", () => {
 
     const items = queryClient.getQueryData<TicketPages>(ticketKeys.list("pending", ""))!.pages[0]!.items;
     expect(items.map((t) => t.id)).toEqual([7]);
+  });
+});
+
+describe("AppShell counters", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows unread messages in the tab title and waiting tickets on the menu", async () => {
+    vi.spyOn(api, "get").mockImplementation(async (url) => {
+      if (url === "/tickets/summary") return { data: { pending: 4, mine: 1, unread: 7 } };
+      return { data: url === "/contacts" ? { items: [], hasMore: false } : [] };
+    });
+    setTestUser({ profile: "admin" });
+    renderWithProviders(<AppRoutes />, { route: "/contatos" });
+    await waitFor(() => expect(document.title).toBe("(7) Contatos · WhatsOn"));
+    expect(await screen.findByRole("link", { name: "Atendimento, 4 aguardando" })).toBeInTheDocument();
   });
 });
 

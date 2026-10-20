@@ -167,6 +167,31 @@ describe("dashboard API", () => {
   });
 });
 
+describe("response goal", () => {
+  beforeEach(resetDb);
+
+  it("uses the company's goal to compute the on-time percentage", async () => {
+    const { company, connection, contact } = await scenario();
+    await company.update({ timezone: "UTC", responseSlaMinutes: 1 });
+    const admin = await createUser(company.id, { profile: "admin" });
+    const ana = await createUser(company.id);
+    const t0 = Date.now() - 3600 * sec;
+    const at = (offset: number) => new Date(t0 + offset * sec);
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, userId: ana.id, status: "open" });
+    await createMessage(ticket, { createdAt: at(0) });
+    await createMessage(ticket, { createdAt: at(50), fromMe: true, sentByUserId: ana.id }); // 50 s: no prazo
+    await createMessage(ticket, { createdAt: at(100) });
+    await createMessage(ticket, { createdAt: at(220), fromMe: true, sentByUserId: ana.id }); // 120 s: fora
+
+    const res = await request(app).get("/api/dashboard?period=7d").set("Authorization", bearer(admin)).expect(200);
+    expect(res.body.kpis.slaSeconds).toBe(60);
+    expect(res.body.kpis.responseWithinSla.value).toBe(50);
+    const mine = await request(app).get("/api/dashboard/me?period=7d").set("Authorization", bearer(ana)).expect(200);
+    expect(mine.body.kpis.slaSeconds).toBe(60);
+    expect(mine.body.kpis.responseWithinSla.value).toBe(50);
+  });
+});
+
 describe("my performance API", () => {
   beforeEach(resetDb);
 

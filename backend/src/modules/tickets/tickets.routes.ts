@@ -12,6 +12,7 @@ import {
   markTicketRead,
   reopenTicket,
   ticketAttendants,
+  ticketSummary,
   ticketHistory,
   transferTicket,
 } from "./tickets.service";
@@ -35,6 +36,11 @@ ticketRoutes.use(isAuth);
 
 ticketRoutes.get("/", async (req, res) => {
   res.json(await listTickets(currentAuth(req), listSchema.parse(req.query)));
+});
+
+// Antes de "/:id".
+ticketRoutes.get("/summary", async (req, res) => {
+  res.json(await ticketSummary(currentAuth(req)));
 });
 
 ticketRoutes.get("/:id", async (req, res) => {

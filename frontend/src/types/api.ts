@@ -198,6 +198,8 @@ export interface Company {
   name: string;
   status: string;
   timezone: string;
+  /** Meta de primeira resposta, em minutos. */
+  responseSlaMinutes?: number;
 }
 
 /** Empresa vista pelo super-admin. */

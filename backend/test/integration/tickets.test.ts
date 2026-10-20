@@ -484,3 +484,25 @@ describe("tickets", () => {
     });
   });
 });
+
+describe("ticket summary", () => {
+  beforeEach(async () => {
+    await resetDb();
+    await resetRedis();
+    setProvider(fake);
+  });
+
+  it("counts what is waiting for the user: visible pending, own open and their unread messages", async () => {
+    const w = await world();
+    await w.ticketFor({ queueId: w.queueA.id, status: "pending", unreadCount: 3 }); // visível ao agentA
+    await w.ticketFor({ queueId: w.queueB.id, status: "pending", unreadCount: 5 }); // fila de outro: invisível
+    await w.ticketFor({ queueId: w.queueA.id, status: "open", userId: w.agentA.id, unreadCount: 2 });
+    await w.ticketFor({ queueId: w.queueA.id, status: "open", userId: w.agentA2.id, unreadCount: 7 }); // de outro atendente
+
+    const agent = await request(app).get("/api/tickets/summary").set("Authorization", bearer(w.agentA)).expect(200);
+    expect(agent.body).toEqual({ pending: 1, mine: 1, unread: 5 });
+
+    const supervisor = await request(app).get("/api/tickets/summary").set("Authorization", bearer(w.supervisor)).expect(200);
+    expect(supervisor.body).toEqual({ pending: 2, mine: 0, unread: 8 });
+  });
+});

@@ -6,7 +6,8 @@ import { useRealtimeEvent } from "@/realtime/RealtimeProvider";
 import { useAuth } from "@/stores/auth";
 import type { Ticket, TicketStatus } from "@/types/api";
 import { applyTicketUpdate } from "./ticketCache";
-import { fetchTicket, fetchTickets, ticketKeys } from "./ticketsApi";
+import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
+import { fetchTicket, fetchTicketSummary, fetchTickets, ticketKeys } from "./ticketsApi";
 import type { Viewer } from "./visibility";
 
 const NO_QUEUES: number[] = [];
@@ -65,6 +66,13 @@ export function useApplyTicket(): (ticket: Ticket) => void {
 export function useTicketRealtime(): void {
   const applyTicket = useApplyTicket();
   useRealtimeEvent<Ticket>("ticket:update", applyTicket);
+}
+
+/** Contadores do menu e do título da aba (aguardando, meus, não lidas); atualizam com os eventos de ticket. */
+export function useTicketSummary() {
+  const query = useQuery({ queryKey: ticketKeys.summary, queryFn: fetchTicketSummary, refetchInterval: 60_000, staleTime: 15_000 });
+  useLiveInvalidate(ticketKeys.summary, ["ticket:update"], 1500);
+  return query.data;
 }
 
 /** Montado no AppShell: mantém as listas de tickets em cache atualizadas em qualquer rota. */

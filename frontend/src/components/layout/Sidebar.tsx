@@ -19,6 +19,7 @@ import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import logoMark from "@/assets/brand/logo-mark.webp";
 import { logout } from "@/features/auth/authApi";
+import { useTicketSummary } from "@/features/tickets/useTickets";
 import { ChangelogButton } from "@/features/version/ChangelogButton";
 import { cn } from "@/lib/cn";
 import { initials } from "@/lib/format";
@@ -82,6 +83,7 @@ export function Sidebar() {
   const clear = useAuth((s) => s.clear);
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(readCollapsed);
+  const summary = useTicketSummary();
   if (!user) return null;
 
   async function onLogout() {
@@ -134,12 +136,16 @@ export function Sidebar() {
             ) : (
               group !== groups[0]!.group && <span className="mb-1 block h-px w-6 bg-white/10" aria-hidden />
             )}
-            {groupItems.map(({ to, label, icon: Icon }) => (
+            {groupItems.map(({ to, label, icon: Icon }) => {
+              // Atendimento mostra quantos estão esperando por este usuário (aguardando + dele em andamento).
+              const waiting = to === "/atendimento" && summary ? summary.pending : 0;
+              const hint = waiting > 0 ? `${label}, ${waiting} aguardando` : label;
+              return (
               <NavLink
                 key={to}
                 to={to}
-                title={label}
-                aria-label={label}
+                title={hint}
+                aria-label={hint}
                 className={({ isActive }) =>
                   cn(
                     "group relative flex items-center rounded-lg text-sm font-medium text-white/65 transition hover:bg-white/10 hover:text-white",
@@ -152,11 +158,23 @@ export function Sidebar() {
                   <>
                     {isActive && !collapsed && <span aria-hidden className="absolute -left-3 h-5 w-1 rounded-r-full bg-[#2fd16a]" />}
                     <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
-                    {!collapsed && <span className="truncate">{label}</span>}
+                    {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+                    {waiting > 0 && (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "grid place-items-center rounded-full bg-warning font-bold tabular-nums text-white",
+                          collapsed ? "absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]" : "h-5 min-w-5 px-1.5 text-[11px]",
+                        )}
+                      >
+                        {waiting > 99 ? "99+" : waiting}
+                      </span>
+                    )}
                   </>
                 )}
               </NavLink>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

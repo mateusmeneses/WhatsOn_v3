@@ -14,7 +14,7 @@ export interface DashboardRange {
 }
 
 /** Respondida dentro desta meta conta como "no prazo". */
-export const RESPONSE_SLA_SECONDS = 5 * 60;
+export const DEFAULT_RESPONSE_SLA_MINUTES = 5;
 export const MAX_RANGE_DAYS = 366;
 
 const DAY_MS = 86_400_000;
@@ -192,6 +192,8 @@ function fillDays(from: string, to: string): string[] {
 export type Bounds = {
   companyId: number;
   tz: string;
+  /** Meta de primeira resposta em segundos. */
+  sla: number;
   start: Date;
   end: Date;
   prevStart: Date;
@@ -200,7 +202,8 @@ export type Bounds = {
 };
 
 /** Converte as datas locais do período (e do anterior, de mesma duração) em instantes no fuso informado. */
-export async function computeBounds(companyId: number, tz: string, range: DashboardRange): Promise<Bounds> {
+export async function computeBounds(companyId: number, settings: CompanySettings, range: DashboardRange): Promise<Bounds> {
+  const { timezone: tz, slaSeconds } = settings;
   const prevFrom = msToDay(dayToMs(range.from) - range.days * DAY_MS);
   const [bounds] = await sequelize.query<{ start: Date; end: Date; prevStart: Date; todayStart: Date; todayEnd: Date }>(
     `SELECT (CAST(:from AS date))::timestamp AT TIME ZONE :tz AS "start",
@@ -210,7 +213,7 @@ export async function computeBounds(companyId: number, tz: string, range: Dashbo
             (CAST(:today AS date) + 1)::timestamp AT TIME ZONE :tz AS "todayEnd"`,
     { type: QueryTypes.SELECT, replacements: { from: range.from, to: range.to, prevFrom, tz, today: todayIn(tz) } },
   );
-  return { companyId, tz, ...bounds! };
+  return { companyId, tz, sla: slaSeconds, ...bounds! };
 }
 
 export const dayList = fillDays;
@@ -218,8 +221,9 @@ export const sqlRows = <T extends Row = Row>(sql: string, replacements: object) 
   sequelize.query<T>(sql, { type: QueryTypes.SELECT, replacements: replacements as Record<string, unknown> });
 
 export async function getDashboard(companyId: number, range: DashboardRange): Promise<DashboardData> {
-  const tz = await companyTimezone(companyId);
-  const r = await computeBounds(companyId, tz, range);
+  const settings = await companySettings(companyId);
+  const tz = settings.timezone;
+  const r = await computeBounds(companyId, settings, range);
   const q = <T extends Row = Row>(sql: string) => sequelize.query<T>(sql, { type: QueryTypes.SELECT, replacements: r });
 
   const [
@@ -327,11 +331,11 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
          count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
          avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
          percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
-         count(*) FILTER (WHERE "askedAt" >= :start AND secs <= ${RESPONSE_SLA_SECONDS})::int AS "inSla",
+         count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
          count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
          avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
          percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
-         count(*) FILTER (WHERE "askedAt" < :start AND secs <= ${RESPONSE_SLA_SECONDS})::int AS "prevInSla"
+         count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
        FROM answered`),
     q(`WITH ${ASKS_CTE}
        SELECT "userId", avg(secs) AS avg FROM answered
@@ -463,7 +467,7 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
       avgResponse: { value: numOrNull(rk.avg), previous: numOrNull(rk.prevAvg) },
       avgAcceptWait: { value: numOrNull(ak.avg), previous: numOrNull(ak.prevAvg) },
       responseWithinSla: { value: pct(rk.inSla, rk.count), previous: pct(rk.prevInSla, rk.prevCount) },
-      slaSeconds: RESPONSE_SLA_SECONDS,
+      slaSeconds: r.sla,
     },
     timeline: [...tl.values()],
     movementTimeline: [...mv.values()],
@@ -541,8 +545,17 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
   };
 }
 
-export async function companyTimezone(companyId: number): Promise<string> {
-  const company = await Company.findByPk(companyId, { attributes: ["timezone"] });
+export interface CompanySettings {
+  timezone: string;
+  slaSeconds: number;
+}
+
+export async function companySettings(companyId: number): Promise<CompanySettings> {
+  const company = await Company.findByPk(companyId, { attributes: ["timezone", "responseSlaMinutes"] });
   if (!company) throw notFound("Empresa");
-  return company.timezone;
+  return { timezone: company.timezone, slaSeconds: (company.responseSlaMinutes ?? DEFAULT_RESPONSE_SLA_MINUTES) * 60 };
+}
+
+export async function companyTimezone(companyId: number): Promise<string> {
+  return (await companySettings(companyId)).timezone;
 }

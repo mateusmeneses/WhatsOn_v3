@@ -1,12 +1,11 @@
 import {
   ACCEPTS_CTE,
   ASKS_CTE,
-  companyTimezone,
+  companySettings,
   computeBounds,
   dayList,
   num,
   numOrNull,
-  RESPONSE_SLA_SECONDS,
   sqlRows,
   type DashboardRange,
   type DurationMetric,
@@ -48,8 +47,9 @@ const pct = (part: unknown, total: unknown) => (num(total) > 0 ? (num(part) / nu
 
 /** Desempenho do próprio usuário logado (qualquer perfil). */
 export async function getMyPerformance(companyId: number, userId: number, range: DashboardRange): Promise<MyPerformance> {
-  const tz = await companyTimezone(companyId);
-  const r = { ...(await computeBounds(companyId, tz, range)), userId };
+  const settings = await companySettings(companyId);
+  const tz = settings.timezone;
+  const r = { ...(await computeBounds(companyId, settings, range)), userId };
   const q = (sql: string) => sqlRows(sql, r);
 
   const [logs, sent, open, resp, teamResp, accept, byDay, sentByDay, slow, queues, waiting, teamClosed, resolution] = await Promise.all([
@@ -67,11 +67,11 @@ export async function getMyPerformance(companyId: number, userId: number, range:
        SELECT count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
               avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
               percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
-              count(*) FILTER (WHERE "askedAt" >= :start AND secs <= ${RESPONSE_SLA_SECONDS})::int AS "inSla",
+              count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
               count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
               avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
               percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
-              count(*) FILTER (WHERE "askedAt" < :start AND secs <= ${RESPONSE_SLA_SECONDS})::int AS "prevInSla"
+              count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
        FROM answered WHERE "userId" = :userId`),
     q(`WITH ${ASKS_CTE}
        SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) AS median FROM answered
@@ -143,7 +143,7 @@ export async function getMyPerformance(companyId: number, userId: number, range:
       avgAcceptWait: { value: numOrNull(a0.avg), previous: numOrNull(a0.prevAvg) },
       avgResolution: { value: numOrNull(resolutionCurrent[0]?.avg), previous: numOrNull(resolution[0]?.prevAvg) },
       responseWithinSla: { value: pct(r0.inSla, r0.count), previous: pct(r0.prevInSla, r0.prevCount) },
-      slaSeconds: RESPONSE_SLA_SECONDS,
+      slaSeconds: r.sla,
     },
     team: {
       medianResponse: numOrNull(teamResp[0]?.median),
