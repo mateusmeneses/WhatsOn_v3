@@ -1,5 +1,5 @@
-import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowDownRight, ArrowUpRight, BarChart3, Minus, Table2, type LucideIcon } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/cn";
 import { percentChange } from "@/lib/duration";
@@ -162,4 +162,59 @@ export function EmptyNote({ children }: { children: ReactNode }) {
 
 export function SkeletonBlock({ className }: { className?: string }) {
   return <div className={cn("skeleton", className)} aria-hidden />;
+}
+
+export interface TableColumn<T> {
+  header: string;
+  cell: (row: T) => ReactNode;
+  align?: "right";
+}
+
+/** Gráfico com a opção de ver os mesmos números numa tabela (leitores de tela, conferência e impressão). */
+export function ChartWithTable<T>({ chart, columns, rows, caption }: { chart: ReactNode; columns: TableColumn<T>[]; rows: T[]; caption: string }) {
+  const [table, setTable] = useState(false);
+  return (
+    <div>
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setTable((v) => !v)}
+          aria-pressed={table}
+          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-muted transition hover:bg-background hover:text-primary"
+        >
+          {table ? <BarChart3 className="h-3.5 w-3.5" aria-hidden /> : <Table2 className="h-3.5 w-3.5" aria-hidden />}
+          {table ? "Ver gráfico" : "Ver tabela"}
+        </button>
+      </div>
+      {table ? (
+        <div className="max-h-[260px] overflow-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <caption className="sr-only">{caption}</caption>
+            <thead className="sticky top-0 bg-background text-xs text-ink-muted">
+              <tr>
+                {columns.map((c) => (
+                  <th key={c.header} scope="col" className={cn("px-3 py-2 font-medium", c.align === "right" ? "text-right" : "text-left")}>
+                    {c.header}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((row, i) => (
+                <tr key={i}>
+                  {columns.map((c) => (
+                    <td key={c.header} className={cn("px-3 py-1.5 tabular-nums", c.align === "right" && "text-right")}>
+                      {c.cell(row)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        chart
+      )}
+    </div>
+  );
 }

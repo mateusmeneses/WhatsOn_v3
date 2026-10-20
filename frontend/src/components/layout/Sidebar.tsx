@@ -148,7 +148,7 @@ export function Sidebar() {
         {!collapsed && (
           <>
             <span className="flex-1 text-left">Buscar…</span>
-            <kbd className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/45">Ctrl K</kbd>
+            <kbd className="rounded border border-white/20 px-1.5 py-0.5 text-[10px] text-white/65">Ctrl K</kbd>
           </>
         )}
       </button>
@@ -157,7 +157,7 @@ export function Sidebar() {
         {groups.map(({ group, items: groupItems }) => (
           <div key={group} className={cn("space-y-1", collapsed && "flex flex-col items-center")}>
             {!collapsed ? (
-              <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-white/35">{GROUP_LABEL[group]}</p>
+              <p className="px-3 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-white/60">{GROUP_LABEL[group]}</p>
             ) : (
               group !== groups[0]!.group && <span className="mb-1 block h-px w-6 bg-white/10" aria-hidden />
             )}

@@ -83,7 +83,7 @@ export function UsersPage() {
                   <th className="px-5 py-3 font-medium">WhatsApp</th>
                   <th className="px-5 py-3 font-medium">Perfil</th>
                   <th className="px-5 py-3 font-medium">Filas</th>
-                  {isAdmin && <th className="px-5 py-3" />}
+                  {isAdmin && <th className="px-5 py-3"><span className="sr-only">Ações</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

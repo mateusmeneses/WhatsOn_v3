@@ -43,7 +43,7 @@ import { useAuth } from "@/stores/auth";
 import { dashboardKeys, useDashboard, type DashboardAgent, type DashboardData } from "./dashboardApi";
 import { downloadCsv } from "./exportCsv";
 import { formatDay, PeriodFilter, usePeriodFilter } from "./PeriodFilter";
-import { Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "./widgets";
+import { ChartWithTable, Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "./widgets";
 
 const PROFILE_LABEL: Record<string, string> = { admin: "Administrador", supervisor: "Supervisor", agent: "Atendente" };
 
@@ -282,13 +282,24 @@ function DashboardBody({ data, now }: { data: DashboardData; now: number }) {
             />
           }
         >
-          <LineAreaChart
-            label={`Atendimentos criados e finalizados por dia, de ${formatDay(data.range.from)} a ${formatDay(data.range.to)}`}
-            data={data.timeline}
-            series={[
-              { key: "created", label: "Criados", color: SERIES.blue },
-              { key: "closed", label: "Finalizados", color: SERIES.green },
+          <ChartWithTable
+            caption="Atendimentos criados e finalizados por dia"
+            rows={data.timeline}
+            columns={[
+              { header: "Dia", cell: (r) => formatDay(r.date) },
+              { header: "Criados", align: "right", cell: (r) => nf.format(r.created) },
+              { header: "Finalizados", align: "right", cell: (r) => nf.format(r.closed) },
             ]}
+            chart={
+              <LineAreaChart
+                label={`Atendimentos criados e finalizados por dia, de ${formatDay(data.range.from)} a ${formatDay(data.range.to)}`}
+                data={data.timeline}
+                series={[
+                  { key: "created", label: "Criados", color: SERIES.blue },
+                  { key: "closed", label: "Finalizados", color: SERIES.green },
+                ]}
+              />
+            }
           />
         </Panel>
         <Panel
@@ -304,14 +315,26 @@ function DashboardBody({ data, now }: { data: DashboardData; now: number }) {
             />
           }
         >
-          <StackedBars
-            label={`Mensagens recebidas, enviadas por atendentes e pelo bot por dia, de ${formatDay(data.range.from)} a ${formatDay(data.range.to)}`}
-            data={data.timeline}
-            series={[
-              { key: "inbound", label: "Recebidas", color: SERIES.blue },
-              { key: "outbound", label: "Atendentes", color: SERIES.green },
-              { key: "bot", label: "Bot", color: SERIES.violet },
+          <ChartWithTable
+            caption="Mensagens por dia: recebidas, enviadas por atendentes e pelo bot"
+            rows={data.timeline}
+            columns={[
+              { header: "Dia", cell: (r) => formatDay(r.date) },
+              { header: "Recebidas", align: "right", cell: (r) => nf.format(r.inbound) },
+              { header: "Atendentes", align: "right", cell: (r) => nf.format(r.outbound) },
+              { header: "Bot", align: "right", cell: (r) => nf.format(r.bot) },
             ]}
+            chart={
+              <StackedBars
+                label={`Mensagens recebidas, enviadas por atendentes e pelo bot por dia, de ${formatDay(data.range.from)} a ${formatDay(data.range.to)}`}
+                data={data.timeline}
+                series={[
+                  { key: "inbound", label: "Recebidas", color: SERIES.blue },
+                  { key: "outbound", label: "Atendentes", color: SERIES.green },
+                  { key: "bot", label: "Bot", color: SERIES.violet },
+                ]}
+              />
+            }
           />
         </Panel>
       </div>

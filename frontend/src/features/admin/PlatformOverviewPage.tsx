@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PresenceDot } from "@/components/ui/presence-dot";
-import { Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "@/features/dashboard/widgets";
+import { ChartWithTable, Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "@/features/dashboard/widgets";
 import { formatDay, PeriodFilter, usePeriodFilter } from "@/features/dashboard/PeriodFilter";
 import { errorMessage } from "@/lib/apiError";
 import { cn } from "@/lib/cn";
@@ -83,10 +83,20 @@ function Body({ data, now }: { data: PlatformOverview; now: number }) {
 
       <div className="grid gap-5 xl:grid-cols-2">
         <Panel title="Atendimentos por dia" description="Todas as empresas somadas">
-          <LineAreaChart label="Atendimentos criados por dia na plataforma" data={data.timeline} series={[{ key: "tickets", label: "Atendimentos", color: SERIES.blue }]} />
+          <ChartWithTable
+            caption="Atendimentos criados por dia na plataforma"
+            rows={data.timeline}
+            columns={[{ header: "Dia", cell: (r) => formatDay(r.date) }, { header: "Atendimentos", align: "right", cell: (r) => nf.format(r.tickets) }]}
+            chart={<LineAreaChart label="Atendimentos criados por dia na plataforma" data={data.timeline} series={[{ key: "tickets", label: "Atendimentos", color: SERIES.blue }]} />}
+          />
         </Panel>
         <Panel title="Mensagens por dia" description="Recebidas e enviadas, todas as empresas">
-          <LineAreaChart label="Mensagens por dia na plataforma" data={data.timeline} series={[{ key: "messages", label: "Mensagens", color: SERIES.green }]} />
+          <ChartWithTable
+            caption="Mensagens por dia na plataforma"
+            rows={data.timeline}
+            columns={[{ header: "Dia", cell: (r) => formatDay(r.date) }, { header: "Mensagens", align: "right", cell: (r) => nf.format(r.messages) }]}
+            chart={<LineAreaChart label="Mensagens por dia na plataforma" data={data.timeline} series={[{ key: "messages", label: "Mensagens", color: SERIES.green }]} />}
+          />
         </Panel>
       </div>
 

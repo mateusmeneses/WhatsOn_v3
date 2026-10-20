@@ -16,7 +16,7 @@ import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
 import { useAuth } from "@/stores/auth";
 import { performanceKeys, useMyPerformance, type MyPerformance } from "./dashboardApi";
 import { formatDay, PeriodFilter, usePeriodFilter } from "./PeriodFilter";
-import { Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "./widgets";
+import { ChartWithTable, Delta, EmptyNote, KpiCard, LiveTile, Panel, SkeletonBlock } from "./widgets";
 
 /** Painel pessoal: cada usuário vê só o próprio desempenho, comparado ao período anterior e à média da equipe. */
 export function MyPerformancePage() {
@@ -117,14 +117,30 @@ function Body({ data, now }: { data: MyPerformance; now: number }) {
           title="Aceitos e finalizados por dia"
           actions={<ChartLegend items={[{ label: "Aceitos", color: SERIES.blue, total: k.ticketsAccepted.value }, { label: "Finalizados", color: SERIES.green, total: k.ticketsClosed.value }]} />}
         >
-          <LineAreaChart
-            label="Atendimentos aceitos e finalizados por você, por dia"
-            data={spark}
-            series={[{ key: "accepted", label: "Aceitos", color: SERIES.blue }, { key: "closed", label: "Finalizados", color: SERIES.green }]}
+          <ChartWithTable
+            caption="Atendimentos aceitos e finalizados por você, por dia"
+            rows={spark}
+            columns={[
+              { header: "Dia", cell: (r) => formatDay(r.date) },
+              { header: "Aceitos", align: "right", cell: (r) => nf.format(r.accepted) },
+              { header: "Finalizados", align: "right", cell: (r) => nf.format(r.closed) },
+            ]}
+            chart={
+              <LineAreaChart
+                label="Atendimentos aceitos e finalizados por você, por dia"
+                data={spark}
+                series={[{ key: "accepted", label: "Aceitos", color: SERIES.blue }, { key: "closed", label: "Finalizados", color: SERIES.green }]}
+              />
+            }
           />
         </Panel>
         <Panel title="Mensagens enviadas por dia" actions={<ChartLegend items={[{ label: "Enviadas", color: SERIES.green, total: k.messagesSent.value }]} />}>
-          <StackedBars label="Mensagens que você enviou, por dia" data={spark} series={[{ key: "messages", label: "Enviadas", color: SERIES.green }]} />
+          <ChartWithTable
+            caption="Mensagens que você enviou, por dia"
+            rows={spark}
+            columns={[{ header: "Dia", cell: (r) => formatDay(r.date) }, { header: "Enviadas", align: "right", cell: (r) => nf.format(r.messages) }]}
+            chart={<StackedBars label="Mensagens que você enviou, por dia" data={spark} series={[{ key: "messages", label: "Enviadas", color: SERIES.green }]} />}
+          />
         </Panel>
       </div>
 

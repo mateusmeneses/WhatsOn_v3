@@ -69,7 +69,7 @@ export function ContactsPage() {
                   <th className="px-5 py-3 font-medium">Número</th>
                   <th className="px-5 py-3 text-right font-medium">Atendimentos</th>
                   <th className="px-5 py-3 font-medium">Último contato</th>
-                  <th className="px-5 py-3" />
+                  <th className="px-5 py-3"><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">

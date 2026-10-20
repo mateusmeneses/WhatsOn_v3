@@ -76,6 +76,20 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Academia Forma")).toBeInTheDocument();
   });
 
+  it("lets the daily charts be read as a table", async () => {
+    vi.spyOn(api, "get").mockResolvedValue({ data: sample() });
+    setTestUser({ profile: "admin" });
+    renderWithProviders(<DashboardPage />);
+    const panel = (await screen.findByRole("heading", { name: "Atendimentos por dia" })).closest("section")!;
+    expect(within(panel).queryByRole("table")).not.toBeInTheDocument();
+    await userEvent.click(within(panel).getByRole("button", { name: "Ver tabela" }));
+    const table = within(panel).getByRole("table", { name: "Atendimentos criados e finalizados por dia" });
+    expect(within(table).getByText("20/10/2026")).toBeInTheDocument();
+    expect(within(table).getAllByRole("row")).toHaveLength(3); // cabeçalho + 2 dias
+    await userEvent.click(within(panel).getByRole("button", { name: "Ver gráfico" }));
+    expect(within(panel).queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("changes the period and queries again", async () => {
     vi.spyOn(api, "get").mockResolvedValue({ data: sample() });
     setTestUser({ profile: "supervisor" });

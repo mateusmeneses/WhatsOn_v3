@@ -24,6 +24,12 @@ export function AppShell() {
   usePageTitle();
   return (
     <RealtimeProvider>
+      <a
+        href="#conteudo"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary focus:shadow-pop"
+      >
+        Ir para o conteúdo
+      </a>
       <ConnectionAlerts />
       <ReconnectingBanner />
       <TicketRealtime />
@@ -33,7 +39,7 @@ export function AppShell() {
         <CompanyBanner />
         <div className="flex min-h-0 flex-1">
           <Sidebar />
-          <main className="min-w-0 flex-1 overflow-hidden">
+          <main id="conteudo" tabIndex={-1} className="min-w-0 flex-1 overflow-hidden focus:outline-none">
             <Outlet />
           </main>
         </div>

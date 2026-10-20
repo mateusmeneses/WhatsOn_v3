@@ -83,6 +83,16 @@ describe("AppShell counters", () => {
   });
 });
 
+describe("AppShell accessibility", () => {
+  it("offers a skip link that points to the main content", async () => {
+    setTestUser({ profile: "admin" });
+    renderWithProviders(<AppRoutes />, { route: "/contatos" });
+    const skip = await screen.findByRole("link", { name: "Ir para o conteúdo" });
+    expect(skip).toHaveAttribute("href", "#conteudo");
+    expect(screen.getByRole("main")).toHaveAttribute("id", "conteudo");
+  });
+});
+
 describe("AppShell page title", () => {
   it("names the browser tab after the current screen", async () => {
     setTestUser({ profile: "admin" });
