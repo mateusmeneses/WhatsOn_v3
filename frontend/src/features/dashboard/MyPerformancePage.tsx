@@ -82,8 +82,8 @@ function Body({ data, now }: { data: MyPerformance; now: number }) {
   return (
     <>
       <section aria-label="Situação agora" className="grid gap-3 sm:grid-cols-3">
-        <LiveTile label="Em atendimento comigo" value={live.openNow} icon={MessagesSquare} tone="bg-primary" />
-        <LiveTile label="Cliente sem resposta" value={live.waitingReply} icon={Clock3} tone="bg-danger" alert={live.waitingReply > 0} />
+        <LiveTile to="/atendimento?aba=open" label="Em atendimento comigo" value={live.openNow} icon={MessagesSquare} tone="bg-primary" />
+        <LiveTile to="/atendimento?aba=open" label="Cliente sem resposta" value={live.waitingReply} icon={Clock3} tone="bg-danger" alert={live.waitingReply > 0} />
         <LiveTile label="Direcionados a mim" value={live.pendingForMe} icon={Inbox} tone="bg-warning" />
       </section>
 

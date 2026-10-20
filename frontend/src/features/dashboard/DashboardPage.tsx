@@ -180,11 +180,11 @@ function DashboardBody({ data, now }: { data: DashboardData; now: number }) {
       {/* AGORA */}
       <section aria-label="Situação agora" className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6">
         <LiveTile label="Online agora" value={live.onlineUsers} icon={Users} tone="bg-brand-green" to="/usuarios" hint={undefined} />
-        <LiveTile label="Aguardando atendente" value={live.pending} icon={Hourglass} tone="bg-warning" alert={live.pending > 0 && (oldestPending ?? 0) > 600} hint={oldestPending !== null && live.pending > 0 ? `mais antigo: ${formatDurationShort(oldestPending)}` : undefined} />
-        <LiveTile label="Em atendimento" value={live.open} icon={MessagesSquare} tone="bg-primary" />
-        <LiveTile label="Cliente sem resposta" value={live.waitingReply} icon={Clock3} tone="bg-danger" alert={live.waitingReply > 0} />
-        <LiveTile label="No bot" value={live.bot} icon={Bot} tone="bg-[#6250d6]" />
-        <LiveTile label="Finalizados hoje" value={live.closedToday} icon={CheckCircle2} tone="bg-brand-navy" />
+        <LiveTile to="/atendimento?aba=pending" label="Aguardando atendente" value={live.pending} icon={Hourglass} tone="bg-warning" alert={live.pending > 0 && (oldestPending ?? 0) > 600} hint={oldestPending !== null && live.pending > 0 ? `mais antigo: ${formatDurationShort(oldestPending)}` : undefined} />
+        <LiveTile to="/atendimento?aba=open" label="Em atendimento" value={live.open} icon={MessagesSquare} tone="bg-primary" />
+        <LiveTile to="/atendimento?aba=open" label="Cliente sem resposta" value={live.waitingReply} icon={Clock3} tone="bg-danger" alert={live.waitingReply > 0} />
+        <LiveTile to="/atendimento?aba=bot" label="No bot" value={live.bot} icon={Bot} tone="bg-[#6250d6]" />
+        <LiveTile to="/atendimento?aba=closed" label="Finalizados hoje" value={live.closedToday} icon={CheckCircle2} tone="bg-brand-navy" />
       </section>
 
       {noTraffic && (

@@ -14,7 +14,9 @@
       ],
       "melhorias": [
         "Menu lateral com nomes, grupos e o usuário logado, que pode ser recolhido; botões, abas e cartões com visual mais limpo.",
-        "Na tela Usuários aparece quem está online e quando cada pessoa foi vista pela última vez."
+        "Na tela Usuários aparece quem está online e quando cada pessoa foi vista pela última vez.",
+        "Filas mostram se estão abertas agora, quantos atendentes têm e quantos atendimentos aguardam; Conexões mostram o movimento de hoje; Contatos mostram quantos atendimentos o cliente já teve e quando falou por último.",
+        "Os cartões do Dashboard levam direto para a aba certa do Atendimento, e o título da aba do navegador acompanha a tela."
       ]
     },
     {

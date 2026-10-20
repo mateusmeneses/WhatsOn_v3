@@ -1,17 +1,20 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Layers, Pencil, Plus, Trash2, UserCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { Link } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useConfirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
+import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
 import type { Queue } from "@/types/api";
 import { QueueDialog } from "./QueueDialog";
-import { deleteQueue, queueKeys } from "./queuesApi";
+import { deleteQueue, fetchQueueStats, queueKeys, type QueueStats } from "./queuesApi";
 import { useQueues } from "./useQueues";
 import { describeSchedule } from "./schedule";
 
@@ -19,6 +22,8 @@ export function QueuesPage() {
   const queryClient = useQueryClient();
   const confirm = useConfirm();
   const queues = useQueues();
+  const stats = useQuery({ queryKey: queueKeys.stats, queryFn: fetchQueueStats, refetchInterval: 30_000 });
+  useLiveInvalidate(queueKeys.stats, ["ticket:update"]);
   const [dialog, setDialog] = useState<{ queue?: Queue } | null>(null);
 
   const remove = useMutation({
@@ -51,7 +56,8 @@ export function QueuesPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {queues.data!.map((queue) => (
-              <Card key={queue.id} className="flex items-start justify-between gap-3">
+              <Card key={queue.id} className="space-y-3">
+               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-3 w-3 rounded-full" style={{ backgroundColor: queue.color }} aria-hidden />
                   <div>
@@ -75,12 +81,34 @@ export function QueuesPage() {
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </Button>
                 </div>
+               </div>
+               <QueueStatsRow stats={stats.data?.find((x) => x.id === queue.id)} />
               </Card>
             ))}
           </div>
         )}
       </div>
       {dialog && <QueueDialog queue={dialog.queue} onClose={() => setDialog(null)} />}
+    </div>
+  );
+}
+
+/** Situação ao vivo da fila: expediente, equipe e fila de espera. */
+function QueueStatsRow({ stats }: { stats?: QueueStats }) {
+  if (!stats) return <div className="skeleton h-6 w-3/4" aria-hidden />;
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-3 text-xs text-ink-muted">
+      <Badge tone={stats.openNow ? "success" : "neutral"}>{stats.openNow ? "Aberta agora" : "Fora do expediente"}</Badge>
+      <span className="inline-flex items-center gap-1" title="Atendentes vinculados à fila">
+        <UserCheck className="h-3.5 w-3.5" aria-hidden />
+        {stats.members} {stats.members === 1 ? "atendente" : "atendentes"}
+      </span>
+      <Link to="/atendimento?aba=pending" className={stats.pending > 0 ? "font-semibold text-warning hover:underline" : "hover:underline"}>
+        {stats.pending} aguardando
+      </Link>
+      <Link to="/atendimento?aba=open" className="hover:underline">
+        {stats.open} em atendimento
+      </Link>
     </div>
   );
 }

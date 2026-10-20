@@ -1,7 +1,7 @@
 import { api } from "@/lib/api";
 import type { Connection, ConnectionStatus } from "@/types/api";
 
-export const connectionKeys = { all: ["connections"] as const };
+export const connectionKeys = { all: ["connections"] as const, stats: ["connections", "stats"] as const };
 
 export const STATUS_LABEL: Record<ConnectionStatus, string> = {
   connected: "Conectado",
@@ -59,5 +59,18 @@ export async function regenerateApiToken(id: number): Promise<{ apiToken: string
 
 export async function disconnectConnection(id: number): Promise<Connection> {
   const { data } = await api.post<Connection>(`/connections/${id}/disconnect`);
+  return data;
+}
+
+export interface ConnectionStats {
+  id: number;
+  ticketsToday: number;
+  messagesInToday: number;
+  messagesOutToday: number;
+  lastMessageAt: string | null;
+}
+
+export async function fetchConnectionStats(): Promise<ConnectionStats[]> {
+  const { data } = await api.get<ConnectionStats[]>("/connections/stats");
   return data;
 }

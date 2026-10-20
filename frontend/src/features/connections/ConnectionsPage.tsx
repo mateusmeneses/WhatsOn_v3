@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, Pencil, Plus, QrCode, Smartphone, Star, Trash2, Unplug } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -10,11 +10,13 @@ import { useConfirm } from "@/components/ui/confirm";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { errorMessage } from "@/lib/apiError";
+import { timeAgo } from "@/lib/duration";
 import { formatPhone } from "@/lib/format";
+import { useLiveInvalidate } from "@/realtime/useLiveInvalidate";
 import type { Connection, ConnectionStatus } from "@/types/api";
 import { ApiTokenDialog } from "./ApiTokenDialog";
 import { ConnectionDialog } from "./ConnectionDialog";
-import { connectionKeys, deleteConnection, disconnectConnection, STATUS_LABEL } from "./connectionsApi";
+import { connectionKeys, deleteConnection, disconnectConnection, fetchConnectionStats, STATUS_LABEL, type ConnectionStats } from "./connectionsApi";
 import { useConnectionRealtime, useConnections } from "./useConnections";
 import { QrCodeDialog } from "./QrCodeDialog";
 
@@ -29,6 +31,8 @@ export function ConnectionsPage() {
   const confirm = useConfirm();
   const connections = useConnections();
   useConnectionRealtime();
+  const stats = useQuery({ queryKey: connectionKeys.stats, queryFn: fetchConnectionStats, refetchInterval: 60_000 });
+  useLiveInvalidate(connectionKeys.stats, ["ticket:update"], 10_000);
   const [editing, setEditing] = useState<{ connection?: Connection } | null>(null);
   const [qrFor, setQrFor] = useState<Connection | null>(null);
   const [apiFor, setApiFor] = useState<Connection | null>(null);
@@ -79,6 +83,7 @@ export function ConnectionsPage() {
                     </div>
                     <Badge tone={STATUS_TONE[c.status]}>{STATUS_LABEL[c.status]}</Badge>
                   </div>
+                  <ConnectionActivity stats={stats.data?.find((x) => x.id === c.id)} loading={stats.isLoading} />
                   <div className="flex flex-wrap gap-2">
                     {c.status === "connected" ? (
                       <Button
@@ -134,6 +139,30 @@ export function ConnectionsPage() {
       )}
       {qrFor && <QrCodeDialog connection={qrFor} onClose={closeQr} />}
       {apiFor && <ApiTokenDialog connection={apiFor} onClose={() => setApiFor(null)} />}
+    </div>
+  );
+}
+
+/** Movimento de hoje da conexão: dá para ver na hora se um número conectado parou de receber. */
+function ConnectionActivity({ stats, loading }: { stats?: ConnectionStats; loading: boolean }) {
+  if (!stats) return loading ? <div className="skeleton h-12" aria-hidden /> : null;
+  return (
+    <div className="rounded-lg bg-background px-3 py-2">
+      <dl className="grid grid-cols-3 gap-2 text-center">
+        {[
+          { label: "atend. hoje", value: stats.ticketsToday },
+          { label: "recebidas", value: stats.messagesInToday },
+          { label: "enviadas", value: stats.messagesOutToday },
+        ].map((m) => (
+          <div key={m.label}>
+            <dd className="text-lg font-bold tabular-nums text-ink">{m.value}</dd>
+            <dt className="text-[11px] text-ink-muted">{m.label}</dt>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-1 text-center text-[11px] text-ink-muted">
+        {stats.lastMessageAt ? `Última mensagem ${timeAgo(stats.lastMessageAt)}` : "Nenhuma mensagem ainda"}
+      </p>
     </div>
   );
 }

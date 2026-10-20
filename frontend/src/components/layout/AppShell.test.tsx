@@ -66,3 +66,11 @@ describe("AppShell", () => {
     expect(items.map((t) => t.id)).toEqual([7]);
   });
 });
+
+describe("AppShell page title", () => {
+  it("names the browser tab after the current screen", async () => {
+    setTestUser({ profile: "admin" });
+    renderWithProviders(<AppRoutes />, { route: "/contatos" });
+    await waitFor(() => expect(document.title).toBe("Contatos · WhatsOn"));
+  });
+});

@@ -1,12 +1,23 @@
-import { Outlet } from "react-router-dom";
+import { useEffect } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import { CompanyBanner } from "@/features/admin/CompanyBanner";
 import { ConnectionAlerts } from "@/features/connections/ConnectionAlerts";
 import { TicketRealtime } from "@/features/tickets/useTickets";
 import { VersionBadge } from "@/features/version/VersionBadge";
 import { RealtimeProvider, useRealtimeReconnecting } from "@/realtime/RealtimeProvider";
-import { Sidebar } from "./Sidebar";
+import { NAV_ITEMS, Sidebar } from "./Sidebar";
+
+/** Título da aba do navegador acompanha a tela atual ("Dashboard · WhatsOn"). */
+function usePageTitle() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    const item = NAV_ITEMS.find((i) => pathname === i.to || pathname.startsWith(`${i.to}/`));
+    document.title = item ? `${item.label} · WhatsOn` : "WhatsOn";
+  }, [pathname]);
+}
 
 export function AppShell() {
+  usePageTitle();
   return (
     <RealtimeProvider>
       <ConnectionAlerts />

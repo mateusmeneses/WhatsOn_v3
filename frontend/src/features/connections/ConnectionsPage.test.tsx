@@ -14,6 +14,7 @@ import {
   disconnectConnection,
   fetchApiToken,
   fetchConnections,
+  fetchConnectionStats,
   fetchQrCode,
   regenerateApiToken,
 } from "./connectionsApi";
@@ -21,6 +22,7 @@ import {
 vi.mock("./connectionsApi", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./connectionsApi")>()),
   fetchConnections: vi.fn(),
+  fetchConnectionStats: vi.fn(),
   createConnection: vi.fn(),
   updateConnection: vi.fn(),
   deleteConnection: vi.fn(),
@@ -57,6 +59,7 @@ afterEach(() => {
 
 beforeEach(() => {
   setTestUser({ profile: "admin" });
+  vi.mocked(fetchConnectionStats).mockResolvedValue([]);
   vi.mocked(fetchQueues).mockResolvedValue([{ id: 10, companyId: 1, name: "Suporte", color: "#6d5dfc", schedule: {} }]);
   vi.mocked(fetchConnections).mockResolvedValue([
     conn({ id: 1, name: "Principal", status: "connected" }),
@@ -65,6 +68,17 @@ beforeEach(() => {
 });
 
 describe("ConnectionsPage", () => {
+  it("shows today's activity of each connection", async () => {
+    vi.mocked(fetchConnectionStats).mockResolvedValue([
+      { id: 1, ticketsToday: 7, messagesInToday: 42, messagesOutToday: 38, lastMessageAt: new Date().toISOString() },
+    ]);
+    renderWithProviders(<ConnectionsPage />, { socket: new FakeSocket() });
+    const principal = (await screen.findByText("Principal")).closest("article")!;
+    expect(await within(principal).findByText("42")).toBeInTheDocument();
+    expect(within(principal).getByText("atend. hoje")).toBeInTheDocument();
+    expect(within(principal).getByText(/Última mensagem agora/)).toBeInTheDocument();
+  });
+
   it("lists connections with their status", async () => {
     renderWithProviders(<ConnectionsPage />, { socket: new FakeSocket() });
     const principal = (await screen.findByText("Principal")).closest("article")!;

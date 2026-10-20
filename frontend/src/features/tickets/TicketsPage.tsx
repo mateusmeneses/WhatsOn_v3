@@ -1,6 +1,6 @@
 import { MessagesSquare, Search } from "lucide-react";
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Tabs, type TabItem } from "@/components/ui/tabs";
@@ -16,7 +16,12 @@ export function TicketsPage() {
   const viewer = useViewer();
   const { ticketId } = useParams();
   const selectedId = ticketId ? Number(ticketId) : null;
-  const [selectedStatus, setStatus] = useState<TicketStatus>("pending");
+  // ?aba=pending|open|closed|bot abre direto na aba (atalhos do dashboard e das filas).
+  const [searchParams] = useSearchParams();
+  const [selectedStatus, setStatus] = useState<TicketStatus>(() => {
+    const aba = searchParams.get("aba");
+    return aba === "open" || aba === "closed" || aba === "bot" ? aba : "pending";
+  });
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounced(search.trim());
 

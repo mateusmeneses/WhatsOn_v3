@@ -9,7 +9,7 @@ import { emitter } from "../../src/modules/realtime/socket";
 import { setProvider } from "../../src/modules/whatsapp/registry";
 import { bearer } from "../helpers/auth";
 import { resetDb } from "../helpers/db";
-import { createCompany, createConnection, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
+import { createCompany, createConnection, createContact, createMessage, createQueue, createTicket, createUser, scenario } from "../helpers/factories";
 import { FakeProvider } from "../helpers/fakeProvider";
 
 const app = createApp();
@@ -196,5 +196,32 @@ describe("connections", () => {
     expect(spy).toHaveBeenCalledWith(company.id, "connection:update", expect.anything());
     expect(spy).not.toHaveBeenCalledWith(company.id, "connection:alert", expect.anything());
     spy.mockRestore();
+  });
+});
+
+describe("connection stats", () => {
+  beforeEach(async () => {
+    await resetDb();
+    setProvider(fake);
+  });
+
+  it("counts today's tickets and messages per connection, for admins only", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { name: "Principal" });
+    const idle = await createConnection(company.id, { name: "Parada" });
+    const contact = await createContact(company.id);
+    const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id });
+    await createMessage(ticket, { createdAt: new Date() });
+    await createMessage(ticket, { createdAt: new Date(), fromMe: true });
+    await createMessage(ticket, { createdAt: new Date(Date.now() - 3 * 86_400_000) });
+
+    const res = await request(app).get("/api/connections/stats").set("Authorization", bearer(user)).expect(200);
+    const main = res.body.find((c: { id: number }) => c.id === connection.id);
+    expect(main).toMatchObject({ ticketsToday: 1, messagesInToday: 1, messagesOutToday: 1 });
+    expect(main.lastMessageAt).not.toBeNull();
+    expect(res.body.find((c: { id: number }) => c.id === idle.id)).toMatchObject({ ticketsToday: 0, messagesInToday: 0, lastMessageAt: null });
+
+    const agent = await createUser(company.id);
+    await request(app).get("/api/connections/stats").set("Authorization", bearer(agent)).expect(403);
   });
 });
