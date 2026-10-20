@@ -2,6 +2,8 @@ import {
   BookUser,
   Building2,
   Bot,
+  Bell,
+  BellOff,
   Braces,
   ChevronsLeft,
   ChevronsRight,
@@ -9,6 +11,7 @@ import {
   Layers,
   LogOut,
   MessagesSquare,
+  Search,
   Settings,
   Smartphone,
   UserCog,
@@ -20,9 +23,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import logoMark from "@/assets/brand/logo-mark.webp";
 import { logout } from "@/features/auth/authApi";
 import { useTicketSummary } from "@/features/tickets/useTickets";
+import { OPEN_SEARCH_EVENT } from "./CommandPalette";
 import { ChangelogButton } from "@/features/version/ChangelogButton";
 import { cn } from "@/lib/cn";
 import { initials } from "@/lib/format";
+import { playChime, setSoundEnabled, useSoundEnabled } from "@/lib/notifySound";
 import { useAuth } from "@/stores/auth";
 import type { Profile } from "@/types/api";
 
@@ -84,6 +89,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const summary = useTicketSummary();
+  const sound = useSoundEnabled();
   if (!user) return null;
 
   async function onLogout() {
@@ -127,6 +133,25 @@ export function Sidebar() {
           </span>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => window.dispatchEvent(new Event(OPEN_SEARCH_EVENT))}
+        title="Buscar (Ctrl+K)"
+        aria-label="Buscar páginas e conversas"
+        className={cn(
+          "mb-4 flex items-center rounded-lg bg-white/5 text-sm text-white/55 transition hover:bg-white/10 hover:text-white",
+          collapsed ? "h-10 w-10 justify-center" : "h-10 gap-2.5 px-3",
+        )}
+      >
+        <Search className="h-[18px] w-[18px] shrink-0" aria-hidden />
+        {!collapsed && (
+          <>
+            <span className="flex-1 text-left">Buscar…</span>
+            <kbd className="rounded border border-white/15 px-1.5 py-0.5 text-[10px] text-white/45">Ctrl K</kbd>
+          </>
+        )}
+      </button>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden">
         {groups.map(({ group, items: groupItems }) => (
@@ -182,6 +207,19 @@ export function Sidebar() {
       <div className={cn("mt-3 space-y-2 border-t border-white/10 pt-3", collapsed && "flex flex-col items-center")}>
         <div className={cn("flex items-center", collapsed ? "flex-col gap-2" : "justify-between px-1")}>
           <ChangelogButton />
+          <button
+            type="button"
+            onClick={() => {
+              setSoundEnabled(!sound);
+              if (!sound) playChime(); // prévia do som (e libera o áudio do navegador com este clique)
+            }}
+            title={sound ? "Desligar aviso sonoro" : "Ligar aviso sonoro de novos atendimentos"}
+            aria-label={sound ? "Desligar aviso sonoro" : "Ligar aviso sonoro"}
+            aria-pressed={sound}
+            className={cn("rounded-lg p-2 transition hover:bg-white/10 hover:text-white", sound ? "text-[#2fd16a]" : "text-white/50")}
+          >
+            {sound ? <Bell className="h-4 w-4" aria-hidden /> : <BellOff className="h-4 w-4" aria-hidden />}
+          </button>
           <button
             type="button"
             onClick={toggle}

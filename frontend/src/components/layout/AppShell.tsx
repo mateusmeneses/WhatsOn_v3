@@ -5,6 +5,8 @@ import { ConnectionAlerts } from "@/features/connections/ConnectionAlerts";
 import { TicketRealtime, useTicketSummary } from "@/features/tickets/useTickets";
 import { VersionBadge } from "@/features/version/VersionBadge";
 import { RealtimeProvider, useRealtimeReconnecting } from "@/realtime/RealtimeProvider";
+import { CommandPalette } from "./CommandPalette";
+import { NotificationSound } from "./NotificationSound";
 import { NAV_ITEMS, Sidebar } from "./Sidebar";
 
 /** Título da aba do navegador acompanha a tela atual ("Dashboard · WhatsOn"). */
@@ -25,6 +27,8 @@ export function AppShell() {
       <ConnectionAlerts />
       <ReconnectingBanner />
       <TicketRealtime />
+      <CommandPalette />
+      <NotificationSound />
       <div className="flex h-full min-w-[768px] flex-col">
         <CompanyBanner />
         <div className="flex min-h-0 flex-1">

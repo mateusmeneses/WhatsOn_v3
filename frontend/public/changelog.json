@@ -11,7 +11,9 @@
         "Novo: exportação do Dashboard em planilha (CSV) e atualização automática em tempo real.",
         "Novo: tela Meu desempenho, para cada pessoa acompanhar os próprios atendimentos, tempos de resposta e como está em relação à média da equipe.",
         "Novo: no painel da plataforma, a Visão geral com todas as empresas, uso, conexões, parceiros e quem está online.",
-        "Novo: em Configurações, a meta de primeira resposta da empresa (de 1 a 240 minutos), usada pelo indicador de respostas no prazo do Dashboard."
+        "Novo: em Configurações, a meta de primeira resposta da empresa (de 1 a 240 minutos), usada pelo indicador de respostas no prazo do Dashboard.",
+        "Novo: busca rápida (Ctrl+K, ou o botão Buscar no menu) para ir a qualquer tela ou abrir a conversa de um cliente pelo nome ou número.",
+        "Novo: aviso sonoro opcional (botão de sino no menu) quando chega um atendimento ou uma mensagem nova."
       ],
       "melhorias": [
         "Menu lateral com nomes, grupos e o usuário logado, que pode ser recolhido; botões, abas e cartões com visual mais limpo.",
