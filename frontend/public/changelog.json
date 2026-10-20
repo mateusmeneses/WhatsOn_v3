@@ -2,6 +2,18 @@
   "atualizadoEm": "2026-10-19",
   "versoes": [
     {
+      "versao": "2026.10.19.2",
+      "data": "19/10/2026",
+      "titulo": "Integração com sistemas parceiros",
+      "novidades": [
+        "Novo: outros sistemas (como o ERP MultiComércio) podem conectar o WhatsApp dos clientes deles ao WhatsOn e enviar mensagens pela API, sem o cliente precisar entrar no WhatsOn.",
+        "Novo: no painel da plataforma, a tela Parceiros para cadastrar esses sistemas e gerar a chave de acesso de cada um."
+      ],
+      "melhorias": [
+        "A tela Empresas mostra o CNPJ e o sistema parceiro de cada empresa, e o CNPJ pode ser informado ao criar ou editar uma empresa."
+      ]
+    },
+    {
       "versao": "2026.10.19.1",
       "data": "19/10/2026",
       "titulo": "Requerer atendimento",
