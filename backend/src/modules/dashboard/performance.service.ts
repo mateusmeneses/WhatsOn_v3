@@ -6,6 +6,7 @@ import {
   dayList,
   num,
   numOrNull,
+  type Row,
   sqlRows,
   type DashboardRange,
   type DurationMetric,
@@ -52,7 +53,7 @@ export async function getMyPerformance(companyId: number, userId: number, range:
   const r = { ...(await computeBounds(companyId, settings, range)), userId };
   const q = (sql: string) => sqlRows(sql, r);
 
-  const [logs, sent, open, resp, teamResp, accept, byDay, sentByDay, slow, queues, waiting, teamClosed, resolution] = await Promise.all([
+  const [logs, sent, open, respStats, accept, byDay, sentByDay, queues, waiting, teamClosed, resolution] = await Promise.all([
     q(`SELECT
          count(*) FILTER (WHERE event = 'accepted' AND "createdAt" >= :start)::int AS accepted,
          count(*) FILTER (WHERE event = 'accepted' AND "createdAt" < :start)::int AS "prevAccepted",
@@ -64,18 +65,24 @@ export async function getMyPerformance(companyId: number, userId: number, range:
     q(`SELECT count(*) FILTER (WHERE status = 'open')::int AS "openNow", count(*) FILTER (WHERE status = 'pending')::int AS "pendingForMe"
        FROM tickets WHERE "companyId" = :companyId AND "userId" = :userId AND status IN ('open', 'pending')`),
     q(`WITH ${ASKS_CTE}
-       SELECT count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
-              avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
-              count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
-              count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
-              avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
-              percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
-              count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
-       FROM answered WHERE "userId" = :userId`),
-    q(`WITH ${ASKS_CTE}
-       SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) AS median FROM answered
-       WHERE "askedAt" >= :start AND "userId" IS NOT NULL`),
+       SELECT
+         (SELECT row_to_json(k) FROM (SELECT
+            count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
+            avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
+            count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
+            count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
+            avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
+            count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
+          FROM answered WHERE "userId" = :userId) k) AS kpi,
+         (SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FROM answered
+           WHERE "askedAt" >= :start AND "userId" IS NOT NULL) AS "teamMedian",
+         (SELECT COALESCE(json_agg(w), '[]'::json) FROM (
+            SELECT a.id AS "messageId", a."ticketId", c.name AS "contactName", qu.name AS "queueName", a."askedAt", a."answeredAt", a.secs AS seconds
+            FROM answered a JOIN tickets t ON t.id = a."ticketId" JOIN contacts c ON c.id = t."contactId"
+            LEFT JOIN queues qu ON qu.id = t."queueId"
+            WHERE a."userId" = :userId AND a."askedAt" >= :start ORDER BY a.secs DESC LIMIT 5) w) AS slow`),
     q(`WITH ${ACCEPTS_CTE}
        SELECT avg(secs) FILTER (WHERE "createdAt" >= :start) AS avg, avg(secs) FILTER (WHERE "createdAt" < :start) AS "prevAvg"
        FROM accepts WHERE "userId" = :userId`),
@@ -84,11 +91,6 @@ export async function getMyPerformance(companyId: number, userId: number, range:
          AND "createdAt" >= :start AND "createdAt" < :end GROUP BY 1, 2`),
     q(`SELECT to_char(date_trunc('day', "createdAt" AT TIME ZONE :tz), 'YYYY-MM-DD') AS date, count(*)::int AS count
        FROM messages WHERE "companyId" = :companyId AND "sentByUserId" = :userId AND "createdAt" >= :start AND "createdAt" < :end GROUP BY 1`),
-    q(`WITH ${ASKS_CTE}
-       SELECT a.id AS "messageId", a."ticketId", c.name AS "contactName", qu.name AS "queueName", a."askedAt", a."answeredAt", a.secs AS seconds
-       FROM answered a JOIN tickets t ON t.id = a."ticketId" JOIN contacts c ON c.id = t."contactId"
-       LEFT JOIN queues qu ON qu.id = t."queueId"
-       WHERE a."userId" = :userId AND a."askedAt" >= :start ORDER BY a.secs DESC LIMIT 5`),
     q(`SELECT qu.id, COALESCE(qu.name, 'Sem fila') AS name, COALESCE(qu.color, '#94a3b8') AS color, count(*)::int AS closed
        FROM ticket_logs l JOIN tickets t ON t.id = l."ticketId" LEFT JOIN queues qu ON qu.id = t."queueId"
        WHERE l."companyId" = :companyId AND l."userId" = :userId AND l.event = 'closed' AND l."createdAt" >= :start AND l."createdAt" < :end
@@ -116,7 +118,9 @@ export async function getMyPerformance(companyId: number, userId: number, range:
   const l0 = logs[0] ?? {};
   const s0 = sent[0] ?? {};
   const o0 = open[0] ?? {};
-  const r0 = resp[0] ?? {};
+  const rs = (respStats[0] ?? {}) as { kpi?: Row; teamMedian?: unknown; slow?: Row[] };
+  const r0 = rs.kpi ?? {};
+  const slow = rs.slow ?? [];
   const a0 = accept[0] ?? {};
   const tc = teamClosed[0] ?? {};
 
@@ -146,7 +150,7 @@ export async function getMyPerformance(companyId: number, userId: number, range:
       slaSeconds: r.sla,
     },
     team: {
-      medianResponse: numOrNull(teamResp[0]?.median),
+      medianResponse: numOrNull(rs.teamMedian),
       avgClosedPerAgent: num(tc.agents) > 0 ? num(tc.total) / num(tc.agents) : null,
       agents: num(tc.agents),
     },

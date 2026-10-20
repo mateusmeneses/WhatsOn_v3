@@ -145,21 +145,21 @@ export type Row = Record<string, unknown>;
 
 /** Mensagem do cliente que abre uma "rodada" (a anterior foi nossa ou não existe) e a próxima resposta enviada. */
 export const ASKS_CTE = `
-  seq AS (
-    SELECT id, "ticketId", "fromMe", "createdAt",
-           LAG("fromMe") OVER (PARTITION BY "ticketId" ORDER BY "createdAt", id) AS "prevFromMe"
+  seq AS MATERIALIZED (
+    SELECT id, "ticketId", "fromMe", "isBot", "sentByUserId", "createdAt",
+           LAG("fromMe") OVER w AS "prevFromMe",
+           -- Quantas mensagens nossas existem daqui em diante: a primeira resposta após uma mensagem do cliente
+           -- é a mensagem nossa com o mesmo contador (uma só passada, sem consulta por mensagem).
+           count(*) FILTER (WHERE "fromMe") OVER (PARTITION BY "ticketId" ORDER BY "createdAt", id ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS k
     FROM messages
     WHERE "companyId" = :companyId AND "createdAt" >= CAST(:prevStart AS timestamptz) - interval '1 day' AND "createdAt" < :end
+    WINDOW w AS (PARTITION BY "ticketId" ORDER BY "createdAt", id)
   ),
   asks AS (
     SELECT s.id, s."ticketId", s."createdAt" AS "askedAt",
-           nx."createdAt" AS "answeredAt", nx."isBot" AS "botReply", nx."sentByUserId" AS "userId"
+           o."createdAt" AS "answeredAt", o."isBot" AS "botReply", o."sentByUserId" AS "userId"
     FROM seq s
-    LEFT JOIN LATERAL (
-      SELECT o."createdAt", o."isBot", o."sentByUserId" FROM messages o
-      WHERE o."ticketId" = s."ticketId" AND o."fromMe" AND (o."createdAt", o.id) > (s."createdAt", s.id)
-      ORDER BY o."createdAt", o.id LIMIT 1
-    ) nx ON true
+    LEFT JOIN seq o ON o."ticketId" = s."ticketId" AND o."fromMe" AND o.k = s.k
     WHERE NOT s."fromMe" AND s."prevFromMe" IS NOT FALSE AND s."createdAt" >= :prevStart
   ),
   answered AS (
@@ -243,12 +243,10 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
     agentTickets,
     agentEvents,
     agentMessages,
-    responseKpi,
-    responseByAgent,
+    responseStats,
     acceptKpi,
     acceptByAgent,
     contactRows,
-    slowRows,
     waitingRows,
     waitingCount,
     activityRows,
@@ -326,20 +324,29 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
          AND "createdAt" >= :start AND "createdAt" < :end GROUP BY 1, 2`),
     q(`SELECT "sentByUserId" AS "userId", count(*)::int AS count FROM messages
        WHERE "companyId" = :companyId AND "sentByUserId" IS NOT NULL AND "createdAt" >= :start AND "createdAt" < :end GROUP BY 1`),
+    // Uma única passada sobre as mensagens alimenta o KPI, o ranking por atendente e as respostas mais demoradas.
     q(`WITH ${ASKS_CTE}
        SELECT
-         count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
-         avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
-         percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
-         count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
-         count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
-         avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
-         percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
-         count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
-       FROM answered`),
-    q(`WITH ${ASKS_CTE}
-       SELECT "userId", avg(secs) AS avg FROM answered
-       WHERE "askedAt" >= :start AND "userId" IS NOT NULL GROUP BY "userId"`),
+         (SELECT row_to_json(k) FROM (SELECT
+            count(*) FILTER (WHERE "askedAt" >= :start)::int AS count,
+            avg(secs) FILTER (WHERE "askedAt" >= :start) AS avg,
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" >= :start) AS median,
+            count(*) FILTER (WHERE "askedAt" >= :start AND secs <= :sla)::int AS "inSla",
+            count(*) FILTER (WHERE "askedAt" < :start)::int AS "prevCount",
+            avg(secs) FILTER (WHERE "askedAt" < :start) AS "prevAvg",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY secs) FILTER (WHERE "askedAt" < :start) AS "prevMedian",
+            count(*) FILTER (WHERE "askedAt" < :start AND secs <= :sla)::int AS "prevInSla"
+          FROM answered) k) AS kpi,
+         (SELECT COALESCE(json_agg(a), '[]'::json) FROM (
+            SELECT "userId", avg(secs) AS avg FROM answered
+            WHERE "askedAt" >= :start AND "userId" IS NOT NULL GROUP BY "userId") a) AS "byAgent",
+         (SELECT COALESCE(json_agg(w), '[]'::json) FROM (
+            SELECT a.id AS "messageId", a."ticketId", c.name AS "contactName", u.name AS "agentName", qu.name AS "queueName",
+                   a."askedAt", a."answeredAt", a.secs AS seconds
+            FROM answered a
+            JOIN tickets t ON t.id = a."ticketId" JOIN contacts c ON c.id = t."contactId"
+            LEFT JOIN users u ON u.id = a."userId" LEFT JOIN queues qu ON qu.id = t."queueId"
+            WHERE a."askedAt" >= :start ORDER BY a.secs DESC LIMIT 10) w) AS slow`),
     q(`WITH ${ACCEPTS_CTE}
        SELECT avg(secs) FILTER (WHERE "createdAt" >= :start) AS avg,
               avg(secs) FILTER (WHERE "createdAt" < :start) AS "prevAvg" FROM accepts`),
@@ -353,13 +360,6 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
        FROM messages m JOIN tickets t ON t.id = m."ticketId" JOIN contacts c ON c.id = t."contactId"
        WHERE m."companyId" = :companyId AND m."createdAt" >= :start AND m."createdAt" < :end
        GROUP BY c.id ORDER BY count(*) DESC LIMIT 8`),
-    q(`WITH ${ASKS_CTE}
-       SELECT a.id AS "messageId", a."ticketId", c.name AS "contactName", u.name AS "agentName", qu.name AS "queueName",
-              a."askedAt", a."answeredAt", a.secs AS seconds
-       FROM answered a
-       JOIN tickets t ON t.id = a."ticketId" JOIN contacts c ON c.id = t."contactId"
-       LEFT JOIN users u ON u.id = a."userId" LEFT JOIN queues qu ON qu.id = t."queueId"
-       WHERE a."askedAt" >= :start ORDER BY a.secs DESC LIMIT 10`),
     q(`SELECT * FROM (
          SELECT t.id AS "ticketId", c.name AS "contactName", t.status, u.name AS "agentName", qu.name AS "queueName", qu.color AS "queueColor",
                 (SELECT min(m."createdAt") FROM messages m WHERE m."ticketId" = t.id AND NOT m."fromMe"
@@ -383,7 +383,10 @@ export async function getDashboard(companyId: number, range: DashboardRange): Pr
 
   const t0 = ticketKpi[0] ?? {};
   const m0 = messageKpi[0] ?? {};
-  const rk = responseKpi[0] ?? {};
+  const resp = (responseStats[0] ?? {}) as { kpi?: Row; byAgent?: Row[]; slow?: Row[] };
+  const rk = resp.kpi ?? {};
+  const responseByAgent = resp.byAgent ?? [];
+  const slowRows = resp.slow ?? [];
   const ak = acceptKpi[0] ?? {};
 
   const statusCount = (s: string) => num(liveStatus.find((x) => x.status === s)?.count);

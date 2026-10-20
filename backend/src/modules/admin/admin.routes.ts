@@ -13,7 +13,10 @@ import {
   updatePartner,
 } from "../partners/partners.service";
 import { MAX_RANGE_DAYS } from "../dashboard/dashboard.service";
+import { createTtlCache } from "../../shared/ttlCache";
 import { getPlatformOverview } from "./platform.service";
+
+const overviewCache = createTtlCache({ ttlMs: 30_000, enabled: process.env.NODE_ENV !== "test" });
 import { createCompany, enterCompany, exitCompany, listCompanies, setCompanyBlocked, updateCompany } from "./admin.service";
 
 const name = z.string().trim().min(1).max(80);
@@ -59,7 +62,7 @@ adminRoutes.get("/overview", async (req, res) => {
   }
   const days = query.period === "custom" ? Math.abs(Date.parse(`${query.to}T00:00:00Z`) - Date.parse(`${query.from}T00:00:00Z`)) / 86_400_000 + 1 : 0;
   if (days > MAX_RANGE_DAYS) throw new AppError("INVALID_RANGE", 400, `O período máximo é de ${MAX_RANGE_DAYS} dias`);
-  res.json(await getPlatformOverview(query.period, query));
+  res.json(await overviewCache.get(`${query.period}:${query.from ?? ""}:${query.to ?? ""}`, () => getPlatformOverview(query.period, query)));
 });
 
 adminRoutes.get("/companies", async (_req, res) => {
