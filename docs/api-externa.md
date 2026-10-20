@@ -4,6 +4,7 @@ API para outros sistemas (ex.: ERP MULTICOMERCIO) conectarem um número e enviar
 Cada token pertence a **uma conexão**: tudo que é feito com ele usa aquele número.
 
 Guia completo (fluxos, erros, segurança e clientes em várias linguagens): [manual-integracao-api.md](manual-integracao-api.md).
+Sistema parceiro que cria as empresas e conexões sozinho (sem o cliente acessar o Whatson): [guia-integracao-parceiros.md](guia-integracao-parceiros.md).
 No painel, a página **Integração API** traz o manual e um console de testes.
 
 ## Token
