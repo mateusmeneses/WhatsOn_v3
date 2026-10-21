@@ -1,5 +1,5 @@
-import { Mic, Paperclip, PenLine, Send, Trash2 } from "lucide-react";
-import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { Mic, Paperclip, PenLine, Send, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type ChangeEvent, type ClipboardEvent, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,14 +23,48 @@ export function Composer({
 }) {
   const [text, setText] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [pasted, setPasted] = useState<{ file: File; url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const recorder = useAudioRecorder();
+
+  useEffect(() => () => {
+    if (pasted) URL.revokeObjectURL(pasted.url);
+  }, [pasted]);
 
   function submit(media: StoredMedia | null = null) {
     const body = text.trim();
     if (!body && !media) return;
     onSend(body, media);
     setText("");
+  }
+
+  /** Imagem ou vídeo colado (Ctrl+V): fica em pré-visualização; o texto digitado vira a legenda. */
+  function onPaste(event: ClipboardEvent<HTMLTextAreaElement>) {
+    const file = Array.from(event.clipboardData.files).find((f) => f.type.startsWith("image/") || f.type.startsWith("video/"));
+    if (!file) return;
+    event.preventDefault();
+    setPasted({ file, url: URL.createObjectURL(file) });
+  }
+
+  async function sendPasted() {
+    if (!pasted) return;
+    const { file } = pasted;
+    setUploading(true);
+    try {
+      const media = await uploadMedia(file);
+      onSend(text.trim(), media);
+      setText("");
+      setPasted(null);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function send() {
+    if (pasted) void sendPasted();
+    else submit();
   }
 
   async function upload(file: File, send: (media: StoredMedia) => void) {
@@ -81,16 +115,34 @@ export function Composer({
     );
   }
 
-  const showMic = !text.trim() && audioRecordingSupported();
+  const showMic = !text.trim() && !pasted && audioRecordingSupported();
 
   return (
     <form
       onSubmit={(e: FormEvent) => {
         e.preventDefault();
-        submit();
+        send();
       }}
-      className="flex items-end gap-2 border-t border-border bg-surface p-3"
+      className="flex flex-wrap items-end gap-2 border-t border-border bg-surface p-3"
     >
+      {pasted && (
+        <div className="relative w-full">
+          {pasted.file.type.startsWith("video/") ? (
+            <video src={pasted.url} controls className="max-h-48 rounded-lg" data-testid="paste-preview" />
+          ) : (
+            <img src={pasted.url} alt="Pré-visualização" className="max-h-48 rounded-lg object-contain" data-testid="paste-preview" />
+          )}
+          <button
+            type="button"
+            aria-label="Remover anexo"
+            disabled={uploading}
+            className="absolute left-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+            onClick={() => setPasted(null)}
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
       <input ref={fileRef} type="file" className="hidden" onChange={onFile} data-testid="file-input" />
       <Button
         type="button"
@@ -123,10 +175,11 @@ export function Composer({
         value={text}
         placeholder="Digite uma mensagem…"
         onChange={(e) => setText(e.target.value)}
+        onPaste={onPaste}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
-            submit();
+            send();
           }
         }}
         className="max-h-40 min-h-10 flex-1 resize-none"
@@ -136,7 +189,7 @@ export function Composer({
           <Mic className="h-4 w-4" aria-hidden />
         </Button>
       ) : (
-        <Button type="submit" size="icon" aria-label="Enviar" disabled={uploading || !text.trim()}>
+        <Button type="submit" size="icon" aria-label="Enviar" disabled={uploading || (!text.trim() && !pasted)}>
           <Send className="h-4 w-4" aria-hidden />
         </Button>
       )}

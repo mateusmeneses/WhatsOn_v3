@@ -1,10 +1,11 @@
-import { AlertCircle, Ban, Bot, Check, CheckCheck, Clock, FileText, MapPin, Pencil, Trash2 } from "lucide-react";
+import { AlertCircle, Ban, Bot, Check, CheckCheck, Clock, FileText, MapPin, Pencil, Play, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/cn";
 import { formatTime, mediaSrc } from "@/lib/format";
 import type { Ack } from "@/types/api";
+import { MediaViewer, type ViewerMedia } from "./MediaViewer";
 import { canDeleteMessage, canEditMessage, type ChatMessage } from "./messageCache";
 
 const ACK_LABEL: Record<Ack, string> = {
@@ -37,6 +38,7 @@ function AckIcon({ ack }: { ack: Ack }) {
 }
 
 function MediaContent({ message }: { message: ChatMessage }) {
+  const [viewer, setViewer] = useState<ViewerMedia | null>(null);
   if (!message.mediaUrl) {
     if (message.type === "location") {
       return (
@@ -55,12 +57,40 @@ function MediaContent({ message }: { message: ChatMessage }) {
   const src = mediaSrc(message.mediaUrl);
   switch (message.type) {
     case "image":
-    case "sticker":
-      return <img src={src} alt={message.mediaName ?? "Imagem"} className="max-h-72 rounded-lg object-contain" />;
+    case "sticker": {
+      const name = message.mediaName ?? "Imagem";
+      return (
+        <>
+          <button type="button" aria-label={`Ampliar ${name}`} className="block cursor-zoom-in" onClick={() => setViewer({ kind: "image", src, name })}>
+            <img src={src} alt={name} className="max-h-72 rounded-lg object-contain" />
+          </button>
+          <MediaViewer media={viewer} onClose={() => setViewer(null)} />
+        </>
+      );
+    }
     case "audio":
       return <audio controls src={src} className="max-w-full" />;
-    case "video":
-      return <video controls src={src} className="max-h-72 rounded-lg" />;
+    case "video": {
+      const name = message.mediaName ?? "Vídeo";
+      return (
+        <>
+          <button
+            type="button"
+            aria-label={`Reproduzir ${name}`}
+            className="relative block cursor-pointer"
+            onClick={() => setViewer({ kind: "video", src, name })}
+          >
+            <video src={`${src}#t=0.1`} preload="metadata" className="max-h-72 rounded-lg" />
+            <span className="absolute inset-0 flex items-center justify-center">
+              <span className="rounded-full bg-black/60 p-3 text-white">
+                <Play className="h-6 w-6" aria-hidden />
+              </span>
+            </span>
+          </button>
+          <MediaViewer media={viewer} onClose={() => setViewer(null)} />
+        </>
+      );
+    }
     default:
       return (
         <a href={src} download={message.mediaName ?? undefined} className="inline-flex items-center gap-2 underline">
