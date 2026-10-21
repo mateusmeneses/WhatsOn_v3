@@ -232,6 +232,24 @@ describe("tickets", () => {
     expect(res.body.unreadCount).toBe(0);
   });
 
+  it("saves internal notes on a visible ticket and hides them from other companies", async () => {
+    const w = await world();
+    const ticket = await w.ticketFor({ status: "open", userId: w.agentA.id });
+    const res = await request(app)
+      .put(`/api/tickets/${ticket.id}/notes`)
+      .set("Authorization", bearer(w.agentA))
+      .send({ notes: "Cliente usa o sistema X v2" });
+    expect(res.status).toBe(200);
+    expect(res.body.notes).toBe("Cliente usa o sistema X v2");
+    expect((await Ticket.findByPk(ticket.id))?.notes).toBe("Cliente usa o sistema X v2");
+    expect(fake.sent).toHaveLength(0);
+
+    const other = await scenario();
+    const foreign = await createTicket({ companyId: other.company.id, contactId: other.contact.id, connectionId: other.connection.id });
+    const denied = await request(app).put(`/api/tickets/${foreign.id}/notes`).set("Authorization", bearer(w.agentA)).send({ notes: "x" });
+    expect(denied.status).toBe(404);
+  });
+
   it("shows pending tickets without a queue to every agent and lets them accept", async () => {
     const w = await world();
     const orphan = await w.ticketFor({ status: "pending", queueId: null });

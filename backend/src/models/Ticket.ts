@@ -33,6 +33,12 @@ export class Ticket extends Model {
   chatbotAttempts!: number;
 
   @Column({ type: DataType.TEXT, allowNull: false, defaultValue: "" })
+  notes!: string;
+
+  @Column({ type: DataType.TEXT, allowNull: true })
+  botPath!: string | null;
+
+  @Column({ type: DataType.TEXT, allowNull: false, defaultValue: "" })
   lastMessage!: string;
 
   @Column({ type: DataType.DATE, allowNull: true })

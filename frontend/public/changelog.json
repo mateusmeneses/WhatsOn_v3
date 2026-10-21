@@ -2,6 +2,16 @@
   "atualizadoEm": "2026-10-21",
   "versoes": [
     {
+      "versao": "2026.10.21.2",
+      "data": "21/10/2026",
+      "titulo": "Observações internas e caminho do menu",
+      "novidades": [
+        "Novo: botão Observações no cabeçalho do atendimento, para anotações de uso interno. Só a equipe vê; o cliente nunca recebe esse texto.",
+        "Novo: o atendente vê no cabeçalho o caminho que o cliente escolheu no menu do bot (por exemplo, Suporte técnico › Sistema X). Para pedir o sistema no suporte técnico, crie as opções de sistema dentro de um submenu em Conexões."
+      ],
+      "melhorias": []
+    },
+    {
       "versao": "2026.10.21.1",
       "data": "21/10/2026",
       "titulo": "Encerramento por inatividade",

@@ -49,6 +49,26 @@ export function renderMenu(node: BotNode, children: BotNode[]): string {
   return [node.message.trim(), lines.join("\n")].filter(Boolean).join("\n\n");
 }
 
+export const BOT_PATH_SEPARATOR = " › ";
+
+/** Títulos das opções escolhidas até aqui (sem a mensagem inicial), ex.: "Suporte técnico › Sistema X". Null no início. */
+export function botPath(nodes: BotNode[], state: BotState, input: string | null): string | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const current = state.nodeId !== null ? byId.get(state.nodeId) : undefined;
+  if (!current) return null;
+  const choice = input?.trim() ?? null;
+  let target: BotNode | undefined = current;
+  if (choice === "0" && current.parentId !== null) {
+    target = byId.get(current.parentId);
+  } else {
+    const chosen = choice ? nodes.find((n) => n.parentId === current.id && n.key === choice) : undefined;
+    if (chosen && chosen.action !== "reply") target = chosen;
+  }
+  const titles: string[] = [];
+  for (let n = target; n && n.parentId !== null; n = byId.get(n.parentId)) titles.unshift(n.title);
+  return titles.length > 0 ? titles.join(BOT_PATH_SEPARATOR) : null;
+}
+
 const sendText = (text: string): BotEffect => ({ type: "send_text", text });
 const DONE: BotState = { nodeId: null, attempts: 0 };
 

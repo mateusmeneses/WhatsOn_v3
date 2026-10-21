@@ -62,6 +62,11 @@ export async function claimTicket(id: number, note?: string): Promise<Ticket> {
   return data;
 }
 
+export async function updateTicketNotes(id: number, notes: string): Promise<Ticket> {
+  const { data } = await api.put<Ticket>(`/tickets/${id}/notes`, { notes });
+  return data;
+}
+
 export interface TicketSummary {
   pending: number;
   mine: number;

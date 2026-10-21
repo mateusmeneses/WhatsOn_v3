@@ -15,6 +15,7 @@ import {
   ticketSummary,
   ticketHistory,
   transferTicket,
+  updateTicketNotes,
 } from "./tickets.service";
 
 const listSchema = z.object({
@@ -28,6 +29,8 @@ const transferSchema = z
   .refine((v) => v.queueId !== undefined || v.userId !== undefined, "informe a fila ou o atendente");
 
 const closeSchema = z.object({ sendClosingMessage: z.boolean().optional() });
+
+const notesSchema = z.object({ notes: z.string().max(5000) });
 
 const claimSchema = z.object({ note: z.string().max(1000).optional() });
 
@@ -70,6 +73,10 @@ ticketRoutes.post("/:id/transfer", async (req, res) => {
 
 ticketRoutes.post("/:id/close", async (req, res) => {
   res.json(await closeTicket(currentAuth(req), idParam(req), closeSchema.parse(req.body ?? {})));
+});
+
+ticketRoutes.put("/:id/notes", async (req, res) => {
+  res.json(await updateTicketNotes(currentAuth(req), idParam(req), notesSchema.parse(req.body).notes));
 });
 
 ticketRoutes.post("/:id/reopen", async (req, res) => {

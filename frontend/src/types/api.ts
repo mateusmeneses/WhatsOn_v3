@@ -99,6 +99,8 @@ export interface Ticket {
   status: TicketStatus;
   chatbotNodeId: number | null;
   chatbotAttempts: number;
+  botPath: string | null;
+  notes: string;
   lastMessage: string;
   lastMessageAt: string | null;
   unreadCount: number;

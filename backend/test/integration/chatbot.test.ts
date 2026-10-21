@@ -166,6 +166,21 @@ describe("runBot", () => {
     expect(await getQueue(QueueNames.botTimeout).getJob(botTimeoutJobId(ticket.id))).toBeUndefined();
   });
 
+  it("stores the chosen path so the agent sees it", async () => {
+    const s = await scenario();
+    const root = await createNode(s.connection, { message: "Olá!" });
+    const support = await createNode(s.connection, { parentId: root.id, key: "1", title: "Suporte técnico", action: "submenu", message: "Qual sistema?" });
+    await createNode(s.connection, { parentId: support.id, key: "1", title: "Sistema X", action: "transfer_queue", queueId: s.queue.id });
+    const ticket = await createTicket({ companyId: s.company.id, contactId: s.contact.id, connectionId: s.connection.id, status: "bot" });
+    await runBot(ticket, "oi");
+    await runBot(ticket, "1");
+    await ticket.reload();
+    expect(ticket.botPath).toBe("Suporte técnico");
+    await runBot(ticket, "1");
+    await ticket.reload();
+    expect(ticket).toMatchObject({ status: "pending", botPath: "Suporte técnico › Sistema X" });
+  });
+
   it("closes tickets still in the bot when the timeout fires", async () => {
     const { ticket } = await botTicket();
     await processBotTimeoutJob({ data: { ticketId: ticket.id } } as Job<{ ticketId: number }>);

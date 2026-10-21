@@ -1,4 +1,4 @@
-import { BotContext, BotNode, renderMenu, step } from "../../src/modules/chatbot/engine";
+import { BotContext, BotNode, botPath, renderMenu, step } from "../../src/modules/chatbot/engine";
 
 const node = (n: Partial<BotNode> & Pick<BotNode, "id">): BotNode => ({
   parentId: null,
@@ -185,5 +185,22 @@ describe("step", () => {
       text("Aguarde um atendente."),
       { type: "transfer", queueId: 30, userId: null },
     ]);
+  });
+});
+
+describe("botPath", () => {
+  it("is null before the first menu and at the root", () => {
+    expect(botPath(nodes, { nodeId: null, attempts: 0 }, "oi")).toBeNull();
+    expect(botPath(nodes, { nodeId: 1, attempts: 0 }, "x")).toBeNull();
+  });
+
+  it("joins the titles of the chosen options", () => {
+    expect(botPath(nodes, { nodeId: 1, attempts: 0 }, "1")).toBe("Financeiro");
+    expect(botPath(nodes, { nodeId: 2, attempts: 0 }, "2")).toBe("Financeiro › Falar com o financeiro");
+  });
+
+  it("keeps the current menu on replies and goes up on Voltar", () => {
+    expect(botPath(nodes, { nodeId: 2, attempts: 0 }, "1")).toBe("Financeiro");
+    expect(botPath(nodes, { nodeId: 2, attempts: 0 }, "0")).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ import { assertQueuesBelong } from "../queues/queues.service";
 import { isOpen } from "../queues/schedule";
 import { closeTicketInternal, moveToPending } from "../tickets/tickets.service";
 import { getUserOr404 } from "../users/users.service";
-import { BotContext, BotNode, BotState, INVALID_OPTION_MESSAGE, step, StepResult } from "./engine";
+import { BotContext, BotNode, BotState, botPath, INVALID_OPTION_MESSAGE, step, StepResult } from "./engine";
 
 export interface NodeInput {
   parentId: number | null;
@@ -192,7 +192,11 @@ export async function runBot(ticket: Ticket, input: string | null): Promise<void
   const connection = await Connection.findByPk(ticket.connectionId);
   if (!connection) return;
   const ctx = await buildBotContext(connection, await loadTree(connection.id));
-  const result = step({ nodeId: ticket.chatbotNodeId, attempts: ticket.chatbotAttempts }, input, ctx);
+  const state = { nodeId: ticket.chatbotNodeId, attempts: ticket.chatbotAttempts };
+  const result = step(state, input, ctx);
+
+  const path = botPath(ctx.nodes, state, input);
+  if (path !== ticket.botPath) await ticket.update({ botPath: path });
 
   for (const effect of result.effects) {
     switch (effect.type) {

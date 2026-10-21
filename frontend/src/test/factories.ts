@@ -38,6 +38,8 @@ export function makeTicket(partial: Partial<Ticket> = {}): Ticket {
     status: "pending",
     chatbotNodeId: null,
     chatbotAttempts: 0,
+    botPath: null,
+    notes: "",
     lastMessage: "Oi",
     lastMessageAt: "2026-10-14T10:00:00.000Z",
     unreadCount: 0,

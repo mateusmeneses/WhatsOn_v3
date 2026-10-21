@@ -324,6 +324,16 @@ export async function markTicketRead(auth: AuthContext, id: number) {
   return loadTicket(id);
 }
 
+/** Observações internas: qualquer um que veja o atendimento pode ler e editar; nunca vão para o cliente. */
+export async function updateTicketNotes(auth: AuthContext, id: number, notes: string) {
+  const ticket = await getVisibleTicket(auth, id);
+  if (ticket.notes !== notes) {
+    await ticket.update({ notes });
+    await emitTicket(ticket.id);
+  }
+  return loadTicket(id);
+}
+
 /**
  * Usado pelo chatbot: tira o ticket do bot e coloca na fila (ou com o atendente).
  * Condicional ao status "bot": se o ticket já saiu do bot (assumido, fechado), não faz nada.

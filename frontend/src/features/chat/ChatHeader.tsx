@@ -1,7 +1,8 @@
-import { History, Pencil } from "lucide-react";
+import { History, NotebookPen, Pencil } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { EditContactDialog } from "@/features/contacts/EditContactDialog";
+import { TicketNotesDialog } from "@/features/tickets/TicketNotesDialog";
 import { TicketHistoryDialog } from "@/features/tickets/TicketHistoryDialog";
 import { formatPhone, initials } from "@/lib/format";
 import type { Ticket, TicketStatus } from "@/types/api";
@@ -18,6 +19,7 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
   const status = STATUS[ticket.status];
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-surface px-5 py-3">
@@ -42,6 +44,11 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
           </div>
           <p className="text-xs text-ink-muted">{contact ? formatPhone(contact.number) : ""}</p>
         </div>
+        {ticket.botPath && (
+          <Badge tone="neutral" title="Opções escolhidas pelo cliente no menu">
+            {ticket.botPath}
+          </Badge>
+        )}
         <Badge tone={status.tone}>{status.label}</Badge>
         {ticket.queue && (
           <Badge tone="primary" style={{ backgroundColor: `${ticket.queue.color}1a`, color: ticket.queue.color }}>
@@ -56,9 +63,18 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
         >
           <History className="h-3.5 w-3.5" aria-hidden /> Histórico
         </button>
+        <button
+          type="button"
+          className={`inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium hover:bg-primary-soft hover:text-primary ${ticket.notes ? "text-primary" : "text-ink-muted"}`}
+          title={ticket.notes || "Observações internas do atendimento"}
+          onClick={() => setNotesOpen(true)}
+        >
+          <NotebookPen className="h-3.5 w-3.5" aria-hidden /> {ticket.notes ? "Observações •" : "Observações"}
+        </button>
       </div>
       {actions}
       {editing && contact && <EditContactDialog contact={contact} onClose={() => setEditing(false)} />}
+      {notesOpen && <TicketNotesDialog ticket={ticket} onClose={() => setNotesOpen(false)} />}
       {historyOpen && <TicketHistoryDialog ticket={ticket} onClose={() => setHistoryOpen(false)} />}
     </header>
   );
