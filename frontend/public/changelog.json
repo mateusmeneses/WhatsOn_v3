@@ -2,6 +2,16 @@
   "atualizadoEm": "2026-10-21",
   "versoes": [
     {
+      "versao": "2026.10.21.3",
+      "data": "21/10/2026",
+      "titulo": "Integração com o Manager",
+      "novidades": [
+        "Novo (empresas com a integração ativa): botão Abrir OS no cabeçalho do atendimento, que cria a ordem de serviço no Manager com o cliente sugerido pelo telefone do contato.",
+        "Novo (empresas com a integração ativa): ao finalizar um atendimento, o sistema oferece registrá-lo no Manager, com o produto sugerido pelo sistema escolhido no menu. Também dá para registrar depois pelo botão Registrar no Manager."
+      ],
+      "melhorias": []
+    },
+    {
       "versao": "2026.10.21.2",
       "data": "21/10/2026",
       "titulo": "Observações internas e caminho do menu",
