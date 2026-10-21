@@ -132,6 +132,16 @@ describe("EvolutionProvider", () => {
     await expect(provider.deleteInstance("inst")).resolves.toBeUndefined();
   });
 
+  it("treats a 400 'not connected' on logout as already logged out", async () => {
+    api().delete("/instance/logout/inst").reply(400, { response: { message: ['The "inst" instance is not connected'] } });
+    await expect(provider.logout("inst")).resolves.toBeUndefined();
+  });
+
+  it("still fails logout on other 400/500 errors", async () => {
+    api().delete("/instance/logout/inst").reply(500, { response: { message: ["Error: Connection Closed"] } });
+    await expect(provider.logout("inst")).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
+  });
+
   it("wraps failures in a PROVIDER_ERROR AppError", async () => {
     api().post("/message/sendText/inst").reply(500, { error: "boom" });
     await expect(provider.sendText("inst", "5511988887777", "x")).rejects.toMatchObject({ code: "PROVIDER_ERROR", status: 502 });

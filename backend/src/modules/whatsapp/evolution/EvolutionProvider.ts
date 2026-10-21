@@ -26,13 +26,18 @@ export class EvolutionProvider implements WhatsAppProvider {
     this.http = axios.create({ baseURL, headers: { apikey: apiKey }, timeout: 30_000 });
   }
 
-  private async call<T>(request: () => Promise<AxiosResponse<T>>, allow404 = false): Promise<T | null> {
+  private async call<T>(
+    request: () => Promise<AxiosResponse<T>>,
+    allow404 = false,
+    tolerate?: (status: number | undefined, body: string | undefined) => boolean,
+  ): Promise<T | null> {
     try {
       return (await request()).data;
     } catch (err) {
       const isAxios = axios.isAxiosError(err);
       const status = isAxios ? err.response?.status : undefined;
       if (allow404 && status === 404) return null;
+      if (tolerate && isAxios && tolerate(status, truncate(err.response?.data, 2000))) return null;
       // Nunca logar o erro axios inteiro: ele carrega config.headers (apikey).
       logger.warn(
         isAxios
@@ -77,7 +82,12 @@ export class EvolutionProvider implements WhatsAppProvider {
   }
 
   async logout(instanceName: string): Promise<void> {
-    await this.call(() => this.http.delete(`/instance/logout/${instanceName}`), true);
+    // 400 "instance is not connected": já está deslogada, que é o que se queria.
+    await this.call(
+      () => this.http.delete(`/instance/logout/${instanceName}`),
+      true,
+      (status, body) => status === 400 && /not connected/i.test(body ?? ""),
+    );
   }
 
   async getQrCode(instanceName: string): Promise<string | null> {

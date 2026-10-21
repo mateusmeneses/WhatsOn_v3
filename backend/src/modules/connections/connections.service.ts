@@ -131,10 +131,16 @@ export async function disconnectConnection(companyId: number, id: number): Promi
   } catch (err) {
     if (!(err instanceof AppError && err.code === "PROVIDER_ERROR")) throw err;
     // Socket morto na Evolution (state "open" mas "Connection Closed"): o logout nunca passa.
-    // Recria a instância, o que também derruba a sessão do número.
+    // Tenta recriar a instância, o que também derruba a sessão do número. Se nem isso passar
+    // (a Evolution também faz logout no delete), marca desconectada mesmo assim: o próximo
+    // pedido de QR recria a instância se ela tiver sumido.
     logger.warn({ connectionId: connection.id, instanceName: connection.instanceName }, "logout falhou; recriando instância");
-    await provider.deleteInstance(connection.instanceName);
-    await provider.createInstance(connection.instanceName, webhookUrl(connection));
+    try {
+      await provider.deleteInstance(connection.instanceName);
+      await provider.createInstance(connection.instanceName, webhookUrl(connection));
+    } catch (resetErr) {
+      logger.warn({ err: resetErr, connectionId: connection.id }, "recriar instância falhou; marcando desconectada");
+    }
   }
   await applyConnectionUpdate(connection, "disconnected");
   return connection;

@@ -153,14 +153,14 @@ describe("connections", () => {
     );
   });
 
-  it("keeps the connection when logout and the instance reset both fail", async () => {
+  it("still marks the connection disconnected when logout and the instance reset both fail", async () => {
     const { company, user } = await admin();
     const connection = await createConnection(company.id, { status: "connected" });
     fake.failNext("logout");
     fake.failNext("deleteInstance");
     const res = await request(app).post(`/api/connections/${connection.id}/disconnect`).set("Authorization", bearer(user));
-    expect(res.status).toBe(502);
-    expect((await Connection.findByPk(connection.id))!.status).toBe("connected");
+    expect(res.status).toBe(200);
+    expect((await Connection.findByPk(connection.id))!.status).toBe("disconnected");
   });
 
   it("moves the default flag on update", async () => {
