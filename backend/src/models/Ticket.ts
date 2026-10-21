@@ -35,6 +35,16 @@ export class Ticket extends Model {
   @Column({ type: DataType.TEXT, allowNull: false, defaultValue: "" })
   notes!: string;
 
+  /** OS aberta no Manager a partir deste atendimento (integração só da empresa Connect). */
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  managerOsId!: number | null;
+
+  @Column({ type: DataType.TEXT, allowNull: true })
+  managerOsUrl!: string | null;
+
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  managerAtendimentoId!: number | null;
+
   @Column({ type: DataType.TEXT, allowNull: true })
   botPath!: string | null;
 

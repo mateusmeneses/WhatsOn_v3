@@ -10,6 +10,8 @@ import { useAuth } from "@/stores/auth";
 import type { Ticket } from "@/types/api";
 import { ClaimTicketDialog } from "./ClaimTicketDialog";
 import { CloseTicketDialog } from "./CloseTicketDialog";
+import { RegisterAtendimentoDialog } from "@/features/manager/RegisterAtendimentoDialog";
+import { useManagerEnabled } from "@/features/manager/managerApi";
 import { TransferDialog } from "./TransferDialog";
 import { acceptTicket, claimTicket, closeTicket, reopenTicket } from "./ticketsApi";
 import { useApplyTicket, useViewer } from "./useTickets";
@@ -24,6 +26,8 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
   const [transferOpen, setTransferOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const managerEnabled = useManagerEnabled();
 
   const onError = (err: unknown) => toast.error(errorMessage(err));
   const accept = useMutation({
@@ -39,6 +43,8 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
     onSuccess: (updated) => {
       applyTicket(updated);
       toast.success("Atendimento finalizado");
+      // Na Connect, oferece registrar o atendimento no Manager ao finalizar (dá para pular).
+      if (managerEnabled && !updated.managerAtendimentoId) setRegisterOpen(true);
     },
     onError,
   });
@@ -77,6 +83,7 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
 
   return (
     <div className="flex shrink-0 gap-2">
+      {registerOpen && <RegisterAtendimentoDialog ticket={ticket} onClose={() => setRegisterOpen(false)} />}
       {(ticket.status === "pending" || ticket.status === "bot") && (
         <Button size="sm" loading={accept.isPending} onClick={() => accept.mutate()}>
           <Check className="h-4 w-4" aria-hidden /> Aceitar

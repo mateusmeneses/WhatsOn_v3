@@ -42,6 +42,10 @@ const schema = z.object({
   BULL_BOARD_PASS: z.string().optional(),
   SEED_ADMIN_EMAIL: z.string().email().default("admin@whatson.local"),
   SEED_ADMIN_PASSWORD: z.string().min(6).default("admin123"),
+  /** Integração com o Manager (só a empresa MANAGER_COMPANY_ID; vazio = desligada). */
+  MANAGER_API_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  MANAGER_API_TOKEN: z.preprocess(emptyAsUndefined, z.string().min(16).optional()),
+  MANAGER_COMPANY_ID: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().optional()),
   /** Super-admin da plataforma, criado na subida se ainda não existir. */
   SUPERADMIN_EMAIL: z.preprocess(emptyAsUndefined, z.string().email().optional()),
   SUPERADMIN_PASSWORD: z.preprocess(emptyAsUndefined, z.string().min(8).optional()),

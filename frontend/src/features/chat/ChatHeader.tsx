@@ -1,7 +1,10 @@
-import { History, NotebookPen, Pencil } from "lucide-react";
+import { ClipboardList, ExternalLink, History, NotebookPen, Pencil } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { EditContactDialog } from "@/features/contacts/EditContactDialog";
+import { OpenOsDialog } from "@/features/manager/OpenOsDialog";
+import { RegisterAtendimentoDialog } from "@/features/manager/RegisterAtendimentoDialog";
+import { useManagerEnabled } from "@/features/manager/managerApi";
 import { TicketNotesDialog } from "@/features/tickets/TicketNotesDialog";
 import { TicketHistoryDialog } from "@/features/tickets/TicketHistoryDialog";
 import { formatPhone, initials } from "@/lib/format";
@@ -20,6 +23,9 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [osOpen, setOsOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const managerEnabled = useManagerEnabled();
 
   return (
     <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border bg-surface px-5 py-3">
@@ -71,9 +77,37 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
         >
           <NotebookPen className="h-3.5 w-3.5" aria-hidden /> {ticket.notes ? "Observações •" : "Observações"}
         </button>
+        {managerEnabled && (
+          <>
+            {ticket.managerOsId ? (
+              <a
+                href={ticket.managerOsUrl ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-primary hover:bg-primary-soft"
+                title="Abrir a OS no Manager"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden /> OS #{ticket.managerOsId}
+              </a>
+            ) : (
+              <button type="button" className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-primary-soft hover:text-primary" title="Abrir uma OS no Manager" onClick={() => setOsOpen(true)}>
+                <ClipboardList className="h-3.5 w-3.5" aria-hidden /> Abrir OS
+              </button>
+            )}
+            {ticket.managerAtendimentoId ? (
+              <span className="shrink-0 px-2 py-1 text-xs text-ink-muted">Registrado no Manager #{ticket.managerAtendimentoId}</span>
+            ) : (
+              <button type="button" className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-ink-muted hover:bg-primary-soft hover:text-primary" title="Registrar este atendimento no Manager" onClick={() => setRegisterOpen(true)}>
+                <ClipboardList className="h-3.5 w-3.5" aria-hidden /> Registrar no Manager
+              </button>
+            )}
+          </>
+        )}
       </div>
       {actions}
       {editing && contact && <EditContactDialog contact={contact} onClose={() => setEditing(false)} />}
+      {osOpen && <OpenOsDialog ticket={ticket} onClose={() => setOsOpen(false)} />}
+      {registerOpen && <RegisterAtendimentoDialog ticket={ticket} onClose={() => setRegisterOpen(false)} />}
       {notesOpen && <TicketNotesDialog ticket={ticket} onClose={() => setNotesOpen(false)} />}
       {historyOpen && <TicketHistoryDialog ticket={ticket} onClose={() => setHistoryOpen(false)} />}
     </header>

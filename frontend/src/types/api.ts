@@ -101,6 +101,9 @@ export interface Ticket {
   chatbotAttempts: number;
   botPath: string | null;
   notes: string;
+  managerOsId: number | null;
+  managerOsUrl: string | null;
+  managerAtendimentoId: number | null;
   lastMessage: string;
   lastMessageAt: string | null;
   unreadCount: number;

@@ -15,6 +15,7 @@ import * as m0013 from "./0013-messages-covering-index";
 import * as m0014 from "./0014-company-inactivity-close";
 import * as m0015 from "./0015-ticket-bot-path";
 import * as m0016 from "./0016-ticket-notes";
+import * as m0017 from "./0017-ticket-manager-refs";
 
 export interface MigrationModule {
   name: string;
@@ -39,4 +40,5 @@ export const migrations: MigrationModule[] = [
   { name: "0014-company-inactivity-close", up: m0014.up, down: m0014.down },
   { name: "0015-ticket-bot-path", up: m0015.up, down: m0015.down },
   { name: "0016-ticket-notes", up: m0016.up, down: m0016.down },
+  { name: "0017-ticket-manager-refs", up: m0017.up, down: m0017.down },
 ];
