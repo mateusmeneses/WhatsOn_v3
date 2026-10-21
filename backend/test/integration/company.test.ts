@@ -35,6 +35,20 @@ describe("company settings", () => {
     await put(2.5).expect(400);
   });
 
+  it("lets admins set the inactivity close time (0 turns it off) and message", async () => {
+    const company = await createCompany();
+    const admin = await createUser(company.id, { profile: "admin" });
+    const get = await request(app).get("/api/company").set("Authorization", bearer(admin));
+    expect(get.body).toMatchObject({ inactivityCloseMinutes: 0, inactivityCloseMessage: "" });
+    const put = (body: object) => request(app).put("/api/company").set("Authorization", bearer(admin)).send(body);
+    const saved = await put({ inactivityCloseMinutes: 60, inactivityCloseMessage: "Encerrado por inatividade." });
+    expect(saved.body).toMatchObject({ inactivityCloseMinutes: 60, inactivityCloseMessage: "Encerrado por inatividade." });
+    expect((await put({ inactivityCloseMinutes: 0 })).body.inactivityCloseMinutes).toBe(0);
+    await put({ inactivityCloseMinutes: -1 }).expect(400);
+    await put({ inactivityCloseMinutes: 10081 }).expect(400);
+    await put({ inactivityCloseMessage: "x".repeat(2001) }).expect(400);
+  });
+
   it("rejects invalid time zones and non-admin updates", async () => {
     const company = await createCompany();
     const admin = await createUser(company.id, { profile: "admin" });

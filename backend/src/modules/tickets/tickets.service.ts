@@ -343,24 +343,36 @@ export async function moveToPending(ticket: Ticket, queueId: number | null, user
 }
 
 /**
- * Fecha só se ninguém fechou antes (bot_timeout: só se ainda estiver no bot). Devolve se este chamado fechou;
+ * Fecha só se ninguém fechou antes (bot_timeout: só se ainda estiver no bot; inactivity: só se ainda estiver em
+ * atendimento e sem mensagem nova desde `idleSince`). Devolve se este chamado fechou;
  * mensagem de encerramento, log e evento só acontecem nesse caso.
  */
 export async function closeTicketInternal(
   ticket: Ticket,
-  opts: { userId: number | null; event: "closed" | "bot_timeout"; sendClosingMessage: boolean; onlyFromBot?: boolean },
+  opts: {
+    userId: number | null;
+    event: "closed" | "bot_timeout" | "inactivity";
+    sendClosingMessage: boolean;
+    onlyFromBot?: boolean;
+    /** Texto no lugar da mensagem de encerramento da conexão (vazio = usa a da conexão). */
+    closingMessage?: string;
+    idleSince?: Date;
+  },
 ): Promise<boolean> {
   const prev = { queueId: ticket.queueId, userId: ticket.userId };
-  const status = opts.event === "bot_timeout" || opts.onlyFromBot ? "bot" : { [Op.ne]: "closed" };
+  const status =
+    opts.event === "inactivity" ? "open" : opts.event === "bot_timeout" || opts.onlyFromBot ? "bot" : { [Op.ne]: "closed" };
+  const where = opts.idleSince ? { id: ticket.id, status, lastMessageAt: { [Op.lte]: opts.idleSince } } : { id: ticket.id, status };
   const [updated] = await Ticket.update(
     { status: "closed", closedAt: new Date(), chatbotNodeId: null, chatbotAttempts: 0, unreadCount: 0 },
-    { where: { id: ticket.id, status } },
+    { where },
   );
   if (updated === 0) return false;
   await ticket.reload();
   if (opts.sendClosingMessage) {
-    const connection = await Connection.findByPk(ticket.connectionId);
-    if (connection?.closingMessage) await createOutgoingMessage(ticket, { body: connection.closingMessage, isBot: true });
+    let body = opts.closingMessage?.trim() ?? "";
+    if (!body) body = (await Connection.findByPk(ticket.connectionId))?.closingMessage ?? "";
+    if (body) await createOutgoingMessage(ticket, { body, isBot: true });
   }
   await cancelBotTimeout(ticket.id);
   await logTicket(ticket, opts.event, { userId: opts.userId });

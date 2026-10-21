@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRightLeft, Bot, Check, CheckCircle2, Hand, MessageCircle, RotateCcw, type LucideIcon } from "lucide-react";
+import { ArrowRightLeft, Bot, Check, CheckCircle2, Clock, Hand, MessageCircle, RotateCcw, type LucideIcon } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import type { Ticket, TicketEvent, TicketHistoryEntry } from "@/types/api";
@@ -11,6 +11,7 @@ const ICON: Record<TicketEvent, LucideIcon> = {
   transferred: ArrowRightLeft,
   closed: CheckCircle2,
   bot_timeout: Bot,
+  inactivity: Clock,
   reopened: RotateCcw,
   claimed: Hand,
 };
@@ -36,6 +37,8 @@ function describe(entry: TicketHistoryEntry): { title: string; detail?: string }
       return { title: by ? `Finalizado por ${by}` : "Finalizado" };
     case "bot_timeout":
       return { title: "Encerrado por falta de resposta no chatbot" };
+    case "inactivity":
+      return { title: "Finalizado por inatividade do cliente" };
     case "reopened":
       return { title: by ? `Reaberto por ${by}` : "Reaberto, voltou para a fila" };
     case "claimed":

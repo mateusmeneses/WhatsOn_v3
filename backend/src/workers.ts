@@ -37,4 +37,9 @@ export async function scheduleRecurringJobs(): Promise<void> {
     { every: 30_000 },
     { name: "scheduled-messages", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
   );
+  await getQueue(QueueNames.maintenance).upsertJobScheduler(
+    "inactivity-close",
+    { every: 60_000 },
+    { name: "inactivity-close", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
+  );
 }
