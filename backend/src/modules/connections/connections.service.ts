@@ -125,7 +125,17 @@ export async function regenerateConnectionApiToken(companyId: number, id: number
 
 export async function disconnectConnection(companyId: number, id: number): Promise<Connection> {
   const connection = await getConnectionOr404(companyId, id);
-  await getProvider().logout(connection.instanceName);
+  const provider = getProvider();
+  try {
+    await provider.logout(connection.instanceName);
+  } catch (err) {
+    if (!(err instanceof AppError && err.code === "PROVIDER_ERROR")) throw err;
+    // Socket morto na Evolution (state "open" mas "Connection Closed"): o logout nunca passa.
+    // Recria a instância, o que também derruba a sessão do número.
+    logger.warn({ connectionId: connection.id, instanceName: connection.instanceName }, "logout falhou; recriando instância");
+    await provider.deleteInstance(connection.instanceName);
+    await provider.createInstance(connection.instanceName, webhookUrl(connection));
+  }
   await applyConnectionUpdate(connection, "disconnected");
   return connection;
 }

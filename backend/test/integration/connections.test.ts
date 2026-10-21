@@ -141,6 +141,28 @@ describe("connections", () => {
     spy.mockRestore();
   });
 
+  it("disconnects by recreating the instance when the provider logout fails (socket zombie)", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { status: "connected" });
+    fake.failNext("logout");
+    const res = await request(app).post(`/api/connections/${connection.id}/disconnect`).set("Authorization", bearer(user));
+    expect(res.status).toBe(200);
+    expect((await Connection.findByPk(connection.id))!.status).toBe("disconnected");
+    expect(fake.instances.get(connection.instanceName)).toBe(
+      `http://backend.test/webhooks/evolution/${connection.webhookToken}`,
+    );
+  });
+
+  it("keeps the connection when logout and the instance reset both fail", async () => {
+    const { company, user } = await admin();
+    const connection = await createConnection(company.id, { status: "connected" });
+    fake.failNext("logout");
+    fake.failNext("deleteInstance");
+    const res = await request(app).post(`/api/connections/${connection.id}/disconnect`).set("Authorization", bearer(user));
+    expect(res.status).toBe(502);
+    expect((await Connection.findByPk(connection.id))!.status).toBe("connected");
+  });
+
   it("moves the default flag on update", async () => {
     const { company, user } = await admin();
     const previous = await createConnection(company.id, { isDefault: true });
