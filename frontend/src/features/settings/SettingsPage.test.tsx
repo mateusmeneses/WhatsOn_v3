@@ -30,7 +30,15 @@ describe("SettingsPage", () => {
     await userEvent.type(goal, "10");
     await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
 
-    await waitFor(() => expect(updateCompany).toHaveBeenCalledWith({ name: "Loja Y", timezone: "America/Manaus", responseSlaMinutes: 10 }));
+    await waitFor(() =>
+      expect(updateCompany).toHaveBeenCalledWith({
+        name: "Loja Y",
+        timezone: "America/Manaus",
+        responseSlaMinutes: 10,
+        inactivityCloseMinutes: 0,
+        inactivityCloseMessage: "",
+      }),
+    );
     expect(toast.success).toHaveBeenCalledWith("Configurações salvas");
   });
 
@@ -45,5 +53,36 @@ describe("SettingsPage", () => {
     await userEvent.clear(goal);
     await userEvent.type(goal, "30");
     expect(screen.getByRole("button", { name: "Salvar" })).toBeEnabled();
+  });
+
+  it("saves the inactivity close time and message", async () => {
+    setTestUser({ profile: "admin" });
+    vi.mocked(fetchCompany).mockResolvedValue({
+      id: 1,
+      name: "Loja X",
+      status: "active",
+      timezone: "America/Sao_Paulo",
+      responseSlaMinutes: 5,
+      inactivityCloseMinutes: 0,
+      inactivityCloseMessage: "",
+    });
+    vi.mocked(updateCompany).mockResolvedValue({ id: 1, name: "Loja X", status: "active", timezone: "America/Sao_Paulo" });
+    renderWithProviders(<SettingsPage />);
+
+    const minutes = await screen.findByLabelText("Encerrar por inatividade após (minutos)");
+    const message = screen.getByLabelText("Mensagem de encerramento por inatividade");
+    expect(message).toBeDisabled();
+    await userEvent.clear(minutes);
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
+    await userEvent.type(minutes, "60");
+    expect(message).toBeEnabled();
+    await userEvent.type(message, "Encerramos por falta de resposta.");
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(updateCompany).toHaveBeenCalledWith(
+        expect.objectContaining({ inactivityCloseMinutes: 60, inactivityCloseMessage: "Encerramos por falta de resposta." }),
+      ),
+    );
   });
 });

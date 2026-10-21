@@ -12,6 +12,7 @@ import * as m0010 from "./0010-partners";
 import * as m0011 from "./0011-dashboard-metrics";
 import * as m0012 from "./0012-company-response-sla";
 import * as m0013 from "./0013-messages-covering-index";
+import * as m0014 from "./0014-company-inactivity-close";
 
 export interface MigrationModule {
   name: string;
@@ -33,4 +34,5 @@ export const migrations: MigrationModule[] = [
   { name: "0011-dashboard-metrics", up: m0011.up, down: m0011.down },
   { name: "0012-company-response-sla", up: m0012.up, down: m0012.down },
   { name: "0013-messages-covering-index", up: m0013.up, down: m0013.down },
+  { name: "0014-company-inactivity-close", up: m0014.up, down: m0014.down },
 ];

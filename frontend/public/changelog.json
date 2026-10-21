@@ -1,6 +1,17 @@
 {
-  "atualizadoEm": "2026-10-20",
+  "atualizadoEm": "2026-10-21",
   "versoes": [
+    {
+      "versao": "2026.10.21.1",
+      "data": "21/10/2026",
+      "titulo": "Encerramento por inatividade",
+      "novidades": [
+        "Novo: em Configurações, encerramento automático por inatividade. Defina por quantos minutos o cliente pode ficar sem responder à última mensagem da equipe; passado esse tempo o atendimento é finalizado e o cliente recebe a mensagem de encerramento por inatividade (ou, se ela ficar em branco, a mensagem de encerramento da conexão). Use 0 para desligar."
+      ],
+      "melhorias": [
+        "O histórico do atendimento e o Dashboard mostram quando um atendimento foi finalizado por inatividade do cliente."
+      ]
+    },
     {
       "versao": "2026.10.20.2",
       "data": "20/10/2026",
@@ -31,18 +42,6 @@
       "titulo": "Mensagens da API não abrem atendimento",
       "melhorias": [
         "Mensagens enviadas por outros sistemas pela API (avisos, boletos, notificações) não abrem mais atendimento: ficam registradas como finalizadas no histórico do contato. Se o cliente responder, abre um atendimento normal."
-      ]
-    },
-    {
-      "versao": "2026.10.19.2",
-      "data": "19/10/2026",
-      "titulo": "Integração com sistemas parceiros",
-      "novidades": [
-        "Novo: outros sistemas (como o ERP MultiComércio) podem conectar o WhatsApp dos clientes deles ao WhatsOn e enviar mensagens pela API, sem o cliente precisar entrar no WhatsOn.",
-        "Novo: no painel da plataforma, a tela Parceiros para cadastrar esses sistemas e gerar a chave de acesso de cada um."
-      ],
-      "melhorias": [
-        "A tela Empresas mostra o CNPJ e o sistema parceiro de cada empresa, e o CNPJ pode ser informado ao criar ou editar uma empresa."
       ]
     }
   ]

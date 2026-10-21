@@ -25,7 +25,13 @@ export async function fetchCompany(): Promise<Company> {
   return data;
 }
 
-export async function updateCompany(input: { name?: string; timezone?: string; responseSlaMinutes?: number }): Promise<Company> {
+export async function updateCompany(input: {
+  name?: string;
+  timezone?: string;
+  responseSlaMinutes?: number;
+  inactivityCloseMinutes?: number;
+  inactivityCloseMessage?: string;
+}): Promise<Company> {
   const { data } = await api.put<Company>("/company", input);
   return data;
 }

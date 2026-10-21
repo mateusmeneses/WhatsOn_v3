@@ -13,6 +13,8 @@ do WhatsApp.
 - Chat completo: texto, imagem, áudio, vídeo e documento; edição e exclusão de mensagens; mensagens agendadas;
   assinatura do atendente; transferir para fila ou atendente; requerer atendimento de outro técnico com recado
   interno; finalizar (com ou sem mensagem de encerramento); reabrir; histórico com a linha do tempo.
+- Encerramento automático por inatividade: em Configurações, tempo sem resposta do cliente (0 = desligado) e a
+  mensagem enviada ao finalizar.
 - Busca rápida (`Ctrl+K`) por páginas e conversas, e aviso sonoro opcional.
 
 **Gestão**

@@ -55,6 +55,7 @@ const EVENT_LABEL: Record<string, { verb: string; tone: "primary" | "success" | 
   reopened: { verb: "Reaberto", tone: "primary" },
   closed: { verb: "Finalizado", tone: "neutral" },
   bot_timeout: { verb: "Bot encerrou por inatividade", tone: "danger" },
+  inactivity: { verb: "Finalizado por inatividade", tone: "neutral" },
 };
 
 const MESSAGE_TYPE_LABEL: Record<string, string> = {

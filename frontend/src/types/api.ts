@@ -110,7 +110,7 @@ export interface Ticket {
   user?: { id: number; name: string } | null;
 }
 
-export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "reopened" | "claimed";
+export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "inactivity" | "reopened" | "claimed";
 
 /** Um passo da linha do tempo do atendimento (GET /tickets/:id/history). */
 export interface TicketHistoryEntry {
@@ -200,6 +200,10 @@ export interface Company {
   timezone: string;
   /** Meta de primeira resposta, em minutos. */
   responseSlaMinutes?: number;
+  /** Finaliza quando o cliente fica esse tempo sem responder (minutos; 0 = desligado). */
+  inactivityCloseMinutes?: number;
+  /** Enviada ao finalizar por inatividade; vazia = usa a mensagem de encerramento da conexão. */
+  inactivityCloseMessage?: string;
 }
 
 /** Empresa vista pelo super-admin. */

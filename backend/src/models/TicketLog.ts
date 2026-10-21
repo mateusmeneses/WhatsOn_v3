@@ -1,6 +1,6 @@
 import { Column, DataType, Model, Table } from "sequelize-typescript";
 
-export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "reopened" | "claimed";
+export type TicketEvent = "created" | "accepted" | "transferred" | "closed" | "bot_timeout" | "inactivity" | "reopened" | "claimed";
 
 @Table({ tableName: "ticket_logs", updatedAt: false })
 export class TicketLog extends Model {
