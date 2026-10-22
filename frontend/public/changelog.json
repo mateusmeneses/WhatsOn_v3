@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-10-21",
+  "atualizadoEm": "2026-10-22",
   "versoes": [
+    {
+      "versao": "2026.10.22.1",
+      "data": "22/10/2026",
+      "titulo": "Filtro de atendimentos",
+      "novidades": [
+        "Novo: na tela de Atendimentos, escolha entre ver Todos ou Só meus (apenas os atribuídos a você). A escolha fica salva neste navegador."
+      ],
+      "melhorias": []
+    },
     {
       "versao": "2026.10.21.4",
       "data": "21/10/2026",

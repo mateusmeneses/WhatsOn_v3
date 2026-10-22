@@ -20,8 +20,9 @@ export function upsertTicket(data: TicketPages, ticket: Ticket, belongs: boolean
 export function applyTicketUpdate(queryClient: QueryClient, ticket: Ticket, viewer: Viewer): void {
   for (const [key, data] of queryClient.getQueriesData<TicketPages>({ queryKey: ticketKeys.lists })) {
     if (!data) continue;
-    const [, , status, search] = key as unknown as [string, string, TicketStatus, string];
-    const belongs = ticketVisibleIn(ticket, status, viewer) && matchesSearch(ticket, search);
+    const [, , status, search, mine] = key as unknown as [string, string, TicketStatus, string, boolean?];
+    const belongs =
+      ticketVisibleIn(ticket, status, viewer) && matchesSearch(ticket, search) && (!mine || ticket.userId === viewer.userId);
     queryClient.setQueryData<TicketPages>(key, upsertTicket(data, ticket, belongs));
   }
   queryClient.setQueryData(ticketKeys.detail(ticket.id), ticket);

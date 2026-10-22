@@ -62,6 +62,15 @@ describe("tickets", () => {
     expect((await request(app).get("/api/tickets?status=bot").set("Authorization", bearer(w.supervisor))).body.items).toHaveLength(1);
   });
 
+  it("with mine=true lists only tickets assigned to the caller, even for a supervisor who sees all", async () => {
+    const w = await world();
+    const mine = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.supervisor.id });
+    const other = await w.ticketFor({ status: "open", queueId: w.queueA.id, userId: w.agentA.id });
+
+    expect(ids(await request(app).get("/api/tickets?status=open").set("Authorization", bearer(w.supervisor)))).toEqual([mine.id, other.id].sort());
+    expect(ids(await request(app).get("/api/tickets?status=open&mine=true").set("Authorization", bearer(w.supervisor)))).toEqual([mine.id]);
+  });
+
   it("lets exactly one of two concurrent agents accept a ticket", async () => {
     const w = await world();
     const ticket = await w.ticketFor({ status: "pending", queueId: w.queueA.id });

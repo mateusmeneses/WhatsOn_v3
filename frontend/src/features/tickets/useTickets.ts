@@ -34,10 +34,10 @@ export function useViewer(): Viewer | null {
   }, [user, queueIds, optionsLoaded, canViewBot, canViewOtherQueues, canViewOthersOpen, canClaimTickets]);
 }
 
-export function useTicketList(status: TicketStatus, search: string) {
+export function useTicketList(status: TicketStatus, search: string, mine = false) {
   return useInfiniteQuery({
-    queryKey: ticketKeys.list(status, search),
-    queryFn: ({ pageParam }) => fetchTickets(status, search, pageParam),
+    queryKey: ticketKeys.list(status, search, mine),
+    queryFn: ({ pageParam }) => (mine ? fetchTickets(status, search, pageParam, true) : fetchTickets(status, search, pageParam)),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });

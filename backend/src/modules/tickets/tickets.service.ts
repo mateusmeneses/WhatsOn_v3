@@ -119,12 +119,17 @@ export async function ticketAttendants(ticket: Ticket): Promise<{ id: number; na
 }
 
 
-export async function listTickets(auth: AuthContext, opts: { status: TicketStatus; search?: string; page: number }) {
+export async function listTickets(auth: AuthContext, opts: { status: TicketStatus; search?: string; page: number; mine?: boolean }) {
   const visibility = visibilityWhere(auth, await loadAgentScope(auth), opts.status);
   if (visibility === null) return { items: [], hasMore: false };
   const term = opts.search?.trim();
   const rows = await Ticket.findAll({
-    where: { companyId: auth.companyId, status: opts.status, ...visibility },
+    where: {
+      companyId: auth.companyId,
+      status: opts.status,
+      ...visibility,
+      ...(opts.mine ? { [Op.and]: [visibility, { userId: auth.userId }] } : {}),
+    },
     include: [
       {
         model: Contact,

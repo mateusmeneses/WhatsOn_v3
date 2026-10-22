@@ -11,6 +11,17 @@ import type { TicketStatus } from "@/types/api";
 import { TicketList } from "./TicketList";
 import { useViewer } from "./useTickets";
 
+type Scope = "all" | "mine";
+const SCOPE_KEY = "whatson.ticketScope";
+
+function readScope(): Scope {
+  try {
+    return localStorage.getItem(SCOPE_KEY) === "mine" ? "mine" : "all";
+  } catch {
+    return "all";
+  }
+}
+
 export function TicketsPage() {
   const user = useAuth((s) => s.user)!;
   const viewer = useViewer();
@@ -23,6 +34,16 @@ export function TicketsPage() {
     return aba === "open" || aba === "closed" || aba === "bot" ? aba : "pending";
   });
   const [search, setSearch] = useState("");
+  const [scope, setScope] = useState<Scope>(readScope);
+  const mine = scope === "mine";
+  const changeScope = (next: Scope) => {
+    setScope(next);
+    try {
+      localStorage.setItem(SCOPE_KEY, next);
+    } catch {
+      /* preferência é só conveniência */
+    }
+  };
   const debouncedSearch = useDebounced(search.trim());
 
   const showBot = user.profile !== "agent" || Boolean(viewer?.canViewBot);
@@ -41,6 +62,14 @@ export function TicketsPage() {
         <div className="space-y-3 border-b border-border p-4">
           <h1 className="text-lg font-semibold">Atendimentos</h1>
           <Tabs value={status} onChange={setStatus} items={tabs} />
+          <Tabs
+            value={scope}
+            onChange={changeScope}
+            items={[
+              { value: "all", label: "Todos" },
+              { value: "mine", label: "Só meus" },
+            ]}
+          />
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
             <Input
@@ -51,7 +80,7 @@ export function TicketsPage() {
             />
           </div>
         </div>
-        <TicketList status={status} search={debouncedSearch} selectedId={selectedId} />
+        <TicketList status={status} search={debouncedSearch} mine={mine} selectedId={selectedId} />
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
         {selectedId ? (

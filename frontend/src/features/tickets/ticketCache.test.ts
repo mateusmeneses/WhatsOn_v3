@@ -37,6 +37,18 @@ describe("applyTicketUpdate", () => {
     expect(qc.getQueryData(ticketKeys.detail(1))).toMatchObject({ status: "open" });
   });
 
+  it("keeps a ticket out of the \"só meus\" list when it belongs to someone else", () => {
+    const qc = createTestQueryClient();
+    qc.setQueryData(ticketKeys.list("open", "", true), { pages: [{ items: [], hasMore: false }], pageParams: [1] });
+    const supervisor = { ...viewer, profile: "supervisor" as const };
+
+    applyTicketUpdate(qc, makeTicket({ id: 5, status: "open", userId: 2 }), supervisor);
+    expect(qc.getQueryData<TicketPages>(ticketKeys.list("open", "", true))!.pages[0]!.items).toHaveLength(0);
+
+    applyTicketUpdate(qc, makeTicket({ id: 6, status: "open", userId: 1 }), supervisor);
+    expect(qc.getQueryData<TicketPages>(ticketKeys.list("open", "", true))!.pages[0]!.items.map((t) => t.id)).toEqual([6]);
+  });
+
   it("removes the ticket from the agent's open tab when it is transferred to someone else", () => {
     const qc = createTestQueryClient();
     qc.setQueryData(

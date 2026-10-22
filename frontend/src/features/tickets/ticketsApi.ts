@@ -3,7 +3,7 @@ import type { Page, Ticket, TicketHistoryEntry, TicketStatus } from "@/types/api
 
 export const ticketKeys = {
   lists: ["tickets", "list"] as const,
-  list: (status: TicketStatus, search: string) => ["tickets", "list", status, search] as const,
+  list: (status: TicketStatus, search: string, mine = false) => ["tickets", "list", status, search, mine] as const,
   detail: (id: number) => ["tickets", "detail", id] as const,
   summary: ["tickets", "summary"] as const,
   attendants: (id: number) => ["tickets", "attendants", id] as const,
@@ -20,8 +20,10 @@ export async function fetchTicketAttendants(id: number): Promise<{ id: number; n
   return data;
 }
 
-export async function fetchTickets(status: TicketStatus, search: string, page: number): Promise<Page<Ticket>> {
-  const { data } = await api.get<Page<Ticket>>("/tickets", { params: { status, page, ...(search ? { search } : {}) } });
+export async function fetchTickets(status: TicketStatus, search: string, page: number, mine = false): Promise<Page<Ticket>> {
+  const { data } = await api.get<Page<Ticket>>("/tickets", {
+    params: { status, page, ...(search ? { search } : {}), ...(mine ? { mine: true } : {}) },
+  });
   return data;
 }
 

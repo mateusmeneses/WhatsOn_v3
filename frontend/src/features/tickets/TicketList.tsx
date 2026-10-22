@@ -20,8 +20,8 @@ function uniqueById(tickets: Ticket[]): Ticket[] {
   });
 }
 
-export function TicketList({ status, search, selectedId }: { status: TicketStatus; search: string; selectedId: number | null }) {
-  const query = useTicketList(status, search);
+export function TicketList({ status, search, mine, selectedId }: { status: TicketStatus; search: string; mine: boolean; selectedId: number | null }) {
+  const query = useTicketList(status, search, mine);
   const now = useNow(30_000);
   // Meta de resposta da empresa (opcional): sem ela o tempo aparece sem alerta de cor.
   const company = useQuery({ queryKey: companyKeys.current, queryFn: fetchCompany, staleTime: 5 * 60_000, enabled: status === "pending" });

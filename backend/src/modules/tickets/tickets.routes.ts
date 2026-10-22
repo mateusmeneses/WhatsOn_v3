@@ -22,6 +22,7 @@ const listSchema = z.object({
   status: z.enum(["bot", "pending", "open", "closed"]).default("pending"),
   search: z.string().optional(),
   page: z.coerce.number().int().min(1).default(1),
+  mine: z.enum(["true", "false"]).optional().transform((v) => v === "true"),
 });
 
 const transferSchema = z
