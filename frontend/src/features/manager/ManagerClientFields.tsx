@@ -77,17 +77,16 @@ export function ManagerClientFields({
       </div>
       {value.codCliente !== undefined && (
         <div>
-          <Label htmlFor="mgr-solicitante">Solicitante</Label>
+          <Label htmlFor="mgr-solicitante">Técnico</Label>
           <Select
             id="mgr-solicitante"
             value={value.codSolicitante ?? ""}
             onChange={(e) => onChange({ ...value, codSolicitante: e.target.value ? Number(e.target.value) : undefined })}
           >
-            <option value="">Sem solicitante</option>
+            <option value="">Sem técnico</option>
             {(contacts.data ?? []).map((c) => (
               <option key={c.cod_contato} value={c.cod_contato}>
                 {c.nome}
-                {c.funcao ? ` (${c.funcao})` : ""}
               </option>
             ))}
           </Select>

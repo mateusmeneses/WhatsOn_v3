@@ -2,6 +2,15 @@
   "atualizadoEm": "2026-10-21",
   "versoes": [
     {
+      "versao": "2026.10.21.4",
+      "data": "21/10/2026",
+      "titulo": "Ajuste nos formulários do Manager",
+      "novidades": [],
+      "melhorias": [
+        "Em Abrir OS e Registrar no Manager, o campo Solicitante passou a se chamar Técnico e a lista mostra só o nome, sem o cargo."
+      ]
+    },
+    {
       "versao": "2026.10.21.3",
       "data": "21/10/2026",
       "titulo": "Integração com o Manager",
