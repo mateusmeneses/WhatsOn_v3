@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-10-22",
+  "atualizadoEm": "2026-10-23",
   "versoes": [
+    {
+      "versao": "2026.10.23.1",
+      "data": "23/10/2026",
+      "titulo": "Avisos para a Claudia",
+      "novidades": [
+        "Novo: o WhatsOn avisa a Claudia na hora em que algo acontece (conversa aguardando, bot parado, mensagem do cliente, transferência não aceita, cliente sem responder, queda da conexão), em vez de ela conferir o painel a cada 10 minutos. Primeiro atendimento mais rápido."
+      ],
+      "melhorias": []
+    },
     {
       "versao": "2026.10.22.2",
       "data": "22/10/2026",
