@@ -8,6 +8,7 @@ export const QueueNames = {
   outbound: (shard: number) => `outbound-${shard}`,
   botTimeout: "bot-timeout",
   maintenance: "maintenance",
+  claudiaWebhook: "claudia-webhook",
 } as const;
 
 /** Hash estável → shard. Mesmo key sempre cai no mesmo shard. */
@@ -56,6 +57,7 @@ export function allQueueNames(inboundShards: number, outboundShards: number): st
     ...Array.from({ length: outboundShards }, (_, i) => QueueNames.outbound(i)),
     QueueNames.botTimeout,
     QueueNames.maintenance,
+    QueueNames.claudiaWebhook,
   ];
 }
 

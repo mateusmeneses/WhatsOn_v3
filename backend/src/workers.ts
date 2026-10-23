@@ -1,6 +1,7 @@
 import { Worker } from "bullmq";
 import { env } from "./config/env";
 import { processBotTimeoutJob } from "./modules/chatbot/botTimeout.worker";
+import { claudiaBackoff, processClaudiaWebhookJob } from "./modules/claudia/claudia.webhook";
 import { processMaintenanceJob } from "./modules/connections/maintenance";
 import { processInboundJob } from "./modules/inbound/inbound";
 import { processOutboundJob } from "./modules/messages/outbound";
@@ -17,6 +18,12 @@ export function startWorkers(): Worker[] {
   }
   workers.push(createWorker(QueueNames.botTimeout, processBotTimeoutJob, { concurrency: 5 }));
   workers.push(createWorker(QueueNames.maintenance, processMaintenanceJob, { concurrency: 1 }));
+  workers.push(
+    createWorker(QueueNames.claudiaWebhook, processClaudiaWebhookJob, {
+      concurrency: 5,
+      settings: { backoffStrategy: claudiaBackoff },
+    }),
+  );
 
   for (const worker of workers) {
     worker.on("failed", (job, err) =>
@@ -46,5 +53,10 @@ export async function scheduleRecurringJobs(): Promise<void> {
     "idle-alerts",
     { every: 60_000 },
     { name: "idle-alerts", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
+  );
+  await getQueue(QueueNames.maintenance).upsertJobScheduler(
+    "claudia-watch",
+    { every: 60_000 },
+    { name: "claudia-watch", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
   );
 }

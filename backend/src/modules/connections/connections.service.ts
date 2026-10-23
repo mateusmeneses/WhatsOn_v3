@@ -5,6 +5,7 @@ import { sequelize } from "../../database/sequelize";
 import { Company, Connection, ConnectionStatus, Ticket } from "../../models";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { logger } from "../../shared/logger";
+import { claudiaOnConnectionChange } from "../claudia/claudia.events";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { emitter } from "../realtime/socket";
 import { getProvider } from "../whatsapp/registry";
@@ -158,6 +159,7 @@ export async function applyConnectionUpdate(
   if (previous === "connected" && state === "disconnected") {
     emitter.toSupervisors(connection.companyId, "connection:alert", { connectionId: connection.id, name: connection.name });
   }
+  await claudiaOnConnectionChange(connection, previous, state);
 }
 
 export async function applyQrCode(connection: Connection, qr: string): Promise<void> {

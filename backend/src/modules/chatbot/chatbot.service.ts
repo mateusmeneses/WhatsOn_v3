@@ -2,6 +2,7 @@ import { UniqueConstraintError } from "sequelize";
 import { BotAction, ChatbotNode, Company, Connection, Queue, Ticket } from "../../models";
 import { scheduleBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
+import { claudiaOnBotInvalid } from "../claudia/claudia.events";
 import { getConnectionOr404 } from "../connections/connections.service";
 import { resolveMediaPath } from "../media/media.storage";
 import { createOutgoingMessage } from "../messages/messages.service";
@@ -218,5 +219,7 @@ export async function runBot(ticket: Ticket, input: string | null): Promise<void
   if (!result.finished) {
     await ticket.update({ chatbotNodeId: result.state.nodeId, chatbotAttempts: result.state.attempts });
     await scheduleBotTimeout(ticket.id, connection.botTimeoutMinutes);
+    // Tentativa a mais = resposta que o bot não entendeu (texto livre, áudio, arquivo).
+    if (result.state.attempts > state.attempts) await claudiaOnBotInvalid(ticket);
   }
 }

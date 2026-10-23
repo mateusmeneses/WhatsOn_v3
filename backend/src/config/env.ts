@@ -46,6 +46,22 @@ const schema = z.object({
   MANAGER_API_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
   MANAGER_API_TOKEN: z.preprocess(emptyAsUndefined, z.string().min(16).optional()),
   MANAGER_COMPANY_ID: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().optional()),
+  /**
+   * Avisos (webhook) para a Claudia, atendente IA da empresa CLAUDIA_COMPANY_ID (vazio = desligado).
+   * A chave vai como está no cabeçalho CLAUDIA_WEBHOOK_KEY_HEADER (ex.: "Bearer abc" em Authorization).
+   */
+  CLAUDIA_WEBHOOK_URL: z.preprocess(emptyAsUndefined, z.string().url().optional()),
+  CLAUDIA_WEBHOOK_KEY: z.preprocess(emptyAsUndefined, z.string().min(1).optional()),
+  CLAUDIA_WEBHOOK_KEY_HEADER: z.preprocess(emptyAsUndefined, z.string().min(1).default("Authorization")),
+  /** Cabeçalhos extras em JSON, ex.: {"anthropic-version":"2023-06-01"}. */
+  CLAUDIA_WEBHOOK_EXTRA_HEADERS: z.preprocess(emptyAsUndefined, z.string().optional()),
+  /** "json" manda o aviso como corpo; "text" embrulha em {"text": "<aviso em JSON>"}. */
+  CLAUDIA_WEBHOOK_BODY: z.preprocess(emptyAsUndefined, z.enum(["json", "text"]).default("json")),
+  CLAUDIA_COMPANY_ID: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().optional()),
+  /** Usuário da Claudia no WhatsOn: conversas com ele geram mensagem_cliente e inatividade_cliente. */
+  CLAUDIA_USER_ID: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().optional()),
+  /** Números (com DDI, separados por vírgula) cujas mensagens geram mensagem_mateus. */
+  CLAUDIA_WATCH_NUMBERS: z.preprocess(emptyAsUndefined, z.string().default("")),
   /** Super-admin da plataforma, criado na subida se ainda não existir. */
   SUPERADMIN_EMAIL: z.preprocess(emptyAsUndefined, z.string().email().optional()),
   SUPERADMIN_PASSWORD: z.preprocess(emptyAsUndefined, z.string().min(8).optional()),

@@ -13,6 +13,7 @@ const TABLES = [
   "chatbot_nodes",
   "ticket_logs",
   "scheduled_messages",
+  "claudia_webhook_logs",
 ];
 
 export async function resetDb(): Promise<void> {

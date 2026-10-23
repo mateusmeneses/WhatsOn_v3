@@ -5,6 +5,7 @@ import { cancelBotTimeout } from "../../queues/botTimeout";
 import { logger } from "../../shared/logger";
 import { retryInline } from "../../shared/retry";
 import { hasBot, runBot } from "../chatbot/chatbot.service";
+import { claudiaOnClientMessage } from "../claudia/claudia.events";
 import { saveBase64, StoredMedia } from "../media/media.storage";
 import { previewOf } from "../messages/messages.service";
 import { emitMessage, emitTicket } from "../tickets/ticket.events";
@@ -64,10 +65,14 @@ async function matchPendingEcho(connectionId: number, contactId: number, ev: Inb
   return true;
 }
 
-export async function findOrCreateTicket(connection: Connection, contact: Contact, fromMe: boolean): Promise<Ticket> {
+export async function findOrCreateTicket(
+  connection: Connection,
+  contact: Contact,
+  fromMe: boolean,
+): Promise<{ ticket: Ticket; created: boolean }> {
   const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
   const open = await Ticket.findOne({ where });
-  if (open) return open;
+  if (open) return { ticket: open, created: false };
 
   // Conversa iniciada pelo celular da empresa não passa pelo bot. Fica pendente (e não "open" sem dono,
   // invisível para atendentes) até alguém aceitar.
@@ -81,11 +86,11 @@ export async function findOrCreateTicket(connection: Connection, contact: Contac
       queueId: status === "pending" ? connection.defaultQueueId : null,
     });
     await logTicket(ticket, "created");
-    return ticket;
+    return { ticket, created: true };
   } catch (err) {
     if (err instanceof UniqueConstraintError) {
       const existing = await Ticket.findOne({ where });
-      if (existing) return existing;
+      if (existing) return { ticket: existing, created: false };
     }
     throw err;
   }
@@ -127,7 +132,7 @@ export async function handleInboundMessage(
   if (ev.fromMe && (await matchPendingEcho(connection.id, contact.id, ev))) return;
 
   const { media, body } = await fetchMedia(connection, ev, opts);
-  const ticket = await findOrCreateTicket(connection, contact, ev.fromMe);
+  const { ticket, created } = await findOrCreateTicket(connection, contact, ev.fromMe);
   const quotedMessageId = await resolveQuoted(connection.id, ev.quotedProviderMessageId);
 
   let message: Message;
@@ -192,6 +197,7 @@ export async function handleInboundMessage(
 
   if (ev.fromMe) return;
   await ticket.reload();
+  await claudiaOnClientMessage(ticket, contact, created);
   if (ticket.status !== "bot") return;
   try {
     await runBot(ticket, ev.type === "text" ? ev.body : null);

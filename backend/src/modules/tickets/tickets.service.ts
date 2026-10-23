@@ -4,6 +4,7 @@ import { cancelBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { PAGE_SIZE, paginate } from "../../shared/http";
 import { AuthContext } from "../auth/auth.types";
+import { claudiaOnAwaiting } from "../claudia/claudia.events";
 import { createOutgoingMessage } from "../messages/messages.service";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { getUserOr404 } from "../users/users.service";
@@ -354,6 +355,7 @@ export async function moveToPending(ticket: Ticket, queueId: number | null, user
   await cancelBotTimeout(ticket.id);
   await logTicket(ticket, "transferred", { fromQueueId: prev.queueId, toQueueId: queueId });
   await emitTicket(ticket.id, prev);
+  await claudiaOnAwaiting(ticket);
   return true;
 }
 
