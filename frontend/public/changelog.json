@@ -2,6 +2,16 @@
   "atualizadoEm": "2026-10-22",
   "versoes": [
     {
+      "versao": "2026.10.22.2",
+      "data": "22/10/2026",
+      "titulo": "Alerta de cliente sem resposta",
+      "novidades": [
+        "Novo: quando o cliente fica esperando resposta num atendimento em andamento, o técnico recebe alarme sonoro, pop-up na tela e aviso no sistema a cada 15 minutos. A partir de 30 minutos também recebe mensagem no WhatsApp, e com 1 hora supervisores e admins são avisados.",
+        "Só conta o horário de funcionamento da fila. O intervalo (ou 0 para desligar) fica em Configurações. Permita as notificações do navegador quando o WhatsOn pedir para ver o pop-up."
+      ],
+      "melhorias": []
+    },
+    {
       "versao": "2026.10.22.1",
       "data": "22/10/2026",
       "titulo": "Filtro de atendimentos",
