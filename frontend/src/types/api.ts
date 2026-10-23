@@ -209,6 +209,8 @@ export interface Company {
   inactivityCloseMinutes?: number;
   /** Enviada ao finalizar por inatividade; vazia = usa a mensagem de encerramento da conexão. */
   inactivityCloseMessage?: string;
+  /** Avisa o técnico que não responde o cliente a cada esse tempo de expediente (minutos; 0 = desligado). */
+  idleAlertMinutes?: number;
 }
 
 /** Empresa vista pelo super-admin. */

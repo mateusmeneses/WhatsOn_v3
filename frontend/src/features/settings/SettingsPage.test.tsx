@@ -37,6 +37,7 @@ describe("SettingsPage", () => {
         responseSlaMinutes: 10,
         inactivityCloseMinutes: 0,
         inactivityCloseMessage: "",
+        idleAlertMinutes: 15,
       }),
     );
     expect(toast.success).toHaveBeenCalledWith("Configurações salvas");
@@ -84,5 +85,29 @@ describe("SettingsPage", () => {
         expect.objectContaining({ inactivityCloseMinutes: 60, inactivityCloseMessage: "Encerramos por falta de resposta." }),
       ),
     );
+  });
+
+  it("saves the idle alert interval and blocks values outside 0 to 240", async () => {
+    setTestUser({ profile: "admin" });
+    vi.mocked(fetchCompany).mockResolvedValue({
+      id: 1,
+      name: "Loja X",
+      status: "active",
+      timezone: "America/Sao_Paulo",
+      responseSlaMinutes: 5,
+      idleAlertMinutes: 15,
+    });
+    vi.mocked(updateCompany).mockResolvedValue({ id: 1, name: "Loja X", status: "active", timezone: "America/Sao_Paulo" });
+    renderWithProviders(<SettingsPage />);
+
+    const interval = await screen.findByLabelText("Alertar técnico sem responder a cada (minutos)");
+    expect(interval).toHaveValue(15);
+    await userEvent.clear(interval);
+    await userEvent.type(interval, "300");
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
+    await userEvent.clear(interval);
+    await userEvent.type(interval, "20");
+    await userEvent.click(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(updateCompany).toHaveBeenCalledWith(expect.objectContaining({ idleAlertMinutes: 20 })));
   });
 });

@@ -28,3 +28,35 @@ export function isOpen(schedule: WeekSchedule | null | undefined, now: Date, tim
     return minutes >= toMinutes(start) && minutes < toMinutes(end);
   });
 }
+
+const MAX_DAYS = 400;
+
+/**
+ * Minutos de expediente entre `from` e `to` (schedule vazio = todos os minutos). Anda dia a dia no fuso da empresa;
+ * resolução de minuto, mesma do isOpen.
+ */
+export function businessMinutesBetween(
+  schedule: WeekSchedule | null | undefined,
+  from: Date,
+  to: Date,
+  timeZone: string,
+): number {
+  let remaining = Math.floor((to.getTime() - from.getTime()) / 60_000);
+  if (remaining <= 0) return 0;
+  if (!schedule || Object.keys(schedule).length === 0) return remaining;
+  const start = localParts(from, timeZone);
+  let day = Number(start.day);
+  let minute = start.minutes;
+  let total = 0;
+  for (let i = 0; remaining > 0 && i < MAX_DAYS; i += 1) {
+    const span = Math.min(remaining, 1440 - minute);
+    for (const range of schedule[String(day) as WeekDay] ?? []) {
+      const [rangeStart, rangeEnd] = range.split("-").map(toMinutes);
+      total += Math.max(0, Math.min(rangeEnd, minute + span) - Math.max(rangeStart, minute));
+    }
+    remaining -= span;
+    minute = 0;
+    day = (day + 1) % 7;
+  }
+  return total;
+}

@@ -31,6 +31,7 @@ export async function updateCompany(input: {
   responseSlaMinutes?: number;
   inactivityCloseMinutes?: number;
   inactivityCloseMessage?: string;
+  idleAlertMinutes?: number;
 }): Promise<Company> {
   const { data } = await api.put<Company>("/company", input);
   return data;

@@ -45,6 +45,7 @@ export async function createUser(
     canViewOtherQueues: boolean;
     canViewOthersOpen: boolean;
     canClaimTickets: boolean;
+    phone: string | null;
   }> = {},
 ) {
   const n = next();

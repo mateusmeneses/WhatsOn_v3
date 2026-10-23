@@ -19,6 +19,7 @@ const companySchema = z.object({
   responseSlaMinutes: z.number().int().min(1).max(240).optional(),
   inactivityCloseMinutes: z.number().int().min(0).max(10080).optional(),
   inactivityCloseMessage: z.string().max(2000).optional(),
+  idleAlertMinutes: z.number().int().min(0).max(240).optional(),
 });
 
 async function myCompany(companyId: number): Promise<Company> {

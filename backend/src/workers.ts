@@ -42,4 +42,9 @@ export async function scheduleRecurringJobs(): Promise<void> {
     { every: 60_000 },
     { name: "inactivity-close", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
   );
+  await getQueue(QueueNames.maintenance).upsertJobScheduler(
+    "idle-alerts",
+    { every: 60_000 },
+    { name: "idle-alerts", opts: { attempts: 1, removeOnComplete: true, removeOnFail: 100 } },
+  );
 }

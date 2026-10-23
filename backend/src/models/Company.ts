@@ -23,6 +23,10 @@ export class Company extends Model {
   @Column({ type: DataType.TEXT, allowNull: false, defaultValue: "" })
   inactivityCloseMessage!: string;
 
+  /** Técnico sem responder o cliente: avisa a cada intervalo (minutos de expediente da fila; 0 = desligado). */
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 15 })
+  idleAlertMinutes!: number;
+
   /** CNPJ normalizado (14 caracteres, sem pontuação). Nulo em empresas antigas do painel. */
   @Column({ type: DataType.STRING(14), allowNull: true, unique: true })
   cnpj!: string | null;

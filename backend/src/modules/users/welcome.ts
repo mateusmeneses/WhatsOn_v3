@@ -1,9 +1,8 @@
 import { randomInt } from "node:crypto";
 import { env } from "../../config/env";
-import { Connection, User } from "../../models";
+import { User } from "../../models";
 import { AppError } from "../../shared/errors/AppError";
-import { logger } from "../../shared/logger";
-import { getProvider } from "../whatsapp/registry";
+import { sendTextToUser } from "./whatsappNotify";
 
 /** Sem caracteres ambíguos (0/O, 1/l/I) para quem digita a senha lida no celular. */
 const ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -33,23 +32,6 @@ export function welcomeText(user: Pick<User, "name" | "email">, password: string
 }
 
 /** Envia o acesso pelo WhatsApp da empresa (conexão padrão primeiro). Nunca lança: devolve se enviou. */
-export async function sendAccessMessage(user: User, password: string): Promise<boolean> {
-  if (!user.phone) return false;
-  const connections = await Connection.findAll({
-    where: { companyId: user.companyId, status: "connected" },
-    order: [
-      ["isDefault", "DESC"],
-      ["id", "ASC"],
-    ],
-  });
-  const connection = connections[0];
-  if (!connection) return false;
-  try {
-    await getProvider().sendText(connection.instanceName, user.phone, welcomeText(user, password));
-    return true;
-  } catch (err) {
-    // Nunca logar o texto: ele contém a senha.
-    logger.warn({ err: (err as Error).message, userId: user.id }, "failed to send access message");
-    return false;
-  }
+export function sendAccessMessage(user: User, password: string): Promise<boolean> {
+  return sendTextToUser(user, welcomeText(user, password));
 }

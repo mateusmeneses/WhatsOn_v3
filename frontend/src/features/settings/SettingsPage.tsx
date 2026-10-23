@@ -20,6 +20,7 @@ export function SettingsPage() {
   const [sla, setSla] = useState("5");
   const [inactivity, setInactivity] = useState("0");
   const [inactivityMessage, setInactivityMessage] = useState("");
+  const [idleAlert, setIdleAlert] = useState("15");
 
   useEffect(() => {
     if (company.data) {
@@ -28,6 +29,7 @@ export function SettingsPage() {
       setSla(String(company.data.responseSlaMinutes ?? 5));
       setInactivity(String(company.data.inactivityCloseMinutes ?? 0));
       setInactivityMessage(company.data.inactivityCloseMessage ?? "");
+      setIdleAlert(String(company.data.idleAlertMinutes ?? 15));
     }
   }, [company.data]);
 
@@ -39,6 +41,7 @@ export function SettingsPage() {
         responseSlaMinutes: Number(sla),
         inactivityCloseMinutes: Number(inactivity),
         inactivityCloseMessage: inactivityMessage,
+        idleAlertMinutes: Number(idleAlert),
       }),
     onSuccess: (saved) => {
       queryClient.setQueryData(companyKeys.current, saved);
@@ -51,11 +54,13 @@ export function SettingsPage() {
   const slaValid = Number.isInteger(slaNumber) && slaNumber >= 1 && slaNumber <= 240;
   const inactivityNumber = Number(inactivity);
   const inactivityValid = inactivity !== "" && Number.isInteger(inactivityNumber) && inactivityNumber >= 0 && inactivityNumber <= 10080;
+  const idleAlertNumber = Number(idleAlert);
+  const idleAlertValid = idleAlert !== "" && Number.isInteger(idleAlertNumber) && idleAlertNumber >= 0 && idleAlertNumber <= 240;
   const zones = TIMEZONES.some((z) => z.value === timezone) ? TIMEZONES : [{ value: timezone, label: timezone }, ...TIMEZONES];
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <PageHeader title="Configurações" description="Dados gerais da empresa e encerramento por inatividade. As demais mensagens automáticas ficam em Conexões." />
+      <PageHeader title="Configurações" description="Dados gerais da empresa, encerramento por inatividade e alerta de cliente sem resposta. As demais mensagens automáticas ficam em Conexões." />
       <div className="max-w-xl p-6">
         <Card>
           {company.isLoading ? (
@@ -132,8 +137,27 @@ export function SettingsPage() {
                   disabled={inactivityNumber === 0}
                 />
               </div>
+              <div>
+                <Label htmlFor="company-idle-alert">Alertar técnico sem responder a cada (minutos)</Label>
+                <Input
+                  id="company-idle-alert"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  max={240}
+                  step={1}
+                  value={idleAlert}
+                  onChange={(e) => setIdleAlert(e.target.value)}
+                  className="max-w-[8rem]"
+                />
+                <p className="mt-1 text-xs text-ink-muted">
+                  Cliente esperando resposta num atendimento em andamento: no 1º intervalo o técnico recebe alarme e pop-up; no
+                  2º e 3º, também mensagem no WhatsApp; no 4º, supervisores e admins são avisados. Conta só o horário da fila.
+                  Use 0 para desligar (até 240).
+                </p>
+              </div>
               <div className="flex justify-end">
-                <Button type="submit" loading={mutation.isPending} disabled={!name.trim() || !slaValid || !inactivityValid}>
+                <Button type="submit" loading={mutation.isPending} disabled={!name.trim() || !slaValid || !inactivityValid || !idleAlertValid}>
                   Salvar
                 </Button>
               </div>

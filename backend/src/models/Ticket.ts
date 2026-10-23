@@ -60,6 +60,14 @@ export class Ticket extends Model {
   @Column({ type: DataType.DATE, allowNull: true })
   closedAt!: Date | null;
 
+  /** Último estágio do alerta de "cliente sem resposta" já disparado (0 = nenhum). */
+  @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
+  idleAlertLevel!: number;
+
+  /** Início da espera a que idleAlertLevel se refere; espera nova (resposta, transferência) recomeça do zero. */
+  @Column({ type: DataType.DATE, allowNull: true })
+  idleAlertSince!: Date | null;
+
   @BelongsTo(() => Contact, "contactId")
   contact?: Contact;
 

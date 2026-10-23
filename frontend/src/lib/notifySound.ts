@@ -61,3 +61,29 @@ export function playChime(): void {
     // sem áudio: o contador no menu e no título continua avisando
   }
 }
+
+/** Alarme de atendimento sem resposta: três bipes fortes, duas vezes. Toca mesmo com o aviso sonoro desligado. */
+export function playAlarm(): void {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    context ??= new Ctx();
+    if (context.state === "suspended") void context.resume();
+    const start = context.currentTime;
+    for (let i = 0; i < 6; i += 1) {
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.type = "square";
+      osc.frequency.value = i % 2 === 0 ? 988 : 784;
+      const t = start + i * 0.22 + (i >= 3 ? 0.5 : 0);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.35, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      osc.connect(gain).connect(context.destination);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    }
+  } catch {
+    // sem áudio: o pop-up e o aviso na tela continuam
+  }
+}
