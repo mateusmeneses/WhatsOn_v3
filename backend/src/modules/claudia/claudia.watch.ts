@@ -1,7 +1,7 @@
 import { literal, Op } from "sequelize";
 import { Ticket } from "../../models";
 import { logger } from "../../shared/logger";
-import { claudiaConfig, ClaudiaEvent, ClaudiaPayload, enqueueClaudia, markOnce, ticketPayload } from "./claudia.webhook";
+import { claudiaConfig, ClaudiaEvent, ClaudiaPayload, enqueueGrouped, markOnce, ticketPayload } from "./claudia.webhook";
 
 const BATCH = 500;
 export const BOT_STUCK_MINUTES = 3;
@@ -46,7 +46,7 @@ async function reachedMark(evento: ClaudiaEvent, ticketId: number, since: Date, 
 async function send(evento: ClaudiaEvent, ticketId: number, extra: Partial<ClaudiaPayload> = {}, now: Date): Promise<boolean> {
   const payload = await ticketPayload(evento, ticketId, extra, now);
   if (!payload) return false;
-  await enqueueClaudia(payload);
+  await enqueueGrouped(payload);
   return true;
 }
 

@@ -198,17 +198,59 @@ export async function enqueueClaudia(payload: ClaudiaPayload, delayMs = 0, jobId
   await getQueue(QueueNames.claudiaWebhook).add(payload.evento, payload, { ...JOB_OPTS, jobId, delay: delayMs });
 }
 
-/** Mensagens da mesma conversa: no máximo 1 aviso a cada 60 s; o que chegar no meio sai junto no fim da janela. */
+/**
+ * Uma conversa, um aviso por vez: no máximo 1 a cada 60 s, qualquer que seja o evento. O primeiro sai na hora;
+ * os que chegam no meio viram um único aviso no fim da janela, com o evento mais importante (o mais recente no empate).
+ */
 export const GROUP_WINDOW_MS = 60_000;
+export const GROUP_JOB = "grupo";
+
+/** Escalonamentos pedem ação específica (avisar o Mateus, alertar o Whatyson): não podem ser engolidos por mensagens. */
+const PRIORITY: Record<ClaudiaEvent, number> = {
+  transferencia_sem_aceite: 3,
+  inatividade_cliente: 3,
+  mensagem_mateus: 2,
+  conversa_aguardando: 1,
+  bot_parado: 1,
+  mensagem_cliente: 1,
+  mensagem_pos_finalizacao: 1,
+  conexao: 1,
+};
+
+const windowKey = (conversa: number | null) => `claudia:window:${conversa}`;
+const pendingKey = (conversa: number | null) => `claudia:pending:${conversa}`;
 
 export async function enqueueGrouped(payload: ClaudiaPayload): Promise<void> {
-  const key = `claudia:window:${payload.conversa}:${payload.evento}`;
   const redis = getRedis();
-  const opened = await redis.set(key, String(Date.now()), "PX", GROUP_WINDOW_MS, "NX");
+  const opened = await redis.set(windowKey(payload.conversa), String(Date.now()), "PX", GROUP_WINDOW_MS, "NX");
   if (opened) return enqueueClaudia(payload);
-  const [start, ttl] = await Promise.all([redis.get(key), redis.pttl(key)]);
-  // jobId fixo por janela: várias mensagens no meio viram um único aviso agrupado.
-  await enqueueClaudia(payload, Math.max(ttl, 0), `claudia-grupo-${payload.conversa}-${payload.evento}-${start}`);
+
+  const [start, ttl, stored] = await Promise.all([
+    redis.get(windowKey(payload.conversa)),
+    redis.pttl(windowKey(payload.conversa)),
+    redis.get(pendingKey(payload.conversa)),
+  ]);
+  const previous = stored ? (JSON.parse(stored) as ClaudiaPayload) : null;
+  if (!previous || PRIORITY[payload.evento] >= PRIORITY[previous.evento]) {
+    await redis.set(pendingKey(payload.conversa), JSON.stringify(payload), "PX", Math.max(ttl, 0) + GROUP_WINDOW_MS);
+  }
+  // jobId fixo por janela: tudo que chega no meio vira um único aviso, montado na hora de enviar.
+  await getQueue(QueueNames.claudiaWebhook).add(GROUP_JOB, payload, {
+    ...JOB_OPTS,
+    jobId: `claudia-grupo-${payload.conversa}-${start}`,
+    delay: Math.max(ttl, 0),
+  });
+}
+
+/** No fim da janela: pega o aviso guardado e abre nova janela (o aviso agrupado conta como o envio dela). */
+async function takeGrouped(job: Job<ClaudiaPayload>): Promise<ClaudiaPayload> {
+  const redis = getRedis();
+  const stored = await redis.getdel(pendingKey(job.data.conversa));
+  const payload = stored ? (JSON.parse(stored) as ClaudiaPayload) : job.data;
+  await redis.set(windowKey(payload.conversa), String(Date.now()), "PX", GROUP_WINDOW_MS);
+  // Reenvios usam o mesmo aviso (mesmo id_evento).
+  await job.updateData(payload).catch(() => undefined);
+  return payload;
 }
 
 /** Marco único (ex.: 10 min sem aceite desta transferência): só o primeiro a marcar envia. */
@@ -232,7 +274,7 @@ export async function deliver(cfg: ClaudiaConfig, payload: ClaudiaPayload): Prom
 export async function processClaudiaWebhookJob(job: Job<ClaudiaPayload>): Promise<void> {
   const cfg = claudiaConfig();
   if (!cfg) return;
-  const payload = job.data;
+  const payload = job.name === GROUP_JOB && job.attemptsMade === 0 ? await takeGrouped(job) : job.data;
   const attempt = job.attemptsMade + 1;
   const final = attempt >= (job.opts.attempts ?? 1);
   let statusCode: number | null = null;

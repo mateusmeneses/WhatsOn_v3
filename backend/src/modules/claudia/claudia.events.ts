@@ -21,17 +21,16 @@ async function safely(what: string, ticketId: number | null, fn: () => Promise<v
   }
 }
 
-async function sendTicketEvent(evento: ClaudiaEvent, ticketId: number, grouped: boolean): Promise<void> {
+async function sendTicketEvent(evento: ClaudiaEvent, ticketId: number): Promise<void> {
   const payload = await ticketPayload(evento, ticketId);
-  if (!payload) return;
-  await (grouped ? enqueueGrouped(payload) : enqueueClaudia(payload));
+  if (payload) await enqueueGrouped(payload);
 }
 
 /** Conversa devolvida pelo bot para Aguardando (as novas sem bot saem em claudiaOnClientMessage). */
 export function claudiaOnAwaiting(ticket: Pick<Ticket, "id" | "companyId">): Promise<void> {
   return safely("conversa_aguardando", ticket.id, async () => {
     if (!claudiaFor(ticket.companyId)) return;
-    await sendTicketEvent("conversa_aguardando", ticket.id, false);
+    await sendTicketEvent("conversa_aguardando", ticket.id);
   });
 }
 
@@ -39,7 +38,7 @@ export function claudiaOnAwaiting(ticket: Pick<Ticket, "id" | "companyId">): Pro
 export function claudiaOnBotInvalid(ticket: Pick<Ticket, "id" | "companyId">): Promise<void> {
   return safely("bot_parado", ticket.id, async () => {
     if (!claudiaFor(ticket.companyId)) return;
-    await sendTicketEvent("bot_parado", ticket.id, true);
+    await sendTicketEvent("bot_parado", ticket.id);
   });
 }
 
@@ -54,10 +53,10 @@ export function claudiaOnClientMessage(ticket: Ticket, contact: Contact, created
   return safely("mensagem do cliente", ticket.id, async () => {
     const cfg = claudiaFor(ticket.companyId);
     if (!cfg) return;
-    if (isWatchedNumber(cfg, contact.number)) return sendTicketEvent("mensagem_mateus", ticket.id, true);
-    if (created && ticket.status === "pending") await sendTicketEvent("conversa_aguardando", ticket.id, false);
+    if (isWatchedNumber(cfg, contact.number)) return sendTicketEvent("mensagem_mateus", ticket.id);
+    if (created && ticket.status === "pending") await sendTicketEvent("conversa_aguardando", ticket.id);
     if (cfg.userId !== null && ticket.userId === cfg.userId && ticket.status !== "closed") {
-      return sendTicketEvent("mensagem_cliente", ticket.id, true);
+      return sendTicketEvent("mensagem_cliente", ticket.id);
     }
     if (!created) return;
     const recentlyClosed = await Ticket.count({
@@ -69,7 +68,7 @@ export function claudiaOnClientMessage(ticket: Ticket, contact: Contact, created
         closedAt: { [Op.gte]: new Date(Date.now() - POST_CLOSE_WINDOW_MS) },
       },
     });
-    if (recentlyClosed > 0) await sendTicketEvent("mensagem_pos_finalizacao", ticket.id, true);
+    if (recentlyClosed > 0) await sendTicketEvent("mensagem_pos_finalizacao", ticket.id);
   });
 }
 

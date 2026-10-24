@@ -5,6 +5,8 @@ import { applyConnectionUpdate } from "../../src/modules/connections/connections
 import { runClaudiaWatch } from "../../src/modules/claudia/claudia.watch";
 import {
   claudiaBackoff,
+  enqueueGrouped,
+  GROUP_JOB,
   ClaudiaPayload,
   isoWithOffset,
   processClaudiaWebhookJob,
@@ -279,6 +281,52 @@ describe("claudia webhook", () => {
     expect(jobs.map((j) => [j.data.evento, j.data.status, j.data.conversa])).toEqual([
       ["conexao", "fora", null],
       ["conexao", "voltou", null],
+    ]);
+  });
+
+  it("groups per conversation whatever the event: 1 now, the rest in one notice at the end of the 60 s window", async () => {
+    const s = await setup();
+    const ticket = await createTicket({
+      companyId: s.company.id,
+      contactId: s.contact.id,
+      connectionId: s.connection.id,
+      status: "pending",
+      userId: s.tech.id,
+    });
+    const other = await createTicket({
+      companyId: s.company.id,
+      contactId: (await createContact(s.company.id)).id,
+      connectionId: s.connection.id,
+    });
+    const notice = async (evento: Parameters<typeof ticketPayload>[0], id = ticket.id, extra = {}) =>
+      enqueueGrouped((await ticketPayload(evento, id, extra))!);
+
+    await notice("mensagem_pos_finalizacao");
+    await notice("bot_parado");
+    await notice("transferencia_sem_aceite", ticket.id, { minutos_sem_aceite: 20 });
+    await notice("conversa_aguardando"); // menos importante que o escalonamento: não o substitui
+    await notice("bot_parado", other.id); // outra conversa: janela própria
+
+    const jobs = await getQueue(QueueNames.claudiaWebhook).getJobs(["waiting", "delayed"]);
+    const mine = jobs.filter((j) => j.data.conversa === ticket.id);
+    expect(mine.map((j) => [j.name, j.data.evento]).sort()).toEqual([
+      [GROUP_JOB, "bot_parado"],
+      ["mensagem_pos_finalizacao", "mensagem_pos_finalizacao"],
+    ]);
+    expect(jobs.filter((j) => j.data.conversa === other.id).map((j) => j.opts.delay ?? 0)).toEqual([0]);
+
+    // Fim da janela: sai um só aviso, com o escalonamento guardado, e ele abre a próxima janela.
+    const grouped = mine.find((j) => j.name === GROUP_JOB)!;
+    const fetchMock = jest.spyOn(globalThis, "fetch").mockResolvedValue(new Response("", { status: 200 }));
+    await processClaudiaWebhookJob(grouped as Job<ClaudiaPayload>);
+    const sent = JSON.parse(String(fetchMock.mock.calls[0][1]!.body)) as ClaudiaPayload;
+    expect(sent).toMatchObject({ evento: "transferencia_sem_aceite", conversa: ticket.id, minutos_sem_aceite: 20 });
+    expect((await getQueue(QueueNames.claudiaWebhook).getJob(grouped.id!))!.data.evento).toBe("transferencia_sem_aceite"); // reenvio = mesmo aviso
+
+    await notice("mensagem_cliente");
+    const after = await getQueue(QueueNames.claudiaWebhook).getJobs(["waiting", "delayed"]);
+    expect(after.filter((j) => j.data.conversa === ticket.id && j.data.evento === "mensagem_cliente").map((j) => j.name)).toEqual([
+      GROUP_JOB,
     ]);
   });
 
