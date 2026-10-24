@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-10-23",
+  "atualizadoEm": "2026-10-24",
   "versoes": [
+    {
+      "versao": "2026.10.24.1",
+      "data": "24/10/2026",
+      "titulo": "Avisos para a Claudia mais enxutos",
+      "novidades": [],
+      "melhorias": [
+        "A Claudia recebe no máximo um aviso por conversa a cada minuto, juntando os eventos que chegam no meio. O primeiro aviso continua na hora."
+      ]
+    },
     {
       "versao": "2026.10.23.1",
       "data": "23/10/2026",
