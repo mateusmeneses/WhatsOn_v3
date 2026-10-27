@@ -1,6 +1,18 @@
 {
-  "atualizadoEm": "2026-10-24",
+  "atualizadoEm": "2026-10-27",
   "versoes": [
+    {
+      "versao": "2026.10.27.1",
+      "data": "27/10/2026",
+      "titulo": "Empresa e produto no contato",
+      "novidades": [
+        "Novo: o cadastro do contato tem Empresa e Produto. Na Connect, a empresa vem do cadastro de clientes do Manager (sugerida pelo telefone) e o produto da lista de produtos do Manager.",
+        "Quando o cliente entra no menu de suporte e o contato já tem produto, o bot pergunta se o atendimento é sobre ele. Respondendo Sim, vai direto para a fila daquele sistema; Não mostra a lista completa."
+      ],
+      "melhorias": [
+        "Registrar atendimento e Abrir OS no Manager já abrem com a empresa e o produto do contato, e o que for escolhido ali fica salvo no contato."
+      ]
+    },
     {
       "versao": "2026.10.24.1",
       "data": "24/10/2026",
