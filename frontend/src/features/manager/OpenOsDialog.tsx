@@ -11,15 +11,15 @@ import { errorMessage } from "@/lib/apiError";
 import { ticketKeys } from "@/features/tickets/ticketsApi";
 import { useApplyTicket } from "@/features/tickets/useTickets";
 import type { Ticket } from "@/types/api";
-import { ManagerClientFields, type ClientChoice } from "./ManagerClientFields";
-import { fetchManagerCatalog, managerKeys, openManagerOs, ticketSummaryText } from "./managerApi";
+import { ManagerClientFields, savedClientChoice, type ClientChoice } from "./ManagerClientFields";
+import { fetchManagerCatalog, managerKeys, openManagerOs, rememberOnContact, ticketSummaryText } from "./managerApi";
 
 /** Abre uma OS no Manager a partir do atendimento (cliente sugerido pelo telefone do contato). */
 export function OpenOsDialog({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
   const queryClient = useQueryClient();
   const applyTicket = useApplyTicket();
   const catalog = useQuery({ queryKey: managerKeys.catalog, queryFn: fetchManagerCatalog, staleTime: 5 * 60_000 });
-  const [client, setClient] = useState<ClientChoice>({});
+  const [client, setClient] = useState<ClientChoice>(() => savedClientChoice(ticket.contact));
   const [titulo, setTitulo] = useState(ticket.botPath ? `Suporte: ${ticket.botPath}` : "");
   const [descricao, setDescricao] = useState(ticketSummaryText(ticket));
   const [prioridade, setPrioridade] = useState(2);
@@ -36,6 +36,7 @@ export function OpenOsDialog({ ticket, onClose }: { ticket: Ticket; onClose: () 
     onSuccess: (updated) => {
       applyTicket(updated);
       void queryClient.invalidateQueries({ queryKey: ticketKeys.lists });
+      void rememberOnContact(ticket.contact, { client: { id: client.codCliente!, name: client.nome } });
       toast.success(`OS #${updated.managerOsId} aberta no Manager`);
       onClose();
     },

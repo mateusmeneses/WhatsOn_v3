@@ -204,3 +204,68 @@ describe("botPath", () => {
     expect(botPath(nodes, { nodeId: 2, attempts: 0 }, "0")).toBeNull();
   });
 });
+
+describe("contact product shortcut", () => {
+  const support: BotNode[] = [
+    node({ id: 1, message: "Olá!" }),
+    node({ id: 2, parentId: 1, order: 1, key: "1", title: "Suporte técnico", action: "submenu", message: "Qual sistema?" }),
+    node({ id: 3, parentId: 2, order: 1, key: "1", title: "Sistema Fiscal", action: "transfer_queue", queueId: 10 }),
+    node({ id: 4, parentId: 2, order: 2, key: "2", title: "Gestão Café", action: "transfer_queue", queueId: 11 }),
+    node({ id: 5, parentId: 2, order: 3, key: "3", title: "Outros", action: "transfer_queue", queueId: 12 }),
+  ];
+  const SUPPORT_MENU = "Qual sistema?\n\n1 - Sistema Fiscal\n2 - Gestão Café\n3 - Outros\n0 - Voltar";
+  const ASK = "Seu atendimento é sobre o *Gestão Café*?\n\n1 - Sim\n2 - Não, outro sistema";
+  const pctx = (contactProduct: string | null) => ctx({ nodes: support, isQueueOpen: () => true, contactProduct });
+
+  it("asks about the contact's product when entering a menu that lists it (ignoring case and accents)", () => {
+    expect(step({ nodeId: 1, attempts: 0 }, "1", pctx("gestao cafe"))).toEqual({
+      effects: [text(ASK)],
+      state: { nodeId: 2, attempts: 0, confirmId: 4 },
+      finished: false,
+    });
+  });
+
+  it("shows the normal menu when the contact has no product or it is not an option", () => {
+    expect(step({ nodeId: 1, attempts: 0 }, "1", pctx(null)).effects).toEqual([text(SUPPORT_MENU)]);
+    expect(step({ nodeId: 1, attempts: 0 }, "1", pctx("Outro sistema")).effects).toEqual([text(SUPPORT_MENU)]);
+  });
+
+  it("goes straight to the product's option on Sim", () => {
+    expect(step({ nodeId: 2, attempts: 0, confirmId: 4 }, "1", pctx("Gestão Café"))).toEqual({
+      effects: [text("Aguarde um atendente."), { type: "transfer", queueId: 11, userId: null }],
+      state: { nodeId: null, attempts: 0 },
+      finished: true,
+    });
+  });
+
+  it("shows the full menu on Não without asking again", () => {
+    expect(step({ nodeId: 2, attempts: 0, confirmId: 4 }, "2", pctx("Gestão Café"))).toEqual({
+      effects: [text(SUPPORT_MENU)],
+      state: { nodeId: 2, attempts: 0 },
+      finished: false,
+    });
+  });
+
+  it("repeats the question on an invalid answer and gives up after the limit", () => {
+    expect(step({ nodeId: 2, attempts: 0, confirmId: 4 }, "talvez", pctx("Gestão Café"))).toEqual({
+      effects: [text("Opção inválida."), text(ASK)],
+      state: { nodeId: 2, attempts: 1, confirmId: 4 },
+      finished: false,
+    });
+    expect(step({ nodeId: 2, attempts: 2, confirmId: 4 }, "x", pctx("Gestão Café")).effects.at(-1)).toEqual({
+      type: "transfer",
+      queueId: 30,
+      userId: null,
+    });
+  });
+
+  it("does not ask again when coming back with Voltar or after a reply", () => {
+    const withSub = [...support, node({ id: 6, parentId: 2, order: 4, key: "4", title: "Manual", action: "reply", message: "Veja o manual" })];
+    expect(step({ nodeId: 2, attempts: 0 }, "4", ctx({ nodes: withSub, contactProduct: "Gestão Café" })).effects.at(-1)).not.toEqual(text(ASK));
+  });
+
+  it("records the product's option in the path on Sim", () => {
+    expect(botPath(support, { nodeId: 2, attempts: 0, confirmId: 4 }, "1")).toBe("Suporte técnico › Gestão Café");
+    expect(botPath(support, { nodeId: 2, attempts: 0, confirmId: 4 }, "2")).toBe("Suporte técnico");
+  });
+});

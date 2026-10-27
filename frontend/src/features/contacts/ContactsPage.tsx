@@ -47,7 +47,7 @@ export function ContactsPage() {
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
           <Input
             className="pl-9"
-            placeholder="Buscar por nome ou número"
+            placeholder="Buscar por nome, número ou empresa"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -67,6 +67,7 @@ export function ContactsPage() {
                 <tr>
                   <th className="px-5 py-3 font-medium">Nome</th>
                   <th className="px-5 py-3 font-medium">Número</th>
+                  <th className="px-5 py-3 font-medium">Empresa / Produto</th>
                   <th className="px-5 py-3 text-right font-medium">Atendimentos</th>
                   <th className="px-5 py-3 font-medium">Último contato</th>
                   <th className="px-5 py-3"><span className="sr-only">Ações</span></th>
@@ -84,6 +85,16 @@ export function ContactsPage() {
                       </span>
                     </td>
                     <td className="px-5 py-3 text-ink-muted">{formatPhone(contact.number)}</td>
+                    <td className="px-5 py-3">
+                      {contact.clientCompany || contact.product ? (
+                        <span className="flex flex-col">
+                          <span>{contact.clientCompany ?? "—"}</span>
+                          {contact.product && <span className="text-xs text-ink-muted">{contact.product}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-ink-muted">—</span>
+                      )}
+                    </td>
                     <ContactHistoryCells stats={stats.data?.find((x) => x.id === contact.id)} />
                     <td className="px-5 py-3 text-right">
                       <Button

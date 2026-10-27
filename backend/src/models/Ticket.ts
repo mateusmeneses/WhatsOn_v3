@@ -32,6 +32,10 @@ export class Ticket extends Model {
   @Column({ type: DataType.INTEGER, allowNull: false, defaultValue: 0 })
   chatbotAttempts!: number;
 
+  /** Opção do menu com o produto do contato, enquanto o bot pergunta "é sobre o produto X?". */
+  @Column({ type: DataType.INTEGER, allowNull: true })
+  chatbotConfirmNodeId!: number | null;
+
   @Column({ type: DataType.TEXT, allowNull: false, defaultValue: "" })
   notes!: string;
 

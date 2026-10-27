@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { errorMessage } from "@/lib/apiError";
 import { useApplyTicket } from "@/features/tickets/useTickets";
 import type { Ticket } from "@/types/api";
-import { ManagerClientFields, type ClientChoice } from "./ManagerClientFields";
-import { fetchManagerCatalog, managerKeys, normalize, registerManagerAtendimento } from "./managerApi";
+import { ManagerClientFields, savedClientChoice, type ClientChoice } from "./ManagerClientFields";
+import { fetchManagerCatalog, managerKeys, normalize, registerManagerAtendimento, rememberOnContact } from "./managerApi";
 
 export const ATENDIMENTO_DESCRIPTION_MAX = 500;
 
@@ -28,7 +28,7 @@ export function suggestProduct(botPath: string | null, produtos: { cod_produto: 
 export function RegisterAtendimentoDialog({ ticket, onClose }: { ticket: Ticket; onClose: () => void }) {
   const applyTicket = useApplyTicket();
   const catalog = useQuery({ queryKey: managerKeys.catalog, queryFn: fetchManagerCatalog, staleTime: 5 * 60_000 });
-  const [client, setClient] = useState<ClientChoice>({});
+  const [client, setClient] = useState<ClientChoice>(() => savedClientChoice(ticket.contact));
   const [produto, setProduto] = useState<number | undefined>();
   const [tipo, setTipo] = useState<number | undefined>();
   const [prioridade, setPrioridade] = useState(2);
@@ -37,7 +37,8 @@ export function RegisterAtendimentoDialog({ ticket, onClose }: { ticket: Ticket;
   );
 
   const produtos = catalog.data?.produtos ?? [];
-  const selectedProduto = produto ?? suggestProduct(ticket.botPath, produtos);
+  // O sistema escolhido no menu deste atendimento vale mais que o produto cadastrado no contato.
+  const selectedProduto = produto ?? suggestProduct(ticket.botPath, produtos) ?? ticket.contact?.managerProductId ?? undefined;
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -51,6 +52,11 @@ export function RegisterAtendimentoDialog({ ticket, onClose }: { ticket: Ticket;
       }),
     onSuccess: (updated) => {
       applyTicket(updated);
+      const picked = produtos.find((p) => p.cod_produto === selectedProduto);
+      void rememberOnContact(ticket.contact, {
+        client: { id: client.codCliente!, name: client.nome },
+        product: picked && { id: picked.cod_produto, name: picked.descricao },
+      });
       toast.success(`Atendimento #${updated.managerAtendimentoId} registrado no Manager`);
       onClose();
     },

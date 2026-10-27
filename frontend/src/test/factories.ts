@@ -24,7 +24,19 @@ export function makeMessage(partial: Partial<Message> = {}): Message {
 }
 
 export function makeContact(partial: Partial<Contact> = {}): Contact {
-  return { id: 1, companyId: 1, name: "Maria Souza", number: "5511988887777", profilePicUrl: null, isGroup: false, ...partial };
+  return {
+    id: 1,
+    companyId: 1,
+    name: "Maria Souza",
+    number: "5511988887777",
+    profilePicUrl: null,
+    isGroup: false,
+    clientCompany: null,
+    managerClientId: null,
+    product: null,
+    managerProductId: null,
+    ...partial,
+  };
 }
 
 export function makeTicket(partial: Partial<Ticket> = {}): Ticket {

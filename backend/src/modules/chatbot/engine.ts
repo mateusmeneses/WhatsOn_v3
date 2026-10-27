@@ -19,6 +19,8 @@ export interface BotNode {
 export interface BotState {
   nodeId: number | null;
   attempts: number;
+  /** Opção do menu atual com o produto do contato, aguardando o "Sim" (só presente durante a pergunta). */
+  confirmId?: number | null;
 }
 
 export interface BotContext {
@@ -26,6 +28,8 @@ export interface BotContext {
   defaultQueueId: number | null;
   isQueueOpen(queueId: number): boolean;
   messages: { transfer: string; outOfHours: string; invalid: string };
+  /** Produto cadastrado no contato: o bot pergunta se o atendimento é sobre ele quando o menu o lista. */
+  contactProduct?: string | null;
 }
 
 export type BotEffect =
@@ -51,6 +55,17 @@ export function renderMenu(node: BotNode, children: BotNode[]): string {
 
 export const BOT_PATH_SEPARATOR = " › ";
 
+const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+/** Opção do menu com o mesmo nome do produto do contato (sem diferenciar maiúsculas e acentos). */
+export function productOption(children: BotNode[], product: string | null | undefined): BotNode | undefined {
+  const wanted = product ? normalize(product) : "";
+  return wanted ? children.find((c) => normalize(c.title) === wanted) : undefined;
+}
+
+export const confirmProductMessage = (title: string): string =>
+  `Seu atendimento é sobre o *${title}*?\n\n1 - Sim\n2 - Não, outro sistema`;
+
 /** Títulos das opções escolhidas até aqui (sem a mensagem inicial), ex.: "Suporte técnico › Sistema X". Null no início. */
 export function botPath(nodes: BotNode[], state: BotState, input: string | null): string | null {
   const byId = new Map(nodes.map((n) => [n.id, n]));
@@ -58,7 +73,10 @@ export function botPath(nodes: BotNode[], state: BotState, input: string | null)
   if (!current) return null;
   const choice = input?.trim() ?? null;
   let target: BotNode | undefined = current;
-  if (choice === "0" && current.parentId !== null) {
+  const confirming = state.confirmId != null ? byId.get(state.confirmId) : undefined;
+  if (confirming) {
+    if (choice === "1" && confirming.action !== "reply") target = confirming;
+  } else if (choice === "0" && current.parentId !== null) {
     target = byId.get(current.parentId);
   } else {
     const chosen = choice ? nodes.find((n) => n.parentId === current.id && n.key === choice) : undefined;
@@ -100,13 +118,68 @@ export function step(state: BotState, input: string | null, ctx: BotContext): St
     return { effects: [...prefix, sendText(renderMenu(node, children))], state: { nodeId: node.id, attempts }, finished: false };
   };
 
+  // Ao entrar num menu que lista o produto do contato, pergunta antes se é sobre ele.
+  const enterMenu = (node: BotNode): StepResult => {
+    const option = productOption(childrenOf(node.id), ctx.contactProduct);
+    if (!option) return showMenu(node);
+    return {
+      effects: [sendText(confirmProductMessage(option.title))],
+      state: { nodeId: node.id, attempts: 0, confirmId: option.id },
+      finished: false,
+    };
+  };
+
+  const choose = (current: BotNode, chosen: BotNode): StepResult => {
+    switch (chosen.action) {
+      case "submenu":
+        return enterMenu(chosen);
+      case "reply": {
+        const prefix: BotEffect[] = chosen.mediaUrl
+          ? [
+              {
+                type: "send_media",
+                media: { url: chosen.mediaUrl, mime: chosen.mediaMime ?? "application/octet-stream", name: chosen.mediaName },
+                caption: chosen.message,
+              },
+            ]
+          : chosen.message
+            ? [sendText(chosen.message)]
+            : [];
+        return showMenu(current, prefix);
+      }
+      case "transfer_queue":
+        return transfer(chosen.queueId, null, chosen.message);
+      case "transfer_agent":
+        return transfer(chosen.queueId, chosen.userId, chosen.message);
+      case "close":
+        return {
+          effects: [...(chosen.message ? [sendText(chosen.message)] : []), { type: "close" }],
+          state: DONE,
+          finished: true,
+        };
+    }
+  };
+
   const root = ctx.nodes.find((n) => n.parentId === null);
   if (!root) return transfer(null, null, "");
 
   const current = state.nodeId !== null ? byId.get(state.nodeId) : undefined;
-  if (!current) return showMenu(root);
+  if (!current) return enterMenu(root);
 
   const choice = input?.trim() ?? null;
+  const confirming = state.confirmId != null ? byId.get(state.confirmId) : undefined;
+  if (confirming && confirming.parentId === current.id) {
+    if (choice === "1") return choose(current, confirming);
+    if (choice === "2") return showMenu(current);
+    const attempts = state.attempts + 1;
+    if (attempts >= MAX_INVALID_ATTEMPTS) return transfer(ctx.defaultQueueId, null, "");
+    return {
+      effects: [sendText(ctx.messages.invalid), sendText(confirmProductMessage(confirming.title))],
+      state: { nodeId: current.id, attempts, confirmId: confirming.id },
+      finished: false,
+    };
+  }
+
   if (choice === "0" && current.parentId !== null) return showMenu(byId.get(current.parentId) ?? root);
 
   const chosen = choice ? childrenOf(current.id).find((c) => c.key === choice) : undefined;
@@ -116,32 +189,5 @@ export function step(state: BotState, input: string | null, ctx: BotContext): St
     return showMenu(current, [sendText(ctx.messages.invalid)], attempts);
   }
 
-  switch (chosen.action) {
-    case "submenu":
-      return showMenu(chosen);
-    case "reply": {
-      const prefix: BotEffect[] = chosen.mediaUrl
-        ? [
-            {
-              type: "send_media",
-              media: { url: chosen.mediaUrl, mime: chosen.mediaMime ?? "application/octet-stream", name: chosen.mediaName },
-              caption: chosen.message,
-            },
-          ]
-        : chosen.message
-          ? [sendText(chosen.message)]
-          : [];
-      return showMenu(current, prefix);
-    }
-    case "transfer_queue":
-      return transfer(chosen.queueId, null, chosen.message);
-    case "transfer_agent":
-      return transfer(chosen.queueId, chosen.userId, chosen.message);
-    case "close":
-      return {
-        effects: [...(chosen.message ? [sendText(chosen.message)] : []), { type: "close" }],
-        state: DONE,
-        finished: true,
-      };
-  }
+  return choose(current, chosen);
 }

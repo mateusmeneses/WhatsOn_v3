@@ -131,7 +131,7 @@ describe("ChatPanel", () => {
     await userEvent.clear(input);
     await userEvent.type(input, "Maria VIP");
     await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
-    await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, { name: "Maria VIP" }));
+    await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, expect.objectContaining({ name: "Maria VIP" })));
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["tickets"] });
   });
 

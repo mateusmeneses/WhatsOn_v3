@@ -1,5 +1,5 @@
 import { UniqueConstraintError } from "sequelize";
-import { BotAction, ChatbotNode, Company, Connection, Queue, Ticket } from "../../models";
+import { BotAction, ChatbotNode, Company, Connection, Contact, Queue, Ticket } from "../../models";
 import { scheduleBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { claudiaOnBotInvalid } from "../claudia/claudia.events";
@@ -192,8 +192,17 @@ export async function simulate(
 export async function runBot(ticket: Ticket, input: string | null): Promise<void> {
   const connection = await Connection.findByPk(ticket.connectionId);
   if (!connection) return;
-  const ctx = await buildBotContext(connection, await loadTree(connection.id));
-  const state = { nodeId: ticket.chatbotNodeId, attempts: ticket.chatbotAttempts };
+  const [ctx, contact] = await Promise.all([
+    buildBotContext(connection, await loadTree(connection.id)),
+    Contact.findByPk(ticket.contactId, { attributes: ["product"] }),
+  ]);
+  ctx.contactProduct = contact?.product;
+  // Sem nó atual, a pergunta pendente (de um atendimento anterior) não vale mais.
+  const state: BotState = {
+    nodeId: ticket.chatbotNodeId,
+    attempts: ticket.chatbotAttempts,
+    confirmId: ticket.chatbotNodeId !== null ? ticket.chatbotConfirmNodeId : null,
+  };
   const result = step(state, input, ctx);
 
   const path = botPath(ctx.nodes, state, input);
@@ -217,7 +226,11 @@ export async function runBot(ticket: Ticket, input: string | null): Promise<void
   }
 
   if (!result.finished) {
-    await ticket.update({ chatbotNodeId: result.state.nodeId, chatbotAttempts: result.state.attempts });
+    await ticket.update({
+      chatbotNodeId: result.state.nodeId,
+      chatbotAttempts: result.state.attempts,
+      chatbotConfirmNodeId: result.state.confirmId ?? null,
+    });
     await scheduleBotTimeout(ticket.id, connection.botTimeoutMinutes);
     // Tentativa a mais = resposta que o bot não entendeu (texto livre, áudio, arquivo).
     if (result.state.attempts > state.attempts) await claudiaOnBotInvalid(ticket);

@@ -85,6 +85,41 @@ describe("contacts API", () => {
   });
 });
 
+describe("contact company and product", () => {
+  beforeEach(resetDb);
+
+  it("saves company and product (with Manager codes) without touching the name, and clears with empty text", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    const contact = await createContact(company.id, { name: "Maria" });
+
+    const res = await request(app)
+      .put(`/api/contacts/${contact.id}`)
+      .set("Authorization", bearer(agent))
+      .send({ clientCompany: "Padaria Pão Quente", managerClientId: 321, product: "Gestão Café", managerProductId: 7 })
+      .expect(200);
+    expect(res.body).toMatchObject({
+      name: "Maria", clientCompany: "Padaria Pão Quente", managerClientId: 321, product: "Gestão Café", managerProductId: 7,
+    });
+
+    const cleared = await request(app)
+      .put(`/api/contacts/${contact.id}`)
+      .set("Authorization", bearer(agent))
+      .send({ product: "", managerProductId: null })
+      .expect(200);
+    expect(cleared.body).toMatchObject({ clientCompany: "Padaria Pão Quente", product: null, managerProductId: null });
+  });
+
+  it("finds contacts by company", async () => {
+    const company = await createCompany();
+    const agent = await createUser(company.id);
+    await createContact(company.id, { name: "Maria", clientCompany: "Padaria Pão Quente" });
+    await createContact(company.id, { name: "João" });
+    const res = await request(app).get("/api/contacts?search=padaria").set("Authorization", bearer(agent));
+    expect(res.body.items.map((c: { name: string }) => c.name)).toEqual(["Maria"]);
+  });
+});
+
 describe("contact stats", () => {
   beforeEach(resetDb);
 

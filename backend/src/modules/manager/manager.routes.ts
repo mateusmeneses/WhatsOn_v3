@@ -31,6 +31,7 @@ const atendimentoSchema = z.object({
 
 const searchSchema = z.object({
   ticketId: z.coerce.number().int().positive().optional(),
+  contactId: z.coerce.number().int().positive().optional(),
   q: z.string().trim().min(2).max(100).optional(),
 });
 

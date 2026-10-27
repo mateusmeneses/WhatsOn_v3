@@ -87,6 +87,12 @@ export interface Contact {
   number: string;
   profilePicUrl: string | null;
   isGroup: boolean;
+  /** Empresa do cliente (nome do cliente no Manager, quando vinculado). */
+  clientCompany: string | null;
+  managerClientId: number | null;
+  /** Produto que o contato usa; o bot pergunta por ele no menu de suporte. */
+  product: string | null;
+  managerProductId: number | null;
 }
 
 export interface Ticket {
@@ -237,6 +243,7 @@ export interface AdminPartner {
 export interface BotState {
   nodeId: number | null;
   attempts: number;
+  confirmId?: number | null;
 }
 
 export type BotEffect =

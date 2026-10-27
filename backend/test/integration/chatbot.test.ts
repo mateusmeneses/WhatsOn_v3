@@ -181,6 +181,27 @@ describe("runBot", () => {
     expect(ticket).toMatchObject({ status: "pending", botPath: "Suporte técnico › Sistema X" });
   });
 
+  it("asks whether it is about the contact's product and goes straight to it on Sim", async () => {
+    const s = await scenario();
+    await s.contact.update({ product: "Gestão Café" });
+    const root = await createNode(s.connection, { message: "Olá!" });
+    const support = await createNode(s.connection, { parentId: root.id, key: "1", title: "Suporte técnico", action: "submenu", message: "Qual sistema?" });
+    await createNode(s.connection, { parentId: support.id, key: "1", title: "Sistema Fiscal", action: "transfer_queue", queueId: s.queue.id });
+    const cafe = await createNode(s.connection, { parentId: support.id, key: "2", title: "Gestão Café", action: "transfer_queue", queueId: s.queue.id });
+    const ticket = await createTicket({ companyId: s.company.id, contactId: s.contact.id, connectionId: s.connection.id, status: "bot" });
+
+    await runBot(ticket, "oi");
+    await runBot(ticket, "1");
+    await ticket.reload();
+    expect(ticket.chatbotConfirmNodeId).toBe(cafe.id);
+    const asked = await Message.findOne({ where: { ticketId: ticket.id }, order: [["id", "DESC"]] });
+    expect(asked?.body).toBe("Seu atendimento é sobre o *Gestão Café*?\n\n1 - Sim\n2 - Não, outro sistema");
+
+    await runBot(ticket, "1");
+    await ticket.reload();
+    expect(ticket).toMatchObject({ status: "pending", queueId: s.queue.id, botPath: "Suporte técnico › Gestão Café" });
+  });
+
   it("closes tickets still in the bot when the timeout fires", async () => {
     const { ticket } = await botTicket();
     await processBotTimeoutJob({ data: { ticketId: ticket.id } } as Job<{ ticketId: number }>);

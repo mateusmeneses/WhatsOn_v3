@@ -25,8 +25,26 @@ contactRoutes.get("/:id", async (req, res) => {
   res.json(await getContactOr404(currentAuth(req).companyId, idParam(req)));
 });
 
+// Texto vazio limpa o campo.
+const optionalText = z
+  .string()
+  .trim()
+  .max(200)
+  .nullable()
+  .optional()
+  .transform((v) => (v === "" ? null : v));
+const optionalCode = z.number().int().positive().nullable().optional();
+
+const updateSchema = z.object({
+  name: z.string().trim().min(1).max(120).optional(),
+  clientCompany: optionalText,
+  managerClientId: optionalCode,
+  product: optionalText,
+  managerProductId: optionalCode,
+});
+
 contactRoutes.put("/:id", async (req, res) => {
-  const input = z.object({ name: z.string().trim().min(1).max(120) }).parse(req.body);
+  const input = updateSchema.parse(req.body);
   res.json(await updateContact(currentAuth(req).companyId, idParam(req), input));
 });
 

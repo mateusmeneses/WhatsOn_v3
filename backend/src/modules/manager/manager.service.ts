@@ -1,6 +1,7 @@
 import { Contact, User } from "../../models";
 import { AppError } from "../../shared/errors/AppError";
 import { AuthContext } from "../auth/auth.types";
+import { getContactOr404 } from "../contacts/contacts.service";
 import { emitTicket } from "../tickets/ticket.events";
 import { getVisibleTicket, loadTicket } from "../tickets/tickets.service";
 import { managerRequest } from "./manager.client";
@@ -36,7 +37,14 @@ export async function getCatalog(): Promise<ManagerCatalog> {
   return value;
 }
 
-export async function searchClients(auth: AuthContext, input: { ticketId?: number; q?: string }): Promise<{ clientes: ManagerClient[] }> {
+export async function searchClients(
+  auth: AuthContext,
+  input: { ticketId?: number; contactId?: number; q?: string },
+): Promise<{ clientes: ManagerClient[] }> {
+  if (input.contactId !== undefined) {
+    const contact = await getContactOr404(auth.companyId, input.contactId);
+    return managerRequest("GET", "/clientes/", { query: { telefone: contact.number } });
+  }
   if (input.ticketId !== undefined) {
     const ticket = await getVisibleTicket(auth, input.ticketId);
     const contact = await Contact.findByPk(ticket.contactId);

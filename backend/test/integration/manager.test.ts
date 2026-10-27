@@ -79,6 +79,16 @@ describe("manager integration", () => {
     expect((calls[0].init?.headers as Record<string, string>).Authorization).toBe("Bearer token-de-teste-0123456789");
   });
 
+  it("suggests clients by phone straight from the contact (contact registration)", async () => {
+    const { agent, contact } = await setup();
+    const res = await request(app).get(`/api/manager/clients?contactId=${contact.id}`).set("Authorization", bearer(agent));
+    expect(res.status).toBe(200);
+    expect(calls[0].url).toContain(`telefone=${contact.number}`);
+
+    const foreign = (await scenario()).contact;
+    expect((await request(app).get(`/api/manager/clients?contactId=${foreign.id}`).set("Authorization", bearer(agent))).status).toBe(404);
+  });
+
   it("opens an OS as the Manager user with the same e-mail and stores it on the ticket", async () => {
     const { agent, ticket } = await setup();
     const res = await request(app)

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import type { Ticket } from "@/types/api";
+import { updateContact, type ContactUpdate } from "@/features/contacts/contactsApi";
+import type { Contact, Ticket } from "@/types/api";
 
 export interface ManagerContact {
   cod_contato: number;
@@ -50,7 +51,7 @@ export const managerKeys = {
   contacts: (codCliente: number) => ["manager", "contacts", codCliente] as const,
 };
 
-export async function fetchManagerClients(params: { ticketId?: number; q?: string }): Promise<ManagerClient[]> {
+export async function fetchManagerClients(params: { ticketId?: number; contactId?: number; q?: string }): Promise<ManagerClient[]> {
   const { data } = await api.get<{ clientes: ManagerClient[] }>("/manager/clients", { params });
   return data.clientes;
 }
@@ -83,6 +84,25 @@ export function useManagerEnabled(): boolean {
     staleTime: Infinity,
   });
   return data === true;
+}
+
+/** Guarda no contato a empresa e o produto usados no Manager, para os próximos atendimentos. Falha não atrapalha o fluxo. */
+export async function rememberOnContact(
+  contact: Contact | undefined,
+  choice: { client?: { id: number; name?: string }; product?: { id: number; name: string } },
+): Promise<void> {
+  if (!contact) return;
+  const patch: ContactUpdate = {};
+  if (choice.client && choice.client.id !== contact.managerClientId) {
+    patch.managerClientId = choice.client.id;
+    if (choice.client.name) patch.clientCompany = choice.client.name;
+  }
+  if (choice.product && choice.product.id !== contact.managerProductId) {
+    patch.managerProductId = choice.product.id;
+    patch.product = choice.product.name;
+  }
+  if (Object.keys(patch).length === 0) return;
+  await updateContact(contact.id, patch).catch(() => undefined);
 }
 
 export const normalize = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();

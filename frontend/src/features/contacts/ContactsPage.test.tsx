@@ -48,7 +48,7 @@ describe("ContactsPage", () => {
     expect(await screen.findByText("João Lima")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Próxima" })).toBeDisabled();
 
-    await userEvent.type(screen.getByPlaceholderText("Buscar por nome ou número"), "maria");
+    await userEvent.type(screen.getByPlaceholderText("Buscar por nome, número ou empresa"), "maria");
     await waitFor(() => expect(fetchContacts).toHaveBeenCalledWith("maria", 1));
   });
 
@@ -65,8 +65,46 @@ describe("ContactsPage", () => {
     await userEvent.type(input, "Maria VIP");
     await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
 
-    await waitFor(() => expect(updateContact).toHaveBeenCalledWith(1, { name: "Maria VIP" }));
+    await waitFor(() =>
+      expect(updateContact).toHaveBeenCalledWith(1, {
+        name: "Maria VIP",
+        clientCompany: null,
+        managerClientId: null,
+        product: null,
+        managerProductId: null,
+      }),
+    );
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["tickets"] });
+  });
+
+  it("shows and edits company and product as free text when the Manager is off", async () => {
+    vi.mocked(fetchContacts).mockResolvedValue({
+      items: [makeContact({ id: 1, name: "Maria", clientCompany: "Padaria Pão Quente", product: "Gestão Café" })],
+      hasMore: false,
+    });
+    vi.mocked(updateContact).mockResolvedValue(makeContact({ id: 1 }));
+    renderWithProviders(<ContactsPage />);
+
+    const row = (await screen.findByText("Maria")).closest("tr")!;
+    expect(within(row).getByText("Padaria Pão Quente")).toBeInTheDocument();
+    expect(within(row).getByText("Gestão Café")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Editar Maria" }));
+    const dialog = screen.getByRole("dialog", { name: "Editar contato" });
+    const productInput = within(dialog).getByLabelText("Produto");
+    await userEvent.clear(productInput);
+    await userEvent.type(productInput, "Sistema Fiscal");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+
+    await waitFor(() =>
+      expect(updateContact).toHaveBeenCalledWith(1, {
+        name: "Maria",
+        clientCompany: "Padaria Pão Quente",
+        managerClientId: null,
+        product: "Sistema Fiscal",
+        managerProductId: null,
+      }),
+    );
   });
 });

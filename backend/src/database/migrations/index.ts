@@ -18,6 +18,7 @@ import * as m0016 from "./0016-ticket-notes";
 import * as m0017 from "./0017-ticket-manager-refs";
 import * as m0018 from "./0018-ticket-idle-alerts";
 import * as m0019 from "./0019-claudia-webhook-logs";
+import * as m0020 from "./0020-contact-client-product";
 
 export interface MigrationModule {
   name: string;
@@ -45,4 +46,5 @@ export const migrations: MigrationModule[] = [
   { name: "0017-ticket-manager-refs", up: m0017.up, down: m0017.down },
   { name: "0018-ticket-idle-alerts", up: m0018.up, down: m0018.down },
   { name: "0019-claudia-webhook-logs", up: m0019.up, down: m0019.down },
+  { name: "0020-contact-client-product", up: m0020.up, down: m0020.down },
 ];

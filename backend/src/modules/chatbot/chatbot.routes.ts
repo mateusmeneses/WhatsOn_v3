@@ -39,7 +39,11 @@ const createSchema = z
 const updateSchema = z.object(nodeFields).partial();
 const orderSchema = z.object({ ids: z.array(z.number().int().positive()) });
 const simulateSchema = z.object({
-  state: z.object({ nodeId: z.number().int().positive().nullable(), attempts: z.number().int().min(0) }),
+  state: z.object({
+    nodeId: z.number().int().positive().nullable(),
+    attempts: z.number().int().min(0),
+    confirmId: z.number().int().positive().nullable().optional(),
+  }),
   input: z.string().max(4096).nullable(),
 });
 

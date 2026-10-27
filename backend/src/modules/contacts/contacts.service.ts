@@ -12,7 +12,13 @@ export async function listContacts(companyId: number, { search, page }: { search
     isGroup: false,
     deletedAt: null,
     ...(term
-      ? { [Op.or]: [{ name: { [Op.iLike]: `%${term}%` } }, { number: { [Op.like]: `%${term}%` } }] }
+      ? {
+          [Op.or]: [
+            { name: { [Op.iLike]: `%${term}%` } },
+            { number: { [Op.like]: `%${term}%` } },
+            { clientCompany: { [Op.iLike]: `%${term}%` } },
+          ],
+        }
       : {}),
   };
   const rows = await Contact.findAll({
@@ -35,9 +41,18 @@ export async function deleteContact(companyId: number, id: number): Promise<void
   await contact.update({ deletedAt: new Date() });
 }
 
-export async function updateContact(companyId: number, id: number, input: { name: string }) {
+export interface ContactUpdate {
+  name?: string;
+  clientCompany?: string | null;
+  managerClientId?: number | null;
+  product?: string | null;
+  managerProductId?: number | null;
+}
+
+export async function updateContact(companyId: number, id: number, input: ContactUpdate) {
   const contact = await getContactOr404(companyId, id);
-  await contact.update({ name: input.name });
+  // Só os campos enviados: os ausentes ficam como estão.
+  await contact.update(Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined)));
   // tickets embutem o contato: atualiza lista e cabeçalho de quem está com eles na tela
   const active = await Ticket.findAll({
     where: { companyId, contactId: id, status: { [Op.ne]: "closed" } },
