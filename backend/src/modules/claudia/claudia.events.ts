@@ -1,10 +1,12 @@
 import { Op } from "sequelize";
 import { Connection, ConnectionStatus, Contact, Ticket } from "../../models";
+import { getQueue, QueueNames } from "../../queues";
 import { logger } from "../../shared/logger";
 import { getRedis } from "../../shared/redis";
 import {
   ClaudiaEvent,
   claudiaFor,
+  CONNECTION_GRACE_MS,
   connectionPayload,
   enqueueClaudia,
   enqueueGrouped,
@@ -72,7 +74,10 @@ export function claudiaOnClientMessage(ticket: Ticket, contact: Contact, created
   });
 }
 
-/** Conexão com o WhatsApp caiu (fora) ou voltou depois de um aviso de queda (voltou). */
+/**
+ * Conexão com o WhatsApp caiu (fora, só se não voltar em CONNECTION_GRACE_MS) ou voltou depois de um aviso de queda
+ * que chegou a sair (voltou). Queda curta não gera aviso nenhum.
+ */
 export function claudiaOnConnectionChange(
   connection: Connection,
   previous: ConnectionStatus,
@@ -82,9 +87,18 @@ export function claudiaOnConnectionChange(
     if (!claudiaFor(connection.companyId) || previous === state) return;
     const key = `claudia:conexao-fora:${connection.id}`;
     if (previous === "connected") {
-      if ((await getRedis().set(key, "1", "NX")) === "OK") await enqueueClaudia(connectionPayload("fora"));
-    } else if (state === "connected" && (await getRedis().del(key)) === 1) {
-      await enqueueClaudia(connectionPayload("voltou"));
+      const payload = connectionPayload("fora");
+      // Guarda o id do aviso de queda para poder cancelá-lo se a conexão voltar dentro do prazo.
+      if ((await getRedis().set(key, payload.id_evento, "NX")) === "OK") {
+        await enqueueClaudia(payload, CONNECTION_GRACE_MS);
+      }
+    } else if (state === "connected") {
+      const jobId = await getRedis().getdel(key);
+      if (!jobId) return;
+      const pending = await getQueue(QueueNames.claudiaWebhook).getJob(jobId);
+      // Ainda na espera: cancela e não avisa nada. Se já saiu (ou está saindo agora), avisa a volta.
+      const cancelled = pending && (await pending.isDelayed()) && (await pending.remove().then(() => true, () => false));
+      if (!cancelled) await enqueueClaudia(connectionPayload("voltou"));
     }
   });
 }

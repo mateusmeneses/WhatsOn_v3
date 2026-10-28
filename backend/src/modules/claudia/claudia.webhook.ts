@@ -181,6 +181,12 @@ export function connectionPayload(status: "fora" | "voltou", now = new Date()): 
   return { ...emptyPayload("conexao", now), status };
 }
 
+/**
+ * A Evolution derruba e refaz a conexão sozinha a cada ~50 min (volta em 1–2 s). O aviso de queda espera esse prazo
+ * e é cancelado se a conexão voltar antes: a Claudia só acorda por queda de verdade.
+ */
+export const CONNECTION_GRACE_MS = 2 * 60_000;
+
 /** Reenvio após 30 s, 2 min e 10 min (seção 6). */
 export const RETRY_DELAYS_MS = [30_000, 120_000, 600_000];
 export const claudiaBackoff = (attemptsMade: number): number =>

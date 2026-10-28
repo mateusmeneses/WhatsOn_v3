@@ -5,6 +5,7 @@ import { applyConnectionUpdate } from "../../src/modules/connections/connections
 import { runClaudiaWatch } from "../../src/modules/claudia/claudia.watch";
 import {
   claudiaBackoff,
+  CONNECTION_GRACE_MS,
   enqueueGrouped,
   GROUP_JOB,
   ClaudiaPayload,
@@ -269,19 +270,32 @@ describe("claudia webhook", () => {
     expect((await queued()).map((j) => [j.data.evento, j.data.conversa])).toEqual([["bot_parado", ticket.id]]);
   });
 
-  it("connection down → conexao fora; back → voltou (only after a fora)", async () => {
+  it("connection down → conexao fora after the grace period; back → voltou (only after a fora)", async () => {
     const s = await setup();
     await applyConnectionUpdate(s.connection, "disconnected");
     await applyConnectionUpdate(s.connection, "qrcode");
+    let jobs = await queued();
+    expect(jobs.map((j) => [j.data.evento, j.data.status, j.delay])).toEqual([["conexao", "fora", CONNECTION_GRACE_MS]]);
+    // Passou o prazo: o aviso de queda saiu da espera.
+    await (await getQueue(QueueNames.claudiaWebhook).getJob(jobs[0].id))!.promote();
     await applyConnectionUpdate(s.connection, "connected");
     await applyConnectionUpdate(s.connection, "connected");
     const fresh = await createConnection(s.company.id, { status: "qrcode" });
     await applyConnectionUpdate(fresh, "connected"); // primeira conexão: não houve "fora"
-    const jobs = await queued();
+    jobs = await queued();
     expect(jobs.map((j) => [j.data.evento, j.data.status, j.data.conversa])).toEqual([
       ["conexao", "fora", null],
       ["conexao", "voltou", null],
     ]);
+  });
+
+  it("connection blips (back within the grace period) → no notice at all, every time", async () => {
+    const s = await setup();
+    for (let i = 0; i < 3; i++) {
+      await applyConnectionUpdate(s.connection, "disconnected");
+      await applyConnectionUpdate(s.connection, "connected");
+    }
+    expect(await queued()).toEqual([]);
   });
 
   it("groups per conversation whatever the event: 1 now, the rest in one notice at the end of the 60 s window", async () => {
