@@ -23,6 +23,8 @@ export function agentQueueEligible(scope: AgentScope, queueId: number | null): b
 export function canView(auth: AuthContext, scope: AgentScope, ticket: Ticket): boolean {
   if (ticket.companyId !== auth.companyId) return false;
   if (auth.profile !== "agent") return true;
+  // Grupos: todo mundo da empresa vê.
+  if (ticket.status === "group") return true;
   if (ticket.userId === auth.userId) return true;
   if (ticket.status === "bot") return scope.canViewBot;
   if (ticket.status === "open") return scope.canViewOthersOpen;
@@ -32,6 +34,7 @@ export function canView(auth: AuthContext, scope: AgentScope, ticket: Ticket): b
 /** Filtro adicional para a listagem por status; `null` = o perfil não vê nada nesse status. */
 export function visibilityWhere(auth: AuthContext, scope: AgentScope, status: TicketStatus): TicketFilter | null {
   if (auth.profile !== "agent") return {};
+  if (status === "group") return {};
   if (status === "bot") return scope.canViewBot ? {} : null;
   if (status === "open" && scope.canViewOthersOpen) return {};
   if (status === "pending") {

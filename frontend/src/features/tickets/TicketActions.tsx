@@ -68,12 +68,13 @@ export function TicketActions({ ticket }: { ticket: Ticket }) {
   });
 
   // Requerer só aparece quando o atendimento está com outro técnico; no bot ou aguardando, "Aceitar" já resolve.
+  const isGroup = ticket.status === "group";
   const canClaim =
-    Boolean(viewer?.canClaimTickets) && ticket.status !== "closed" && ticket.userId !== null && ticket.userId !== user.id;
+    !isGroup && Boolean(viewer?.canClaimTickets) && ticket.status !== "closed" && ticket.userId !== null && ticket.userId !== user.id;
   const holderName = ticket.user?.name ?? "outro técnico";
 
   const isMineOrSupervisor = user.profile !== "agent" || ticket.userId === user.id;
-  const canHandle = ticket.status !== "closed" && isMineOrSupervisor;
+  const canHandle = !isGroup && ticket.status !== "closed" && isMineOrSupervisor;
   const canReopen = ticket.status === "closed" && isMineOrSupervisor;
 
   function onTransferred(updated: Ticket) {

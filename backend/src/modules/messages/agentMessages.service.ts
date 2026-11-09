@@ -7,6 +7,7 @@ import { AuthContext } from "../auth/auth.types";
 import { mediaTypeFromMime, resolveMediaPath, StoredMedia } from "../media/media.storage";
 import { emitMessage, emitTicket } from "../tickets/ticket.events";
 import { getVisibleTicket } from "../tickets/tickets.service";
+import { waAddress } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
 import { createOutgoingMessage, DELETED_PREVIEW, previewOf } from "./messages.service";
 import { enqueueOutbound } from "./outbound";
@@ -52,8 +53,9 @@ export async function sendAgentMessage(
   input: { body?: string; quotedMessageId?: number; media?: StoredMedia; sign?: boolean },
 ) {
   const ticket = await getVisibleTicket(auth, ticketId);
-  if (ticket.status !== "open") throw new AppError("TICKET_NOT_OPEN", 409, "Aceite o atendimento antes de responder");
-  if (auth.profile === "agent" && ticket.userId !== auth.userId) {
+  const isGroup = ticket.status === "group";
+  if (ticket.status !== "open" && !isGroup) throw new AppError("TICKET_NOT_OPEN", 409, "Aceite o atendimento antes de responder");
+  if (!isGroup && auth.profile === "agent" && ticket.userId !== auth.userId) {
     throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
   }
   if (input.media) resolveMediaPath(auth.companyId, input.media.url);
@@ -73,7 +75,7 @@ export async function resendMessage(auth: AuthContext, messageId: number) {
   const message = await Message.findOne({ where: { id: messageId, companyId: auth.companyId } });
   if (!message) throw notFound("Mensagem");
   const ticket = await getVisibleTicket(auth, message.ticketId);
-  if (auth.profile === "agent" && ticket.userId !== auth.userId) {
+  if (ticket.status !== "group" && auth.profile === "agent" && ticket.userId !== auth.userId) {
     throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
   }
   const [updated] = await Message.update({ ack: "pending" }, { where: { id: messageId, ack: "failed" } });
@@ -98,8 +100,9 @@ async function loadOwnSentMessage(auth: AuthContext, messageId: number) {
   const message = await Message.findOne({ where: { id: messageId, companyId: auth.companyId } });
   if (!message) throw notFound("Mensagem");
   const ticket = await getVisibleTicket(auth, message.ticketId);
-  if (ticket.status !== "open") throw new AppError("TICKET_NOT_OPEN", 409, "Atendimento não está aberto");
-  if (auth.profile === "agent" && ticket.userId !== auth.userId) {
+  const isGroup = ticket.status === "group";
+  if (ticket.status !== "open" && !isGroup) throw new AppError("TICKET_NOT_OPEN", 409, "Atendimento não está aberto");
+  if (!isGroup && auth.profile === "agent" && ticket.userId !== auth.userId) {
     throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
   }
   if (!message.fromMe) throw new AppError("NOT_OWN_MESSAGE", 409, "Só mensagens enviadas pelo atendimento podem ser alteradas");
@@ -125,7 +128,7 @@ export async function editMessage(auth: AuthContext, messageId: number, body: st
   if (Date.now() - message.createdAt.getTime() > EDIT_WINDOW_MS) {
     throw new AppError("EDIT_EXPIRED", 409, "Só é possível editar até 15 minutos após o envio");
   }
-  await getProvider().editText(connection.instanceName, contact.number, message.providerMessageId, body);
+  await getProvider().editText(connection.instanceName, waAddress(contact), message.providerMessageId, body);
   await message.update({ body, editedAt: new Date() });
   emitMessage(message, "message:update");
   await refreshPreview(ticket, message, previewOf(message));
@@ -139,7 +142,7 @@ export async function deleteMessage(auth: AuthContext, messageId: number) {
     if (Date.now() - message.createdAt.getTime() > DELETE_WINDOW_MS) {
       throw new AppError("DELETE_EXPIRED", 409, "Só é possível apagar para todos até 2 dias após o envio");
     }
-    await getProvider().deleteForEveryone(connection.instanceName, contact.number, message.providerMessageId);
+    await getProvider().deleteForEveryone(connection.instanceName, waAddress(contact), message.providerMessageId);
   }
   // Sem providerMessageId (falha no envio) o cliente nunca recebeu: basta apagar aqui.
   await message.update({ deletedAt: new Date() });

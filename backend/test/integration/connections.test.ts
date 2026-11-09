@@ -4,6 +4,7 @@ import { Connection } from "../../src/models";
 import {
   applyConnectionUpdate,
   checkConnectionsHealth,
+  resetGroupsChecked,
 } from "../../src/modules/connections/connections.service";
 import { emitter } from "../../src/modules/realtime/socket";
 import { setProvider } from "../../src/modules/whatsapp/registry";
@@ -120,6 +121,15 @@ describe("connections", () => {
     expect(spy).toHaveBeenCalledWith(company.id, "connection:alert", { connectionId: connection.id, name: connection.name });
     expect((await Connection.findByPk(connection.id))!.status).toBe("disconnected");
     spy.mockRestore();
+  });
+
+  it("health check turns on group messages once per instance", async () => {
+    resetGroupsChecked();
+    const { company } = await admin();
+    const connection = await createConnection(company.id, { status: "connected" });
+    await checkConnectionsHealth();
+    await checkConnectionsHealth();
+    expect(fake.groupsEnabled).toEqual([connection.instanceName]);
   });
 
   it("health check fixes divergent statuses", async () => {

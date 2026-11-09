@@ -25,6 +25,8 @@ export class FakeProvider implements WhatsAppProvider {
   missingNumbers = new Set<string>();
   /** Número consultado -> jid devolvido (ex.: sem o nono dígito). */
   jidOverrides = new Map<string, string>();
+  /** Id do grupo -> assunto devolvido por getGroupSubject. */
+  groupSubjects = new Map<string, string>();
   private failures = new Map<Method, number>();
   private counter = 0;
 
@@ -37,6 +39,8 @@ export class FakeProvider implements WhatsAppProvider {
     this.state = "connected";
     this.missingNumbers.clear();
     this.jidOverrides.clear();
+    this.groupSubjects.clear();
+    this.groupsEnabled = [];
     this.failures.clear();
     this.counter = 0;
   }
@@ -68,6 +72,18 @@ export class FakeProvider implements WhatsAppProvider {
   async deleteInstance(instanceName: string): Promise<void> {
     this.maybeFail("deleteInstance");
     this.instances.delete(instanceName);
+  }
+
+  async getGroupSubject(_instanceName: string, groupId: string): Promise<string | null> {
+    return this.groupSubjects.get(groupId) ?? null;
+  }
+
+  /** Instâncias em que enableGroups foi chamado. */
+  groupsEnabled: string[] = [];
+
+  async enableGroups(instanceName: string): Promise<boolean> {
+    this.groupsEnabled.push(instanceName);
+    return true;
   }
 
   async logout(): Promise<void> {

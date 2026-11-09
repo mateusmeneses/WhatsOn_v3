@@ -19,6 +19,9 @@ function truncate(data: unknown, max = 500): string | undefined {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }
 
+/** Número simples vira JID de contato; JID completo (ex.: grupo @g.us) passa como está. */
+const remoteJid = (number: string) => (number.includes("@") ? number : `${number}@s.whatsapp.net`);
+
 export class EvolutionProvider implements WhatsAppProvider {
   private readonly http: AxiosInstance;
 
@@ -71,7 +74,7 @@ export class EvolutionProvider implements WhatsAppProvider {
         instanceName,
         integration: "WHATSAPP-BAILEYS",
         qrcode: true,
-        groupsIgnore: true,
+        groupsIgnore: false,
         webhook: { url: webhookUrl, byEvents: false, base64: false, events: WEBHOOK_EVENTS },
       }),
     );
@@ -131,12 +134,12 @@ export class EvolutionProvider implements WhatsAppProvider {
   }
 
   async editText(instanceName: string, number: string, providerMessageId: string, text: string): Promise<void> {
-    const key = { remoteJid: `${number}@s.whatsapp.net`, fromMe: true, id: providerMessageId };
+    const key = { remoteJid: remoteJid(number), fromMe: true, id: providerMessageId };
     await this.call(() => this.http.post(`/chat/updateMessage/${instanceName}`, { number, key, text }));
   }
 
   async deleteForEveryone(instanceName: string, number: string, providerMessageId: string): Promise<void> {
-    const data = { id: providerMessageId, remoteJid: `${number}@s.whatsapp.net`, fromMe: true };
+    const data = { id: providerMessageId, remoteJid: remoteJid(number), fromMe: true };
     await this.call(() => this.http.delete(`/chat/deleteMessageForEveryone/${instanceName}`, { data }));
   }
 
@@ -146,6 +149,37 @@ export class EvolutionProvider implements WhatsAppProvider {
     );
     const found = Array.isArray(data) ? data[0] : undefined;
     return { exists: Boolean(found?.exists), jid: found?.exists && found.jid ? found.jid : null };
+  }
+
+  /** Instâncias antigas foram criadas ignorando grupos; liga o recebimento mantendo as demais configurações. */
+  async enableGroups(instanceName: string): Promise<boolean> {
+    const current = await this.call<Record<string, unknown>>(() => this.http.get(`/settings/find/${instanceName}`), true);
+    if (!current || current.groupsIgnore === false) return false;
+    const keep = (key: string, fallback: unknown) => (current[key] ?? fallback);
+    await this.call(() =>
+      this.http.post(`/settings/set/${instanceName}`, {
+        rejectCall: keep("rejectCall", false),
+        msgCall: keep("msgCall", ""),
+        groupsIgnore: false,
+        alwaysOnline: keep("alwaysOnline", false),
+        readMessages: keep("readMessages", false),
+        readStatus: keep("readStatus", false),
+        syncFullHistory: keep("syncFullHistory", false),
+      }),
+    );
+    return true;
+  }
+
+  async getGroupSubject(instanceName: string, groupId: string): Promise<string | null> {
+    try {
+      const data = await this.call<{ subject?: string }>(
+        () => this.http.get(`/group/findGroupInfos/${instanceName}`, { params: { groupJid: `${groupId}@g.us` } }),
+        true,
+      );
+      return typeof data?.subject === "string" && data.subject.trim() ? data.subject.trim() : null;
+    } catch {
+      return null;
+    }
   }
 
   async downloadMedia(instanceName: string, providerMessageId: string): Promise<{ base64: string; mimetype: string }> {

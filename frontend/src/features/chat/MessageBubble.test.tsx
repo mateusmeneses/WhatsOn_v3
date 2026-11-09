@@ -4,6 +4,18 @@ import { describe, expect, it, vi } from "vitest";
 import { makeMessage } from "@/test/factories";
 import { MessageBubble } from "./MessageBubble";
 
+describe("MessageBubble group sender", () => {
+  it("shows who sent a group message, but not on our own messages", () => {
+    render(<MessageBubble message={makeMessage({ fromMe: false, body: "bom dia", senderName: "João", senderNumber: "5511944443333" })} onRetry={vi.fn()} />);
+    expect(screen.getByText("João")).toHaveAttribute("title", "5511944443333");
+  });
+
+  it("shows nothing extra on one-to-one messages", () => {
+    render(<MessageBubble message={makeMessage({ fromMe: false, body: "oi" })} onRetry={vi.fn()} />);
+    expect(screen.queryByTitle("5511944443333")).not.toBeInTheDocument();
+  });
+});
+
 describe("MessageBubble media", () => {
   it("enlarges an image in a viewer when clicked and closes it", async () => {
     const message = makeMessage({ type: "image", mediaUrl: "/media/1/a.png", mediaName: "foto.png", body: "" });

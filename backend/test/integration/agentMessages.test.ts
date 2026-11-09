@@ -51,6 +51,25 @@ describe("agent messages", () => {
     expect(older.body.items.map((m: { body: string }) => m.body)).toEqual(["m1", "m2"]);
   });
 
+  it("lets any agent of the company see, list and reply in a group conversation, but not transfer or close it", async () => {
+    const s = await scenario();
+    await s.contact.update({ number: "120363000000", isGroup: true, name: "Equipe" });
+    const ticket = await createTicket({ companyId: s.company.id, contactId: s.contact.id, connectionId: s.connection.id, status: "group" });
+    const agent = await createUser(s.company.id, { queueIds: [] });
+
+    const list = await request(app).get("/api/tickets?status=group").set("Authorization", bearer(agent));
+    expect(list.status).toBe(200);
+    expect(list.body.items.map((t: { id: number }) => t.id)).toEqual([ticket.id]);
+
+    const sent = await request(app).post(`/api/tickets/${ticket.id}/messages`).set("Authorization", bearer(agent)).send({ body: "Oi grupo" });
+    expect(sent.status).toBe(201);
+
+    const transfer = await request(app).post(`/api/tickets/${ticket.id}/transfer`).set("Authorization", bearer(agent)).send({ queueId: s.queue.id });
+    expect(transfer.status).toBe(409);
+    const close = await request(app).post(`/api/tickets/${ticket.id}/close`).set("Authorization", bearer(agent)).send({});
+    expect(close.status).toBe(409);
+  });
+
   it("sends a text message on an open ticket", async () => {
     const { agent, ticket } = await setup();
     const res = await request(app)

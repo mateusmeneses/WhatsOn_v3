@@ -6,7 +6,7 @@ import { getQueue, QueueNames, shardFor } from "../../queues";
 import { isCompanyBlocked } from "../companies/companyStatus";
 import { readMediaBase64 } from "../media/media.storage";
 import { emitMessage, emitMessageDeleted } from "../tickets/ticket.events";
-import { OutboundMediaType } from "../whatsapp/provider";
+import { OutboundMediaType, waAddress } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
 import { logger } from "../../shared/logger";
 import { retryInline } from "../../shared/retry";
@@ -68,7 +68,7 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
   const send = async () => {
     const provider = getProvider();
     if (message.mediaUrl) {
-      return provider.sendMedia(connection!.instanceName, contact!.number, {
+      return provider.sendMedia(connection!.instanceName, waAddress(contact!), {
         type: message.type as OutboundMediaType,
         base64: await readMediaBase64(message.companyId, message.mediaUrl),
         mimetype: message.mediaMime ?? "application/octet-stream",
@@ -77,7 +77,7 @@ export async function processOutboundJob(job: Job<OutboundJob>): Promise<void> {
       });
     }
     const quoted = message.quotedMessageId ? await Message.findByPk(message.quotedMessageId) : null;
-    return provider.sendText(connection!.instanceName, contact!.number, message.body, quoted?.providerMessageId ?? undefined);
+    return provider.sendText(connection!.instanceName, waAddress(contact!), message.body, quoted?.providerMessageId ?? undefined);
   };
 
   let providerMessageId: string;

@@ -164,10 +164,56 @@ describe("inbound pipeline", () => {
     expect((await ticket.reload()).status).toBe("bot");
   });
 
-  it("ignores group messages", async () => {
+  it("stores group messages in a group conversation with who said it, without bot", async () => {
+    const { connection, queue } = await scenario();
+    await withBot(connection, queue.id);
+    fake.groupSubjects.set("120363000000", "Equipe Suporte");
+    const groupMsg = (id: string, participant: string, pushName: string, text: string) =>
+      upsert({
+        key: { remoteJid: "120363000000@g.us", fromMe: false, id, participant: `${participant}@s.whatsapp.net` },
+        pushName,
+        message: { conversation: text },
+      });
+    await deliver(connection, groupMsg("G1", "5511955554444", "Maria", "oi grupo"));
+    await deliver(connection, groupMsg("G2", "5511944443333", "João", "bom dia"));
+
+    const group = await Contact.findOne({ where: { number: "120363000000" } });
+    expect(group).toMatchObject({ name: "Equipe Suporte", isGroup: true });
+    // Participantes não viram contatos soltos.
+    expect(await Contact.count({ where: { number: "5511955554444" } })).toBe(0);
+    const tickets = await Ticket.findAll();
+    expect(tickets).toHaveLength(1);
+    expect(tickets[0]).toMatchObject({ status: "group", contactId: group!.id, queueId: null, userId: null, lastMessage: "João: bom dia" });
+    const messages = await ticketMessages(tickets[0].id);
+    expect(messages.map((m) => [m.body, m.senderName, m.senderNumber, m.fromMe])).toEqual([
+      ["oi grupo", "Maria", "5511955554444", false],
+      ["bom dia", "João", "5511944443333", false],
+    ]);
+    expect(fake.texts()).toEqual([]);
+  });
+
+  it("keeps the placeholder name when the group subject is unknown and fills it later", async () => {
     const { connection } = await scenario();
-    await deliver(connection, upsert({ key: { remoteJid: "120363000000@g.us", fromMe: false, id: "G1" }, message: { conversation: "oi" } }));
-    expect(await Ticket.count()).toBe(0);
+    const msg = (id: string) => upsert({ key: { remoteJid: "120363000001@g.us", fromMe: false, id, participant: "5511900000000@s.whatsapp.net" }, message: { conversation: "x" } });
+    await deliver(connection, msg("G1"));
+    expect((await Contact.findOne({ where: { number: "120363000001" } }))!.name).toBe("Grupo 120363000001");
+    fake.groupSubjects.set("120363000001", "Financeiro");
+    await deliver(connection, msg("G2"));
+    expect((await Contact.findOne({ where: { number: "120363000001" } }))!.name).toBe("Financeiro");
+  });
+
+  it("stores a shared contact card as readable text", async () => {
+    const { connection } = await scenario();
+    await deliver(
+      connection,
+      upsert({
+        key: { remoteJid: "5511955554444@s.whatsapp.net", fromMe: false, id: "VC1" },
+        pushName: "Maria",
+        message: { contactMessage: { displayName: "Carlos", vcard: "BEGIN:VCARD\nFN:Carlos\nTEL;waid=5511912345678:+55 11 91234-5678\nEND:VCARD" } },
+      }),
+    );
+    const message = await Message.findOne({ where: { providerMessageId: "VC1" } });
+    expect(message).toMatchObject({ type: "text", body: "👤 Contato: Carlos\n📞 +55 11 91234-5678" });
   });
 
   it("downloads and stores media", async () => {

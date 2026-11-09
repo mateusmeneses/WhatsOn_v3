@@ -29,6 +29,14 @@ function resolveRemote(key: Json): { number: string; isGroup: boolean } | null {
   return { number: jidUser(jid), isGroup: false };
 }
 
+/** Quem falou no grupo: o participante, preferindo o número real quando ele vem como LID. */
+function groupSender(key: Json): string | undefined {
+  const p: unknown = key?.participant;
+  const alt: unknown = key?.participantAlt ?? key?.participantPn;
+  const jid = typeof p === "string" && p.endsWith("@lid") && typeof alt === "string" && alt ? alt : p;
+  return typeof jid === "string" && jid ? jidUser(jid) : undefined;
+}
+
 interface Content {
   type: MessageType;
   body: string;
@@ -43,6 +51,47 @@ function mediaContent(type: MessageType, node: Json, body: string): Content {
     media: { mimetype: node.mimetype ?? "application/octet-stream", fileName: node.fileName ?? undefined },
     quotedId: node.contextInfo?.stanzaId ?? undefined,
   };
+}
+
+/** Tipos que não são conteúdo de conversa (controle, reação, voto...). Não viram mensagem. */
+const IGNORED_KEYS = new Set([
+  "reactionMessage",
+  "encReactionMessage",
+  "protocolMessage",
+  "senderKeyDistributionMessage",
+  "messageContextInfo",
+  "pollUpdateMessage",
+  "keepInChatMessage",
+  "pinInChatMessage",
+  "editedMessage",
+  "deviceSentMessage",
+  "callLogMesssage",
+  "bcallMessage",
+]);
+
+export const UNSUPPORTED_BODY = "[Mensagem não suportada pelo WhatsOn — veja no celular]";
+
+const LINE_BREAK = /\r?\n/;
+const CONTACT_SEPARATOR = "\n\n";
+
+function vcardPhones(vcard: unknown): string[] {
+  if (typeof vcard !== "string") return [];
+  return vcard
+    .split(LINE_BREAK)
+    .filter((line) => /^(item\d+\.)?TEL[;:]/i.test(line))
+    .map((line) => line.slice(line.indexOf(":") + 1).trim())
+    .filter(Boolean);
+}
+
+function vcardName(vcard: unknown): string | undefined {
+  if (typeof vcard !== "string") return undefined;
+  const fn = vcard.split(LINE_BREAK).find((line) => /^FN[;:]/i.test(line));
+  return fn ? fn.slice(fn.indexOf(":") + 1).trim() || undefined : undefined;
+}
+
+function contactText(c: Json): string {
+  const name = c?.displayName || vcardName(c?.vcard) || "sem nome";
+  return [`👤 Contato: ${name}`, ...vcardPhones(c?.vcard).map((tel) => `📞 ${tel}`)].join("\n");
 }
 
 function extractContent(raw: Json): Content | null {
@@ -70,6 +119,27 @@ function extractContent(raw: Json): Content | null {
   if (m.locationMessage) {
     return { type: "location", body: `${m.locationMessage.degreesLatitude},${m.locationMessage.degreesLongitude}` };
   }
+  if (m.liveLocationMessage) {
+    return { type: "location", body: `${m.liveLocationMessage.degreesLatitude},${m.liveLocationMessage.degreesLongitude}` };
+  }
+  if (m.contactMessage) return { type: "text", body: contactText(m.contactMessage) };
+  if (m.contactsArrayMessage) {
+    const contacts: Json[] = Array.isArray(m.contactsArrayMessage.contacts) ? m.contactsArrayMessage.contacts : [];
+    return { type: "text", body: contacts.map(contactText).join(CONTACT_SEPARATOR) || "👤 Contato" };
+  }
+  const poll = m.pollCreationMessage ?? m.pollCreationMessageV2 ?? m.pollCreationMessageV3;
+  if (poll) {
+    const options: Json[] = Array.isArray(poll.options) ? poll.options : [];
+    return { type: "text", body: [`📊 Enquete: ${poll.name ?? ""}`, ...options.map((o) => `• ${o.optionName ?? ""}`)].join("\n") };
+  }
+  const reply =
+    m.buttonsResponseMessage?.selectedDisplayText ??
+    m.listResponseMessage?.title ??
+    m.templateButtonReplyMessage?.selectedDisplayText ??
+    m.interactiveResponseMessage?.body?.text;
+  if (typeof reply === "string") return { type: "text", body: reply };
+  // Qualquer outro tipo de conteúdo não pode sumir: grava um aviso para o atendente olhar no celular.
+  if (Object.keys(m).some((k) => !IGNORED_KEYS.has(k))) return { type: "text", body: UNSUPPORTED_BODY };
   return null;
 }
 
@@ -79,6 +149,7 @@ function parseMessage(instanceName: string, d: Json): InboundMessage[] {
   if (!remote) return [];
   const content = extractContent(d.message);
   if (!content) return [];
+  const sender = remote.isGroup ? groupSender(d.key) : undefined;
   return [
     {
       kind: "message",
@@ -88,6 +159,7 @@ function parseMessage(instanceName: string, d: Json): InboundMessage[] {
       isGroup: remote.isGroup,
       fromMe: Boolean(d.key.fromMe),
       pushName: d.pushName || undefined,
+      ...(remote.isGroup ? { senderNumber: sender, senderName: d.pushName || undefined } : {}),
       type: content.type,
       body: content.body,
       media: content.media,

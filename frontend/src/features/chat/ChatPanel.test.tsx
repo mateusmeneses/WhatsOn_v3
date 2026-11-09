@@ -209,6 +209,15 @@ describe("ChatPanel", () => {
     expect(await screen.findByText("Preciso de ajuda")).toBeInTheDocument();
   });
 
+  it("lets any agent reply in a group conversation, without accept/transfer/close", async () => {
+    setup({ status: "group", userId: null, queueId: null, contact: makeContact({ name: "Equipe Suporte", number: "120363000000", isGroup: true }) });
+    expect(await screen.findByLabelText("Mensagem")).toBeInTheDocument();
+    expect(screen.getByText("Grupo do WhatsApp")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Aceitar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Finalizar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Transferir/ })).not.toBeInTheDocument();
+  });
+
   it("hides the composer until the ticket is accepted", async () => {
     setup({ status: "pending", userId: null });
     expect(await screen.findByText("Aceite o atendimento para responder.")).toBeInTheDocument();

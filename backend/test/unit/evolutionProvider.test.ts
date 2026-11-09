@@ -17,7 +17,7 @@ describe("EvolutionProvider", () => {
         body.instanceName === "wo_1_ab" &&
         body.integration === "WHATSAPP-BAILEYS" &&
         body.qrcode === true &&
-        body.groupsIgnore === true &&
+        body.groupsIgnore === false &&
         body.webhook.url === "http://hook" &&
         body.webhook.base64 === false &&
         body.webhook.byEvents === false &&
@@ -26,6 +26,35 @@ describe("EvolutionProvider", () => {
       .reply(201, { instance: { instanceName: "wo_1_ab" } });
     await provider.createInstance("wo_1_ab", "http://hook");
     expect(scope.isDone()).toBe(true);
+  });
+
+  it("turns on group messages keeping the other settings, only when needed", async () => {
+    api()
+      .get("/settings/find/inst")
+      .reply(200, { rejectCall: true, msgCall: "ocupado", groupsIgnore: true, alwaysOnline: false, readMessages: false, readStatus: false, syncFullHistory: false });
+    const set = api()
+      .post("/settings/set/inst", { rejectCall: true, msgCall: "ocupado", groupsIgnore: false, alwaysOnline: false, readMessages: false, readStatus: false, syncFullHistory: false })
+      .reply(201, {});
+    await expect(provider.enableGroups("inst")).resolves.toBe(true);
+    expect(set.isDone()).toBe(true);
+
+    api().get("/settings/find/inst").reply(200, { groupsIgnore: false });
+    await expect(provider.enableGroups("inst")).resolves.toBe(false);
+  });
+
+  it("finds the group subject, or null when it cannot", async () => {
+    api().get("/group/findGroupInfos/inst").query({ groupJid: "120363000000@g.us" }).reply(200, { subject: " Equipe " });
+    await expect(provider.getGroupSubject("inst", "120363000000")).resolves.toBe("Equipe");
+    api().get("/group/findGroupInfos/inst").query(true).reply(500, {});
+    await expect(provider.getGroupSubject("inst", "120363000000")).resolves.toBeNull();
+  });
+
+  it("edits and deletes group messages using the group JID", async () => {
+    const edit = api()
+      .post("/chat/updateMessage/inst", (b) => b.key.remoteJid === "120363000000@g.us")
+      .reply(200, {});
+    await provider.editText("inst", "120363000000@g.us", "M1", "novo");
+    expect(edit.isDone()).toBe(true);
   });
 
   it("checks whether a number is on WhatsApp", async () => {

@@ -10,6 +10,7 @@ export interface Viewer extends TicketAccess {
 export function ticketVisibleIn(ticket: Ticket, status: TicketStatus, viewer: Viewer): boolean {
   if (ticket.status !== status) return false;
   if (viewer.profile !== "agent") return true;
+  if (status === "group") return true;
   if (status === "bot") return viewer.canViewBot;
   if (ticket.userId === viewer.userId) return true;
   if (status === "open") return viewer.canViewOthersOpen;

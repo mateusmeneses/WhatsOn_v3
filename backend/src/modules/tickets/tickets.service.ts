@@ -168,6 +168,11 @@ export async function canJoinTicket(auth: AuthContext, ticketId: number): Promis
 
 const ticketClosed = () => new AppError("TICKET_CLOSED", 409, "Atendimento já finalizado");
 
+/** Conversa de grupo não entra no fluxo de atendimento: não se transfere, requer nem finaliza. */
+function assertNotGroup(ticket: Ticket): void {
+  if (ticket.status === "group") throw new AppError("TICKET_IS_GROUP", 409, "Conversa de grupo não tem essa ação");
+}
+
 function assertCanHandle(auth: AuthContext, ticket: Ticket): void {
   if (auth.profile === "agent" && ticket.userId !== auth.userId) {
     throw new AppError("FORBIDDEN", 403, "Este atendimento não está com você");
@@ -213,6 +218,7 @@ export async function acceptTicket(auth: AuthContext, id: number) {
 export async function transferTicket(auth: AuthContext, id: number, input: { queueId?: number; userId?: number }) {
   const ticket = await getVisibleTicket(auth, id);
   if (ticket.status === "closed") throw ticketClosed();
+  assertNotGroup(ticket);
   assertCanHandle(auth, ticket);
   if (input.queueId) await assertQueuesBelong(auth.companyId, [input.queueId]);
   if (input.userId) await getUserOr404(auth.companyId, input.userId);
@@ -249,6 +255,7 @@ export async function claimTicket(auth: AuthContext, id: number, input: { note?:
   const ticket = await Ticket.findOne({ where: { id, companyId: auth.companyId } });
   if (!ticket) throw notFound("Ticket");
   if (ticket.status === "closed") throw ticketClosed();
+  assertNotGroup(ticket);
   if (ticket.status === "open" && ticket.userId === auth.userId) {
     throw new AppError("TICKET_ALREADY_YOURS", 409, "Este atendimento já está com você");
   }
@@ -274,6 +281,7 @@ export async function claimTicket(auth: AuthContext, id: number, input: { note?:
 export async function closeTicket(auth: AuthContext, id: number, opts: { sendClosingMessage?: boolean } = {}) {
   const ticket = await getVisibleTicket(auth, id);
   if (ticket.status === "closed") throw ticketClosed();
+  assertNotGroup(ticket);
   assertCanHandle(auth, ticket);
   const closed = await closeTicketInternal(ticket, {
     userId: auth.userId,

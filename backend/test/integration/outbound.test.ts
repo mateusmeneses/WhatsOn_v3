@@ -50,6 +50,15 @@ describe("outgoing messages", () => {
     expect(message).toMatchObject({ ack: "sent", providerMessageId: "fake-1" });
   });
 
+  it("sends to a group using its full JID", async () => {
+    const { ticket, contact } = await openTicket();
+    await contact.update({ number: "120363000000", isGroup: true });
+    await ticket.update({ status: "group", userId: null });
+    const message = await createOutgoingMessage(ticket, { body: "Olá, grupo" });
+    await processOutboundJob(job(message.id));
+    expect(fake.sent[0]).toMatchObject({ number: "120363000000@g.us", text: "Olá, grupo" });
+  });
+
   it("passes the quoted provider id", async () => {
     const { ticket } = await openTicket();
     const original = await createMessage(ticket, { providerMessageId: "ORIG" });

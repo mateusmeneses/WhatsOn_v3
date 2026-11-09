@@ -19,6 +19,7 @@ const STATUS: Record<TicketStatus, { label: string; tone: "neutral" | "warning" 
   pending: { label: "Aguardando", tone: "warning" },
   open: { label: "Em atendimento", tone: "success" },
   closed: { label: "Finalizado", tone: "neutral" },
+  group: { label: "Grupo", tone: "primary" },
 };
 
 /** Minúsculas e sem acento, para "configuracoes" achar "Configurações". */

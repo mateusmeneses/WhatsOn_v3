@@ -2,7 +2,8 @@
 export type Profile = "admin" | "supervisor" | "agent" | "superadmin";
 /** Perfis de usuários de uma empresa. */
 export type CompanyProfile = Exclude<Profile, "superadmin">;
-export type TicketStatus = "bot" | "pending" | "open" | "closed";
+/** "group": conversa de grupo do WhatsApp (todos da empresa veem e respondem; sem bot, fila nem dono). */
+export type TicketStatus = "bot" | "pending" | "open" | "closed" | "group";
 export type Ack = "pending" | "sent" | "delivered" | "read" | "failed";
 export type MessageType = "text" | "image" | "audio" | "video" | "document" | "sticker" | "location";
 export type ConnectionStatus = "disconnected" | "qrcode" | "connected";
@@ -154,6 +155,9 @@ export interface Message {
   quotedMessageId: number | null;
   sentByUserId: number | null;
   isBot: boolean;
+  /** Só em grupo: quem mandou a mensagem recebida. */
+  senderName?: string | null;
+  senderNumber?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;
   createdAt: string;

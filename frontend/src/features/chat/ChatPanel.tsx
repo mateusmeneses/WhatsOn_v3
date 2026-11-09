@@ -30,6 +30,7 @@ function readOnlyHint(ticket: Ticket, user: PublicUser): string {
   if (ticket.status === "pending") return "Aceite o atendimento para responder.";
   if (ticket.status === "bot") return "O chatbot está conduzindo esta conversa.";
   if (ticket.status === "closed") return "Atendimento finalizado.";
+  if (ticket.status === "group") return "";
   return ticket.userId === user.id ? "" : "Este atendimento está com outro atendente.";
 }
 
@@ -67,7 +68,8 @@ function ChatView({ ticket }: { ticket: Ticket }) {
     return [...server, ...localMessages.filter((m) => !ids.has(m.id))];
   }, [messagesQuery.data, localMessages]);
   const isMineOrSupervisor = user.profile !== "agent" || ticket.userId === user.id;
-  const canReply = ticket.status === "open" && isMineOrSupervisor;
+  // Grupo: qualquer pessoa da empresa responde.
+  const canReply = (ticket.status === "open" && isMineOrSupervisor) || ticket.status === "group";
   const isAdmin = user.profile === "admin";
   const [signPreference, toggleSign] = useSignPreference();
   // Só o administrador escolhe; para os demais o backend sempre assina.

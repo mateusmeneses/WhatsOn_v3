@@ -167,6 +167,13 @@ export async function applyQrCode(connection: Connection, qr: string): Promise<v
   emitter.toSupervisors(connection.companyId, "connection:qrcode", { connectionId: connection.id, qr });
 }
 
+/** Instâncias já conferidas neste processo (grupos ligados); evita bater na Evolution a cada rodada. */
+const groupsChecked = new Set<string>();
+
+export function resetGroupsChecked(): void {
+  groupsChecked.clear();
+}
+
 export async function checkConnectionsHealth(): Promise<void> {
   const connections = await Connection.findAll();
   for (const connection of connections) {
@@ -175,6 +182,15 @@ export async function checkConnectionsHealth(): Promise<void> {
       await applyConnectionUpdate(connection, state);
     } catch (err) {
       logger.warn({ err, connectionId: connection.id }, "connection health check failed");
+    }
+    if (groupsChecked.has(connection.instanceName)) continue;
+    try {
+      if (await getProvider().enableGroups(connection.instanceName)) {
+        logger.info({ connectionId: connection.id }, "group messages enabled on instance");
+      }
+      groupsChecked.add(connection.instanceName);
+    } catch (err) {
+      logger.warn({ err, connectionId: connection.id }, "enable groups failed");
     }
   }
 }

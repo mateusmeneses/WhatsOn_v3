@@ -4,7 +4,8 @@ import { Contact } from "./Contact";
 import { Queue } from "./Queue";
 import { User } from "./User";
 
-export type TicketStatus = "bot" | "pending" | "open" | "closed";
+/** "group": conversa de grupo do WhatsApp; fica fora do fluxo de atendimento (sem bot, fila, dono nem SLA). */
+export type TicketStatus = "bot" | "pending" | "open" | "closed" | "group";
 
 @Table({ tableName: "tickets" })
 export class Ticket extends Model {

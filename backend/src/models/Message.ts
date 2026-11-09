@@ -48,6 +48,13 @@ export class Message extends Model {
   @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
   isBot!: boolean;
 
+  /** Só em conversa de grupo: quem mandou a mensagem recebida. */
+  @Column({ type: DataType.STRING, allowNull: true })
+  senderName!: string | null;
+
+  @Column({ type: DataType.STRING, allowNull: true })
+  senderNumber!: string | null;
+
   @Column({ type: DataType.DATE, allowNull: true })
   editedAt!: Date | null;
 

@@ -72,6 +72,67 @@ describe("parseEvolutionWebhook", () => {
     expect(event).toMatchObject({ isGroup: true });
   });
 
+  it("carries the group participant as sender (real number when the participant is a LID)", () => {
+    const [event] = parseEvolutionWebhook(
+      upsert({
+        key: { remoteJid: "120363000000@g.us", fromMe: false, id: "G2", participant: "5511955554444@s.whatsapp.net" },
+        pushName: "João",
+        message: { conversation: "bom dia" },
+      }),
+    );
+    expect(event).toMatchObject({ remoteNumber: "120363000000", isGroup: true, senderNumber: "5511955554444", senderName: "João" });
+
+    const [lid] = parseEvolutionWebhook(
+      upsert({
+        key: { remoteJid: "120363000000@g.us", fromMe: false, id: "G3", participant: "999@lid", participantAlt: "5511944443333@s.whatsapp.net" },
+        message: { conversation: "oi" },
+      }),
+    );
+    expect(lid).toMatchObject({ senderNumber: "5511944443333" });
+  });
+
+  it("parses shared contacts (vCard) into readable text", () => {
+    const base = { key: { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "C1" } };
+    const vcard = "BEGIN:VCARD\nVERSION:3.0\nN:;Carlos;;;\nFN:Carlos Silva\nTEL;type=CELL;waid=5511912345678:+55 11 91234-5678\nEND:VCARD";
+    const [single] = parseEvolutionWebhook(upsert({ ...base, message: { contactMessage: { displayName: "Carlos Silva", vcard } } }));
+    expect(single).toMatchObject({ type: "text", body: "👤 Contato: Carlos Silva\n📞 +55 11 91234-5678" });
+
+    const [many] = parseEvolutionWebhook(
+      upsert({
+        ...base,
+        message: {
+          contactsArrayMessage: {
+            contacts: [
+              { displayName: "Ana", vcard: "BEGIN:VCARD\nFN:Ana\nTEL:+5511900000001\nEND:VCARD" },
+              { displayName: "Bia", vcard: "BEGIN:VCARD\nFN:Bia\nEND:VCARD" },
+            ],
+          },
+        },
+      }),
+    );
+    expect(many).toMatchObject({ type: "text", body: "👤 Contato: Ana\n📞 +5511900000001\n\n👤 Contato: Bia" });
+  });
+
+  it("parses polls, button/list replies and live location", () => {
+    const base = { key: { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "P1" } };
+    const parse = (message: object) => parseEvolutionWebhook(upsert({ ...base, message }))[0];
+    expect(parse({ pollCreationMessageV3: { name: "Melhor dia?", options: [{ optionName: "Seg" }, { optionName: "Ter" }] } })).toMatchObject({
+      type: "text",
+      body: "📊 Enquete: Melhor dia?\n• Seg\n• Ter",
+    });
+    expect(parse({ buttonsResponseMessage: { selectedDisplayText: "Sim" } })).toMatchObject({ type: "text", body: "Sim" });
+    expect(parse({ listResponseMessage: { title: "Suporte" } })).toMatchObject({ type: "text", body: "Suporte" });
+    expect(parse({ templateButtonReplyMessage: { selectedDisplayText: "Ok" } })).toMatchObject({ type: "text", body: "Ok" });
+    expect(parse({ liveLocationMessage: { degreesLatitude: 1, degreesLongitude: 2 } })).toMatchObject({ type: "location", body: "1,2" });
+  });
+
+  it("never drops an unknown message type: stores a placeholder text", () => {
+    const [event] = parseEvolutionWebhook(
+      upsert({ key: { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "U1" }, message: { eventMessage: { name: "x" }, messageContextInfo: {} } }),
+    );
+    expect(event).toMatchObject({ type: "text", body: "[Mensagem não suportada pelo WhatsOn — veja no celular]" });
+  });
+
   it("uses the real phone number for @lid contacts when available", () => {
     const [withAlt] = parseEvolutionWebhook(
       upsert({
@@ -112,6 +173,8 @@ describe("parseEvolutionWebhook", () => {
     const key = { remoteJid: "5511988887777@s.whatsapp.net", fromMe: false, id: "R1" };
     expect(parseEvolutionWebhook(upsert({ key, message: { reactionMessage: { text: "👍" } } }))).toEqual([]);
     expect(parseEvolutionWebhook(upsert({ key, message: { protocolMessage: {} } }))).toEqual([]);
+    expect(parseEvolutionWebhook(upsert({ key, message: { senderKeyDistributionMessage: {}, messageContextInfo: {} } }))).toEqual([]);
+    expect(parseEvolutionWebhook(upsert({ key, message: { pollUpdateMessage: {} } }))).toEqual([]);
     expect(parseEvolutionWebhook(upsert({ key: { ...key, remoteJid: "status@broadcast" }, message: { conversation: "x" } }))).toEqual([]);
     expect(parseEvolutionWebhook(null)).toEqual([]);
     expect(parseEvolutionWebhook({ event: "chats.update", data: {} })).toEqual([]);

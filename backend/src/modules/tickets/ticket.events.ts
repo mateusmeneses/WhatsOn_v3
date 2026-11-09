@@ -14,8 +14,8 @@ export async function emitTicket(
   const ticket = await Ticket.findByPk(ticketId, { include: TICKET_INCLUDE });
   if (!ticket) return;
   const targets = new Set<string>([rooms.supervisors(ticket.companyId), rooms.ticketWatchers(ticket.companyId)]);
-  // Pendente sem fila nem atendente: todo agente da empresa pode vê-lo (visibility.ts).
-  if (ticket.status === "pending" && ticket.queueId === null && ticket.userId === null) {
+  // Grupo, ou pendente sem fila nem atendente: todo agente da empresa pode vê-lo (visibility.ts).
+  if (ticket.status === "group" || (ticket.status === "pending" && ticket.queueId === null && ticket.userId === null)) {
     targets.add(rooms.company(ticket.companyId));
   }
   for (const side of [ticket, prev]) {

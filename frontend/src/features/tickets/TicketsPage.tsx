@@ -27,15 +27,17 @@ export function TicketsPage() {
   const viewer = useViewer();
   const { ticketId } = useParams();
   const selectedId = ticketId ? Number(ticketId) : null;
-  // ?aba=pending|open|closed|bot abre direto na aba (atalhos do dashboard e das filas).
+  // ?aba=pending|open|closed|bot|group abre direto na aba (atalhos do dashboard e das filas).
   const [searchParams] = useSearchParams();
   const [selectedStatus, setStatus] = useState<TicketStatus>(() => {
     const aba = searchParams.get("aba");
-    return aba === "open" || aba === "closed" || aba === "bot" ? aba : "pending";
+    return aba === "open" || aba === "closed" || aba === "bot" || aba === "group" ? aba : "pending";
   });
   const [search, setSearch] = useState("");
   const [scope, setScope] = useState<Scope>(readScope);
-  const mine = scope === "mine";
+  const isGroups = selectedStatus === "group";
+  // Grupo não tem dono: "Só meus" não se aplica.
+  const mine = scope === "mine" && !isGroups;
   const changeScope = (next: Scope) => {
     setScope(next);
     try {
@@ -54,6 +56,7 @@ export function TicketsPage() {
     { value: "open", label: "Atendendo" },
     { value: "closed", label: "Finalizados" },
     ...(showBot ? [{ value: "bot" as const, label: "Bot" }] : []),
+    { value: "group", label: "Grupos" },
   ];
 
   return (
@@ -62,19 +65,21 @@ export function TicketsPage() {
         <div className="space-y-3 border-b border-border p-4">
           <h1 className="text-lg font-semibold">Atendimentos</h1>
           <Tabs value={status} onChange={setStatus} items={tabs} />
-          <Tabs
-            value={scope}
-            onChange={changeScope}
-            items={[
-              { value: "all", label: "Todos" },
-              { value: "mine", label: "Só meus" },
-            ]}
-          />
+          {!isGroups && (
+            <Tabs
+              value={scope}
+              onChange={changeScope}
+              items={[
+                { value: "all", label: "Todos" },
+                { value: "mine", label: "Só meus" },
+              ]}
+            />
+          )}
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
             <Input
               className="pl-9"
-              placeholder="Buscar por nome ou número"
+              placeholder={isGroups ? "Buscar grupo pelo nome" : "Buscar por nome ou número"}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />

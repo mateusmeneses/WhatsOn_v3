@@ -60,6 +60,17 @@ describe("TicketsPage deep links", () => {
 });
 
 describe("TicketsPage", () => {
+  it("has a Grupos tab for every agent, without the \"Só meus\" filter", async () => {
+    setTestUser({ id: 1, profile: "agent" });
+    const grupo = makeTicket({ id: 30, status: "group", userId: null, queueId: null, contact: makeContact({ id: 30, name: "Equipe Suporte", number: "120363000000", isGroup: true }) });
+    vi.mocked(fetchTickets).mockImplementation(async (status) => (status === "group" ? { items: [grupo], hasMore: false } : { items: [], hasMore: false }));
+    renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });
+    await userEvent.click(screen.getByRole("tab", { name: "Grupos" }));
+    await waitFor(() => expect(fetchTickets).toHaveBeenCalledWith("group", "", 1));
+    expect(await screen.findByText("Equipe Suporte")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Só meus" })).not.toBeInTheDocument();
+  });
+
   it("lists pending tickets and hides the bot tab from agents", async () => {
     setTestUser({ id: 1, profile: "agent" });
     renderWithProviders(<TicketsPage />, { socket: new FakeSocket() });

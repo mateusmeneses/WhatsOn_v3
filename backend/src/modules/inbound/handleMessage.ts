@@ -28,6 +28,49 @@ async function upsertContact(companyId: number, ev: InboundMessage): Promise<Con
   return contact;
 }
 
+const groupPlaceholder = (id: string) => `Grupo ${id}`;
+
+/** Contato que representa o grupo; o nome vem do assunto do grupo (busca só enquanto não souber). */
+async function upsertGroupContact(connection: Connection, ev: InboundMessage): Promise<Contact> {
+  const companyId = connection.companyId;
+  const [contact] = await Contact.findOrCreate({
+    where: { companyId, number: ev.remoteNumber },
+    defaults: { companyId, number: ev.remoteNumber, name: groupPlaceholder(ev.remoteNumber), isGroup: true },
+  });
+  const changes: Partial<Pick<Contact, "name" | "isGroup" | "deletedAt">> = {};
+  if (!contact.isGroup) changes.isGroup = true;
+  if (contact.deletedAt) changes.deletedAt = null;
+  if (contact.name === groupPlaceholder(ev.remoteNumber) || contact.name === contact.number) {
+    const subject = await getProvider().getGroupSubject(connection.instanceName, ev.remoteNumber);
+    if (subject) changes.name = subject;
+  }
+  if (Object.keys(changes).length) await contact.update(changes);
+  return contact;
+}
+
+/** Conversa de grupo: um ticket "group" por grupo e conexão, fora do fluxo de atendimento. */
+async function findOrCreateGroupTicket(connection: Connection, contact: Contact): Promise<{ ticket: Ticket; created: boolean }> {
+  const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
+  const existing = await Ticket.findOne({ where });
+  if (existing) return { ticket: existing, created: false };
+  try {
+    const ticket = await Ticket.create({
+      companyId: connection.companyId,
+      contactId: contact.id,
+      connectionId: connection.id,
+      status: "group",
+      queueId: null,
+    });
+    return { ticket, created: true };
+  } catch (err) {
+    if (err instanceof UniqueConstraintError) {
+      const again = await Ticket.findOne({ where });
+      if (again) return { ticket: again, created: false };
+    }
+    throw err;
+  }
+}
+
 const ECHO_MEDIA_TYPES: MessageType[] = ["document", "image", "video", "audio"];
 
 /**
@@ -125,14 +168,16 @@ export async function handleInboundMessage(
   ev: InboundMessage,
   opts: { finalAttempt: boolean },
 ): Promise<void> {
-  if (ev.isGroup) return;
   if (await Message.count({ where: { connectionId: connection.id, providerMessageId: ev.providerMessageId } })) return;
 
-  const contact = await upsertContact(connection.companyId, ev);
+  const contact = ev.isGroup ? await upsertGroupContact(connection, ev) : await upsertContact(connection.companyId, ev);
   if (ev.fromMe && (await matchPendingEcho(connection.id, contact.id, ev))) return;
 
   const { media, body } = await fetchMedia(connection, ev, opts);
-  const { ticket, created } = await findOrCreateTicket(connection, contact, ev.fromMe);
+  const { ticket, created } = ev.isGroup
+    ? await findOrCreateGroupTicket(connection, contact)
+    : await findOrCreateTicket(connection, contact, ev.fromMe);
+  const senderName = ev.isGroup && !ev.fromMe ? (ev.senderName ?? ev.senderNumber ?? null) : null;
   const quotedMessageId = await resolveQuoted(connection.id, ev.quotedProviderMessageId);
 
   let message: Message;
@@ -154,11 +199,13 @@ export async function handleInboundMessage(
           ack: ev.fromMe ? "sent" : "delivered",
           quotedMessageId,
           isBot: false,
+          senderName,
+          senderNumber: ev.isGroup && !ev.fromMe ? (ev.senderNumber ?? null) : null,
         },
         { transaction },
       );
       await Ticket.update(
-        { lastMessage: previewOf(created), lastMessageAt: new Date() },
+        { lastMessage: senderName ? `${senderName}: ${previewOf(created)}` : previewOf(created), lastMessageAt: new Date() },
         { where: { id: ticket.id }, transaction },
       );
       if (!ev.fromMe) await Ticket.increment("unreadCount", { by: 1, where: { id: ticket.id }, transaction });
@@ -195,7 +242,8 @@ export async function handleInboundMessage(
   }
   await emitTicket(ticket.id);
 
-  if (ev.fromMe) return;
+  // Grupo não passa por bot nem Claudia.
+  if (ev.fromMe || ev.isGroup) return;
   await ticket.reload();
   await claudiaOnClientMessage(ticket, contact, created);
   if (ticket.status !== "bot") return;

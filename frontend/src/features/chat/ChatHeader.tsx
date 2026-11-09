@@ -15,11 +15,13 @@ const STATUS: Record<TicketStatus, { label: string; tone: "neutral" | "primary" 
   pending: { label: "Aguardando", tone: "warning" },
   open: { label: "Em atendimento", tone: "success" },
   closed: { label: "Finalizado", tone: "neutral" },
+  group: { label: "Grupo", tone: "primary" },
 };
 
 export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: ReactNode }) {
   const contact = ticket.contact;
   const status = STATUS[ticket.status];
+  const isGroup = ticket.status === "group" || Boolean(contact?.isGroup);
   const [editing, setEditing] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -36,7 +38,7 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
         <div className="min-w-[10rem] max-w-full">
           <div className="flex min-w-0 items-center gap-1">
             <p className="truncate font-semibold">{contact?.name ?? "Contato"}</p>
-            {contact && (
+            {contact && !isGroup && (
               <button
                 type="button"
                 className="shrink-0 rounded p-1 text-ink-muted hover:bg-primary-soft hover:text-primary"
@@ -48,7 +50,7 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
               </button>
             )}
           </div>
-          <p className="text-xs text-ink-muted">{contact ? formatPhone(contact.number) : ""}</p>
+          <p className="text-xs text-ink-muted">{contact ? (isGroup ? "Grupo do WhatsApp" : formatPhone(contact.number)) : ""}</p>
         </div>
         {ticket.botPath && (
           <Badge tone="neutral" title="Opções escolhidas pelo cliente no menu">
@@ -77,7 +79,7 @@ export function ChatHeader({ ticket, actions }: { ticket: Ticket; actions?: Reac
         >
           <NotebookPen className="h-3.5 w-3.5" aria-hidden /> {ticket.notes ? "Observações •" : "Observações"}
         </button>
-        {managerEnabled && (
+        {managerEnabled && !isGroup && (
           <>
             {ticket.managerOsId ? (
               <a

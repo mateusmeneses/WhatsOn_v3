@@ -199,6 +199,11 @@ export function MessageBubble({
           out ? "rounded-br-sm bg-primary text-white" : "rounded-bl-sm border border-border bg-surface text-ink",
         )}
       >
+        {!out && message.senderName && (
+          <span className="block text-xs font-semibold text-primary" title={message.senderNumber ?? undefined}>
+            {message.senderName}
+          </span>
+        )}
         {message.isBot && (
           <span className="inline-flex items-center gap-1 text-xs font-semibold opacity-80">
             <Bot className="h-3 w-3" aria-hidden /> Bot
