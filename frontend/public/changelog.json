@@ -1,6 +1,18 @@
 {
-  "atualizadoEm": "2026-10-28",
+  "atualizadoEm": "2026-11-09",
   "versoes": [
+    {
+      "versao": "2026.11.09.1",
+      "data": "09/11/2026",
+      "titulo": "Conversas em grupo e cartões de contato",
+      "novidades": [
+        "Nova aba Grupos em Atendimentos: as conversas dos grupos do WhatsApp aparecem no WhatsOn, com o nome de quem falou em cada mensagem. Todos da empresa veem e podem responder; grupo não passa pelo bot nem entra na fila."
+      ],
+      "melhorias": [
+        "Cartões de contato enviados pelo cliente agora chegam no atendimento, com o nome e o telefone do contato.",
+        "Enquetes, respostas de botões e listas e localização em tempo real também passam a aparecer. Se chegar algum tipo de mensagem que o WhatsOn ainda não mostra, fica um aviso na conversa para conferir no celular."
+      ]
+    },
     {
       "versao": "2026.10.28.1",
       "data": "28/10/2026",
