@@ -34,8 +34,16 @@ export function Tabs<T extends string>({
     listRef.current?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus();
   }
 
+  // 5+ abas (Atendimentos com Bot e Grupos) não cabem na coluna no tamanho normal: aperta fonte, respiro e vão.
+  const dense = items.length > 4;
+
   return (
-    <div ref={listRef} role="tablist" onKeyDown={onKeyDown} className={cn("flex gap-1 rounded-lg bg-background p-1", className)}>
+    <div
+      ref={listRef}
+      role="tablist"
+      onKeyDown={onKeyDown}
+      className={cn("flex rounded-lg bg-background p-1", dense ? "gap-0.5" : "gap-1", className)}
+    >
       {items.map((item) => {
         const selected = item.value === value;
         return (
@@ -48,7 +56,8 @@ export function Tabs<T extends string>({
             onClick={() => onChange(item.value)}
             className={cn(
               // flex-auto + nowrap: rótulos não quebram na coluna de 320px (tablet, 768px); texto maior a partir de lg.
-              "flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-md px-1 py-1.5 text-xs font-medium text-ink-muted transition lg:px-2 lg:text-sm",
+              "flex flex-auto items-center justify-center gap-1 whitespace-nowrap rounded-md py-1.5 font-medium text-ink-muted transition",
+              dense ? "px-0.5 text-[11px] lg:px-1 lg:text-[13px]" : "px-1 text-xs lg:px-2 lg:text-sm",
               selected ? "bg-surface font-semibold text-primary shadow-card" : "hover:text-ink",
             )}
           >
