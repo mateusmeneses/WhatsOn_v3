@@ -51,6 +51,18 @@ describe("ui primitives", () => {
     expect(tab.className).toContain("lg:text-sm");
   });
 
+  // Regressão: com Bot + Grupos são 5 abas, que estouravam a coluna de Atendimentos no tamanho normal.
+  it("shrinks text and spacing when there are five or more tabs", () => {
+    const items = ["Aguardando", "Atendendo", "Finalizados", "Bot", "Grupos"].map((label) => ({ value: label, label }));
+    render(<Tabs value="Bot" onChange={vi.fn()} items={items} />);
+    const tab = screen.getByRole("tab", { name: "Grupos" });
+    expect(tab.className).toContain("whitespace-nowrap");
+    expect(tab.className).toContain("text-[11px]");
+    expect(tab.className).toContain("lg:text-[13px]");
+    expect(tab.className).not.toContain("lg:text-sm");
+    expect(screen.getByRole("tablist").className).toContain("gap-0.5");
+  });
+
   it("applies the tone to badges", () => {
     render(<Badge tone="success">Conectado</Badge>);
     expect(screen.getByText("Conectado").className).toContain("text-success");

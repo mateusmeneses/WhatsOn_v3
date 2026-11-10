@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-11-09",
+  "atualizadoEm": "2026-11-10",
   "versoes": [
+    {
+      "versao": "2026.11.10.1",
+      "data": "10/11/2026",
+      "titulo": "Abas de Atendimentos ajustadas",
+      "novidades": [],
+      "melhorias": [
+        "Corrigido: com a nova aba Grupos, as abas de Atendimentos passavam da largura da coluna e a última ficava cortada para quem também vê a aba Bot. Agora todas cabem."
+      ]
+    },
     {
       "versao": "2026.11.09.1",
       "data": "09/11/2026",
