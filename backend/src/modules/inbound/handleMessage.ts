@@ -9,12 +9,21 @@ import { claudiaOnClientMessage } from "../claudia/claudia.events";
 import { saveBase64, StoredMedia } from "../media/media.storage";
 import { previewOf } from "../messages/messages.service";
 import { emitMessage, emitTicket } from "../tickets/ticket.events";
-import { logTicket } from "../tickets/tickets.service";
+import { logTicket, moveToPending } from "../tickets/tickets.service";
 import { InboundMessage } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
 
 const MEDIA_TYPES: MessageType[] = ["image", "audio", "video", "document", "sticker"];
 const ECHO_WINDOW_MS = 120_000;
+/**
+ * Mensagem do cliente mais velha que isso chegou atrasada (reenvio acumulado depois de uma queda da conexão).
+ * O cliente já foi atendido ou desistiu: o bot não responde (senão manda "Opção inválida" e o menu de novo
+ * para cada mensagem antiga) e a conversa vai direto para a fila.
+ */
+export const STALE_MESSAGE_SECONDS = 600;
+
+export const isStaleMessage = (ev: InboundMessage, nowMs = Date.now()): boolean =>
+  !ev.fromMe && Number.isFinite(ev.timestamp) && nowMs / 1000 - ev.timestamp > STALE_MESSAGE_SECONDS;
 
 async function upsertContact(companyId: number, ev: InboundMessage): Promise<Contact> {
   const pushName = !ev.fromMe && ev.pushName ? ev.pushName : null;
@@ -112,14 +121,15 @@ export async function findOrCreateTicket(
   connection: Connection,
   contact: Contact,
   fromMe: boolean,
+  stale = false,
 ): Promise<{ ticket: Ticket; created: boolean }> {
   const where = { contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
   const open = await Ticket.findOne({ where });
   if (open) return { ticket: open, created: false };
 
-  // Conversa iniciada pelo celular da empresa não passa pelo bot. Fica pendente (e não "open" sem dono,
-  // invisível para atendentes) até alguém aceitar.
-  const status: TicketStatus = fromMe || !(await hasBot(connection.id)) ? "pending" : "bot";
+  // Conversa iniciada pelo celular da empresa, ou por mensagem atrasada, não passa pelo bot. Fica pendente
+  // (e não "open" sem dono, invisível para atendentes) até alguém aceitar.
+  const status: TicketStatus = fromMe || stale || !(await hasBot(connection.id)) ? "pending" : "bot";
   try {
     const ticket = await Ticket.create({
       companyId: connection.companyId,
@@ -176,7 +186,7 @@ export async function handleInboundMessage(
   const { media, body } = await fetchMedia(connection, ev, opts);
   const { ticket, created } = ev.isGroup
     ? await findOrCreateGroupTicket(connection, contact)
-    : await findOrCreateTicket(connection, contact, ev.fromMe);
+    : await findOrCreateTicket(connection, contact, ev.fromMe, isStaleMessage(ev));
   const senderName = ev.isGroup && !ev.fromMe ? (ev.senderName ?? ev.senderNumber ?? null) : null;
   const quotedMessageId = await resolveQuoted(connection.id, ev.quotedProviderMessageId);
 
@@ -248,6 +258,11 @@ export async function handleInboundMessage(
   // Resolvida automaticamente (ex.: só um "obrigado" depois de finalizar): não passa pelo bot.
   if (await claudiaOnClientMessage(ticket, contact, created, message)) return;
   if (ticket.status !== "bot") return;
+  if (isStaleMessage(ev)) {
+    // Sem resposta do bot, o ticket não pode ficar parado no bot: vai para a fila de espera.
+    await moveToPending(ticket, ticket.queueId ?? connection.defaultQueueId, null);
+    return;
+  }
   try {
     await runBot(ticket, ev.type === "text" ? ev.body : null);
   } catch (err) {

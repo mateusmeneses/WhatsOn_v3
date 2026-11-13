@@ -4,28 +4,28 @@ export function upsert(data: Json, instance = "inst_1"): Json {
   return { event: "messages.upsert", instance, data };
 }
 
-export function textMessage(opts: { id?: string; from?: string; text?: string; fromMe?: boolean; pushName?: string } = {}): Json {
+export function textMessage(opts: { id?: string; from?: string; text?: string; fromMe?: boolean; pushName?: string; timestamp?: number } = {}): Json {
   return upsert({
     key: { remoteJid: `${opts.from ?? "5511988887777"}@s.whatsapp.net`, fromMe: opts.fromMe ?? false, id: opts.id ?? "MSG1" },
     pushName: opts.pushName ?? "Maria",
     message: { conversation: opts.text ?? "Oi" },
     messageType: "conversation",
-    messageTimestamp: 1760000000,
+    messageTimestamp: opts.timestamp ?? Math.floor(Date.now() / 1000),
   });
 }
 
-export function imageMessage(opts: { id?: string; from?: string; caption?: string } = {}): Json {
+export function imageMessage(opts: { id?: string; from?: string; caption?: string; timestamp?: number } = {}): Json {
   return upsert({
     key: { remoteJid: `${opts.from ?? "5511988887777"}@s.whatsapp.net`, fromMe: false, id: opts.id ?? "IMG1" },
     pushName: "Maria",
     message: { imageMessage: { caption: opts.caption ?? "comprovante", mimetype: "image/jpeg" } },
     messageType: "imageMessage",
-    messageTimestamp: 1760000000,
+    messageTimestamp: opts.timestamp ?? Math.floor(Date.now() / 1000),
   });
 }
 
 export function documentMessage(
-  opts: { id?: string; from?: string; fromMe?: boolean; fileName?: string; caption?: string } = {},
+  opts: { id?: string; from?: string; fromMe?: boolean; fileName?: string; caption?: string; timestamp?: number } = {},
 ): Json {
   return upsert({
     key: { remoteJid: `${opts.from ?? "5511988887777"}@s.whatsapp.net`, fromMe: opts.fromMe ?? false, id: opts.id ?? "DOC1" },
@@ -34,7 +34,7 @@ export function documentMessage(
       documentMessage: { fileName: opts.fileName ?? "arquivo.pdf", mimetype: "application/pdf", ...(opts.caption ? { caption: opts.caption } : {}) },
     },
     messageType: "documentMessage",
-    messageTimestamp: 1760000000,
+    messageTimestamp: opts.timestamp ?? Math.floor(Date.now() / 1000),
   });
 }
 

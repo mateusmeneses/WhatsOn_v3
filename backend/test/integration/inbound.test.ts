@@ -314,4 +314,35 @@ describe("inbound pipeline", () => {
     await expect(deliver(connection, textMessage({ id: "B1", text: "Oi" }))).resolves.toBeUndefined();
     expect(await Message.count({ where: { providerMessageId: "B1" } })).toBe(1);
   });
+
+  describe("mensagens atrasadas (reenvio após queda da conexão)", () => {
+    const hoursAgo = (h: number) => Math.floor(Date.now() / 1000) - h * 3600;
+
+    it("não responde pelo bot a uma mensagem antiga e abre o ticket como pendente", async () => {
+      const { connection, queue } = await scenario();
+      await withBot(connection, queue.id);
+      await deliver(connection, textMessage({ id: "OLD1", text: "Boa tarde", timestamp: hoursAgo(5) }));
+      const ticket = await Ticket.findOne();
+      expect(ticket).toMatchObject({ status: "pending", queueId: queue.id });
+      expect(await Message.count({ where: { isBot: true } })).toBe(0);
+      expect(await Message.count({ where: { providerMessageId: "OLD1" } })).toBe(1);
+    });
+
+    it("não manda 'Opção inválida' nem o menu de novo para mensagens antigas num ticket do bot", async () => {
+      const { company, connection, queue, contact } = await scenario();
+      await withBot(connection, queue.id);
+      const ticket = await createTicket({ companyId: company.id, contactId: contact.id, connectionId: connection.id, status: "bot" });
+      await deliver(connection, textMessage({ id: "OLD2", from: contact.number, text: "Certo", timestamp: hoursAgo(3) }));
+      expect(await Message.count({ where: { ticketId: ticket.id, isBot: true } })).toBe(0);
+      expect(await ticket.reload()).toMatchObject({ status: "pending", queueId: queue.id });
+    });
+
+    it("mensagem recente continua passando pelo bot", async () => {
+      const { connection, queue } = await scenario();
+      await withBot(connection, queue.id);
+      await deliver(connection, textMessage({ id: "NEW1", text: "Oi", timestamp: Math.floor(Date.now() / 1000) - 30 }));
+      expect(await Ticket.findOne()).toMatchObject({ status: "bot" });
+      expect(await Message.count({ where: { isBot: true } })).toBe(1);
+    });
+  });
 });

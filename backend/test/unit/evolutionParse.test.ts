@@ -3,7 +3,7 @@ import { ackUpdate, connectionUpdate, imageMessage, qrcodeUpdate, textMessage, u
 
 describe("parseEvolutionWebhook", () => {
   it("parses a plain text message", () => {
-    expect(parseEvolutionWebhook(textMessage())).toEqual([
+    expect(parseEvolutionWebhook(textMessage({ timestamp: 1760000000 }))).toEqual([
       {
         kind: "message",
         instanceName: "inst_1",
