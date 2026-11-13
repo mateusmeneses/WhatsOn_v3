@@ -7,3 +7,6 @@ dist/
 backend/tmp/
 backend/public/media/
 coverage/
+
+# trava de tarefas agendadas do Claude Code
+.claude/scheduled_tasks.lock
