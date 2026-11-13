@@ -103,6 +103,29 @@ describe("inactivity close", () => {
     expect((await Ticket.findByPk(ticket.id))!.status).toBe("open");
   });
 
+  it("counts only after the ticket was accepted (waiting time before acceptance does not count)", async () => {
+    // Cliente ficou 30+ min sem aceite; ao aceitar, não pode receber a mensagem de inatividade na hora.
+    const s = await setup();
+    const ticket = await idleTicket(s, 60);
+    const log = (event: "accepted" | "claimed" | "transferred" | "reopened", minutes: number) =>
+      TicketLog.create({ companyId: s.company.id, ticketId: ticket.id, event, userId: s.agent.id, createdAt: minutesAgo(minutes) });
+    await log("accepted", 5);
+    expect(await closeInactiveTickets()).toBe(0);
+    const guarded = await closeTicketInternal(ticket, {
+      userId: null,
+      event: "inactivity",
+      sendClosingMessage: true,
+      idleSince: minutesAgo(30),
+    });
+    expect(guarded).toBe(false);
+    expect((await Ticket.findByPk(ticket.id))!.status).toBe("open");
+
+    // 31 min depois do aceite sem resposta do cliente: agora sim finaliza.
+    await TicketLog.destroy({ where: { ticketId: ticket.id, event: "accepted" } });
+    await log("accepted", 31);
+    expect(await closeInactiveTickets()).toBe(1);
+  });
+
   it("an automatic reminder does not restart the count after the agent's last message", async () => {
     const s = await setup();
     const ticket = await idleTicket(s, 31);

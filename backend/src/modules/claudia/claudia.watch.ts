@@ -7,6 +7,7 @@ import { createOutgoingMessage } from "../messages/messages.service";
 import { businessMinutesBetween } from "../queues/schedule";
 import { onlineUsers } from "../realtime/socket";
 import { lastHumanMessageAt, lastHumanMessageFromUs } from "../tickets/inactivity";
+import { restartedAt } from "../tickets/restart";
 import { closeTicketInternal } from "../tickets/tickets.service";
 import { sendAlert } from "./claudia.alerts";
 import {
@@ -38,11 +39,6 @@ const clientWaiting = literal(
   `COALESCE((SELECT m."fromMe" FROM messages m WHERE m."ticketId" = "Ticket"."id" AND m."isBot" = false ` +
     `ORDER BY m."createdAt" DESC, m."id" DESC LIMIT 1) = false, false)`,
 );
-/** Reabrir, aceitar ou receber a conversa recomeça a contagem de inatividade (mensagem antiga não conta). */
-const restartedAt = literal(
-  `(SELECT MAX(l."createdAt") FROM ticket_logs l WHERE l."ticketId" = "Ticket"."id" AND l."event" IN ('reopened', 'accepted', 'transferred', 'claimed'))`,
-);
-
 function toDate(value: unknown): Date | null {
   if (value === null || value === undefined) return null;
   const date = value instanceof Date ? value : new Date(String(value));

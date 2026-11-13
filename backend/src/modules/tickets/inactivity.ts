@@ -1,6 +1,7 @@
 import { literal, Op } from "sequelize";
 import { Company, Ticket } from "../../models";
 import { logger } from "../../shared/logger";
+import { restartedAt } from "./restart";
 import { closeTicketInternal } from "./tickets.service";
 
 const BATCH = 100;
@@ -36,7 +37,12 @@ export async function closeInactiveTickets(now = new Date()): Promise<number> {
       where: {
         companyId: company.id,
         status: "open",
-        [Op.and]: [lastHumanMessageFromUs, literal(`${lastHumanMessageAt.val} <= ${Ticket.sequelize!.escape(idleSince)}`)],
+        [Op.and]: [
+          lastHumanMessageFromUs,
+          literal(`${lastHumanMessageAt.val} <= ${Ticket.sequelize!.escape(idleSince)}`),
+          // Só conta depois do aceite: cliente que esperou 30 min na fila não é finalizado ao ser aceito.
+          literal(`COALESCE(${restartedAt.val} <= ${Ticket.sequelize!.escape(idleSince)}, true)`),
+        ],
       },
       order: [["lastMessageAt", "ASC"]],
       limit: BATCH,

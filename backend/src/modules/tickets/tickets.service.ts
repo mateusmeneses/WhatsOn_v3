@@ -8,6 +8,7 @@ import { claudiaOnAwaiting, claudiaOnTransfer } from "../claudia/claudia.events"
 import { createOutgoingMessage } from "../messages/messages.service";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { getUserOr404 } from "../users/users.service";
+import { restartedAfterSql } from "./restart";
 import { emitTicket, emitTicketClaimed, TICKET_INCLUDE } from "./ticket.events";
 import { agentQueueEligible, canView, loadAgentScope, visibilityWhere } from "./visibility";
 
@@ -389,10 +390,12 @@ export async function closeTicketInternal(
   const status =
     opts.event === "inactivity" ? "open" : opts.event === "bot_timeout" || opts.onlyFromBot ? "bot" : { [Op.ne]: "closed" };
   // Inatividade: nenhuma mensagem humana desde o corte (lembrete/aviso automático do bot não conta).
+  // Também não fecha se o chamado foi aceito/reaberto/transferido/requerido depois do corte.
   const noHumanMessageSince = (since: Date) =>
     literal(
       `NOT EXISTS (SELECT 1 FROM messages m WHERE m."ticketId" = ${Number(ticket.id)} AND m."isBot" = false ` +
-        `AND m."createdAt" > ${Ticket.sequelize!.escape(since)})`,
+        `AND m."createdAt" > ${Ticket.sequelize!.escape(since)}) ` +
+        `AND NOT ${restartedAfterSql(ticket.id, Ticket.sequelize!.escape(since))}`,
     );
   const where = opts.idleSince
     ? { id: ticket.id, status, [Op.and]: [noHumanMessageSince(opts.idleSince)] }

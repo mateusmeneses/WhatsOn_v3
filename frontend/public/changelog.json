@@ -2,6 +2,15 @@
   "atualizadoEm": "2026-11-13",
   "versoes": [
     {
+      "versao": "2026.11.13.2",
+      "data": "13/11/2026",
+      "titulo": "Inatividade conta só depois do aceite",
+      "novidades": [],
+      "melhorias": [
+        "Corrigido: o cliente que esperou na fila sem ser aceito não recebe mais a mensagem de inatividade logo depois do aceite. A contagem começa no aceite (ou na transferência/reabertura)."
+      ]
+    },
+    {
       "versao": "2026.11.13.1",
       "data": "13/11/2026",
       "titulo": "Claudia mais econômica e marca de robô nos contatos",
