@@ -5,15 +5,24 @@ import { closeTicketInternal } from "./tickets.service";
 
 const BATCH = 100;
 
-/** Última mensagem do atendimento foi nossa (atendente ou bot): quem está devendo resposta é o cliente. */
-const lastMessageFromUs = literal(
-  `(SELECT m."fromMe" FROM messages m WHERE m."ticketId" = "Ticket"."id" ORDER BY m."createdAt" DESC, m."id" DESC LIMIT 1) = true`,
+/**
+ * Última mensagem humana (mensagens automáticas do bot/sistema não contam) foi nossa: quem está devendo resposta é o
+ * cliente. Ex.: cliente escreveu e o bot respondeu "fora do horário" → o suporte ainda deve a resposta.
+ */
+export const lastHumanMessageFromUs = literal(
+  `(SELECT m."fromMe" FROM messages m WHERE m."ticketId" = "Ticket"."id" AND m."isBot" = false ` +
+    `ORDER BY m."createdAt" DESC, m."id" DESC LIMIT 1) = true`,
+);
+
+/** Hora da última mensagem humana (lembretes automáticos não recomeçam a contagem). */
+export const lastHumanMessageAt = literal(
+  `(SELECT MAX(m."createdAt") FROM messages m WHERE m."ticketId" = "Ticket"."id" AND m."isBot" = false)`,
 );
 
 /**
  * Finaliza, com a mensagem de inatividade, os atendimentos em andamento cujo cliente não responde há mais que o
- * tempo configurado na empresa. Só conta quando a última mensagem foi nossa: cliente esperando resposta nunca é
- * encerrado.
+ * tempo configurado na empresa. Só conta quando a última mensagem humana foi do atendente: cliente esperando
+ * resposta nunca é encerrado.
  */
 export async function closeInactiveTickets(now = new Date()): Promise<number> {
   const companies = await Company.findAll({
@@ -27,8 +36,7 @@ export async function closeInactiveTickets(now = new Date()): Promise<number> {
       where: {
         companyId: company.id,
         status: "open",
-        lastMessageAt: { [Op.lte]: idleSince },
-        [Op.and]: [lastMessageFromUs],
+        [Op.and]: [lastHumanMessageFromUs, literal(`${lastHumanMessageAt.val} <= ${Ticket.sequelize!.escape(idleSince)}`)],
       },
       order: [["lastMessageAt", "ASC"]],
       limit: BATCH,

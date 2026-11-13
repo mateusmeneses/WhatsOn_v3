@@ -72,6 +72,7 @@ describe("ContactsPage", () => {
         managerClientId: null,
         product: null,
         managerProductId: null,
+        isRobot: false,
       }),
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
@@ -104,6 +105,7 @@ describe("ContactsPage", () => {
         managerClientId: null,
         product: "Sistema Fiscal",
         managerProductId: null,
+        isRobot: false,
       }),
     );
   });

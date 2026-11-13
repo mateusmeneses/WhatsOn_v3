@@ -35,6 +35,7 @@ export function makeContact(partial: Partial<Contact> = {}): Contact {
     managerClientId: null,
     product: null,
     managerProductId: null,
+    isRobot: false,
     ...partial,
   };
 }

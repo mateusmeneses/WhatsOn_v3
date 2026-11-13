@@ -17,6 +17,7 @@ export function EditContactDialog({ contact, onClose }: { contact: Contact; onCl
   const [name, setName] = useState(contact.name);
   const [client, setClient] = useState<Linked>({ id: contact.managerClientId, name: contact.clientCompany ?? "" });
   const [product, setProduct] = useState<Linked>({ id: contact.managerProductId, name: contact.product ?? "" });
+  const [isRobot, setIsRobot] = useState(contact.isRobot);
   const mutation = useMutation({
     mutationFn: () =>
       updateContact(contact.id, {
@@ -25,6 +26,7 @@ export function EditContactDialog({ contact, onClose }: { contact: Contact; onCl
         managerClientId: client.id,
         product: product.name.trim() || null,
         managerProductId: product.id,
+        isRobot,
       }),
     onSuccess: () => {
       toast.success("Contato atualizado");
@@ -80,6 +82,18 @@ export function EditContactDialog({ contact, onClose }: { contact: Contact; onCl
               </div>
             </>
           )}
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-[var(--color-primary)]"
+              checked={isRobot}
+              onChange={(e) => setIsRobot(e.target.checked)}
+            />
+            <span>
+              Robô / mensagens automáticas
+              <span className="block text-xs text-ink-muted">Mensagens deste contato não acordam a Claudia.</span>
+            </span>
+          </label>
           <DialogFooter>
             <Button variant="secondary" onClick={onClose}>
               Cancelar

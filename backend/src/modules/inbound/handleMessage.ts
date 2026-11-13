@@ -245,7 +245,8 @@ export async function handleInboundMessage(
   // Grupo não passa por bot nem Claudia.
   if (ev.fromMe || ev.isGroup) return;
   await ticket.reload();
-  await claudiaOnClientMessage(ticket, contact, created);
+  // Resolvida automaticamente (ex.: só um "obrigado" depois de finalizar): não passa pelo bot.
+  if (await claudiaOnClientMessage(ticket, contact, created, message)) return;
   if (ticket.status !== "bot") return;
   try {
     await runBot(ticket, ev.type === "text" ? ev.body : null);

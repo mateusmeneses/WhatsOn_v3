@@ -47,6 +47,7 @@ export interface ContactUpdate {
   managerClientId?: number | null;
   product?: string | null;
   managerProductId?: number | null;
+  isRobot?: boolean;
 }
 
 export async function updateContact(companyId: number, id: number, input: ContactUpdate) {

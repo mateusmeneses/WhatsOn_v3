@@ -31,6 +31,10 @@ export class Contact extends Model {
   @Column({ type: DataType.INTEGER, allowNull: true })
   managerProductId!: number | null;
 
+  /** Robô / mensagens automáticas de terceiros: não gera aviso à Claudia. */
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  isRobot!: boolean;
+
   /** Apagado na consulta (soft delete). Não é o `paranoid` do Sequelize: o número segue único e reativável. */
   @Column({ type: DataType.DATE, allowNull: true })
   deletedAt!: Date | null;

@@ -41,6 +41,7 @@ const updateSchema = z.object({
   managerClientId: optionalCode,
   product: optionalText,
   managerProductId: optionalCode,
+  isRobot: z.boolean().optional(),
 });
 
 contactRoutes.put("/:id", async (req, res) => {

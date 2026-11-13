@@ -1,10 +1,10 @@
-import { Op, UniqueConstraintError } from "sequelize";
+import { literal, Op, UniqueConstraintError } from "sequelize";
 import { Connection, Contact, Message, Queue, Ticket, TicketEvent, TicketLog, TicketStatus, User } from "../../models";
 import { cancelBotTimeout } from "../../queues/botTimeout";
 import { AppError, notFound } from "../../shared/errors/AppError";
 import { PAGE_SIZE, paginate } from "../../shared/http";
 import { AuthContext } from "../auth/auth.types";
-import { claudiaOnAwaiting } from "../claudia/claudia.events";
+import { claudiaOnAwaiting, claudiaOnTransfer } from "../claudia/claudia.events";
 import { createOutgoingMessage } from "../messages/messages.service";
 import { assertQueuesBelong } from "../queues/queues.service";
 import { getUserOr404 } from "../users/users.service";
@@ -238,6 +238,7 @@ export async function transferTicket(auth: AuthContext, id: number, input: { que
     toQueueId: queueId,
     toUserId: input.userId ?? null,
   });
+  await claudiaOnTransfer(ticket);
   await emitTicket(ticket.id, prev);
   return loadTicket(id);
 }
@@ -387,7 +388,15 @@ export async function closeTicketInternal(
   const prev = { queueId: ticket.queueId, userId: ticket.userId };
   const status =
     opts.event === "inactivity" ? "open" : opts.event === "bot_timeout" || opts.onlyFromBot ? "bot" : { [Op.ne]: "closed" };
-  const where = opts.idleSince ? { id: ticket.id, status, lastMessageAt: { [Op.lte]: opts.idleSince } } : { id: ticket.id, status };
+  // Inatividade: nenhuma mensagem humana desde o corte (lembrete/aviso automático do bot não conta).
+  const noHumanMessageSince = (since: Date) =>
+    literal(
+      `NOT EXISTS (SELECT 1 FROM messages m WHERE m."ticketId" = ${Number(ticket.id)} AND m."isBot" = false ` +
+        `AND m."createdAt" > ${Ticket.sequelize!.escape(since)})`,
+    );
+  const where = opts.idleSince
+    ? { id: ticket.id, status, [Op.and]: [noHumanMessageSince(opts.idleSince)] }
+    : { id: ticket.id, status };
   const [updated] = await Ticket.update(
     { status: "closed", closedAt: new Date(), chatbotNodeId: null, chatbotAttempts: 0, unreadCount: 0 },
     { where },

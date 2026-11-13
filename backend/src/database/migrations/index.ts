@@ -20,6 +20,7 @@ import * as m0018 from "./0018-ticket-idle-alerts";
 import * as m0019 from "./0019-claudia-webhook-logs";
 import * as m0020 from "./0020-contact-client-product";
 import * as m0021 from "./0021-group-message-sender";
+import * as m0022 from "./0022-claudia-events-robot";
 
 export interface MigrationModule {
   name: string;
@@ -49,4 +50,5 @@ export const migrations: MigrationModule[] = [
   { name: "0019-claudia-webhook-logs", up: m0019.up, down: m0019.down },
   { name: "0020-contact-client-product", up: m0020.up, down: m0020.down },
   { name: "0021-group-message-sender", up: m0021.up, down: m0021.down },
+  { name: "0022-claudia-events-robot", up: m0022.up, down: m0022.down },
 ];

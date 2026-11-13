@@ -1,4 +1,5 @@
 import { ChatbotNode } from "./ChatbotNode";
+import { ClaudiaEventLog } from "./ClaudiaEventLog";
 import { ClaudiaWebhookLog } from "./ClaudiaWebhookLog";
 import { Company } from "./Company";
 import { Connection } from "./Connection";
@@ -13,6 +14,7 @@ import { User } from "./User";
 import { UserQueue } from "./UserQueue";
 
 export * from "./ChatbotNode";
+export * from "./ClaudiaEventLog";
 export * from "./ClaudiaWebhookLog";
 export * from "./Company";
 export * from "./Connection";
@@ -26,4 +28,4 @@ export * from "./TicketLog";
 export * from "./User";
 export * from "./UserQueue";
 
-export const models = [Partner, Company, User, Queue, UserQueue, Connection, Contact, Ticket, Message, ChatbotNode, TicketLog, ScheduledMessage, ClaudiaWebhookLog];
+export const models = [Partner, Company, User, Queue, UserQueue, Connection, Contact, Ticket, Message, ChatbotNode, TicketLog, ScheduledMessage, ClaudiaWebhookLog, ClaudiaEventLog];

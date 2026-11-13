@@ -56,8 +56,17 @@ describe("EditContactDialog with the Manager", () => {
         managerClientId: 123,
         product: "Sistema Fiscal",
         managerProductId: 8,
+        isRobot: false,
       }),
     );
+  });
+
+  it("marks the contact as a robot (no Claudia wake-ups)", async () => {
+    renderWithProviders(<EditContactDialog contact={makeContact({ id: 6, name: "Anota AI" })} onClose={() => {}} />);
+    const dialog = screen.getByRole("dialog", { name: "Editar contato" });
+    await userEvent.click(within(dialog).getByRole("checkbox", { name: /Robô/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(updateContact).toHaveBeenCalledWith(6, expect.objectContaining({ isRobot: true })));
   });
 
   it("keeps the saved company selected even when the search does not bring it", async () => {

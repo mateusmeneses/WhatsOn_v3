@@ -1,6 +1,19 @@
 {
-  "atualizadoEm": "2026-11-10",
+  "atualizadoEm": "2026-11-13",
   "versoes": [
+    {
+      "versao": "2026.11.13.1",
+      "data": "13/11/2026",
+      "titulo": "Claudia mais econômica e marca de robô nos contatos",
+      "novidades": [
+        "Contatos: nova marca \"Robô / mensagens automáticas\" (Contatos → Editar). Mensagens desses contatos não acordam a Claudia."
+      ],
+      "melhorias": [
+        "Corrigido: a finalização automática por inatividade não encerra mais atendimentos em que o cliente espera resposta só porque o bot mandou uma mensagem automática (como a de fora do horário).",
+        "Lembretes e mensagens automáticas não recomeçam a contagem de inatividade.",
+        "Claudia: avisos mais completos e menos frequentes, aviso imediato quando uma conversa é transferida para ela e ações pela API, sem abrir o painel."
+      ]
+    },
     {
       "versao": "2026.11.10.1",
       "data": "10/11/2026",

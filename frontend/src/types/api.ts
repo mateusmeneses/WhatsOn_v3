@@ -94,6 +94,8 @@ export interface Contact {
   /** Produto que o contato usa; o bot pergunta por ele no menu de suporte. */
   product: string | null;
   managerProductId: number | null;
+  /** Robô / mensagens automáticas de terceiros: não acorda a Claudia. */
+  isRobot: boolean;
 }
 
 export interface Ticket {

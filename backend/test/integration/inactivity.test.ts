@@ -83,7 +83,7 @@ describe("inactivity close", () => {
   it("does not close when a message arrived after the idle cutoff", async () => {
     const s = await setup();
     const ticket = await idleTicket(s, 31);
-    await Ticket.update({ lastMessageAt: new Date() }, { where: { id: ticket.id } });
+    await createMessage(ticket, { fromMe: false, body: "voltei", createdAt: new Date() });
     const closed = await closeTicketInternal(ticket, {
       userId: null,
       event: "inactivity",
@@ -92,5 +92,22 @@ describe("inactivity close", () => {
     });
     expect(closed).toBe(false);
     expect((await Ticket.findByPk(ticket.id))!.status).toBe("open");
+  });
+
+  it("client waiting after an automatic bot message (e.g. out of hours) is never closed", async () => {
+    // Regressão: #1466/#1467/#1469 (10/11) — aceitas fora do horário e finalizadas, devendo o suporte.
+    const s = await setup();
+    const ticket = await idleTicket(s, 60, false);
+    await createMessage(ticket, { fromMe: true, isBot: true, body: "Estamos fora do horário", createdAt: minutesAgo(59) });
+    expect(await closeInactiveTickets()).toBe(0);
+    expect((await Ticket.findByPk(ticket.id))!.status).toBe("open");
+  });
+
+  it("an automatic reminder does not restart the count after the agent's last message", async () => {
+    const s = await setup();
+    const ticket = await idleTicket(s, 31);
+    await createMessage(ticket, { fromMe: true, isBot: true, body: "Ainda está por aí?", createdAt: minutesAgo(10) });
+    await ticket.update({ lastMessageAt: minutesAgo(10) });
+    expect(await closeInactiveTickets()).toBe(1);
   });
 });

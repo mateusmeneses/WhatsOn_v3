@@ -14,6 +14,7 @@ const TABLES = [
   "ticket_logs",
   "scheduled_messages",
   "claudia_webhook_logs",
+  "claudia_events",
 ];
 
 export async function resetDb(): Promise<void> {

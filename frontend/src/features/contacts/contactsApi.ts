@@ -11,7 +11,7 @@ export async function fetchContacts(search: string, page: number): Promise<Page<
   return data;
 }
 
-export type ContactUpdate = Partial<Pick<Contact, "name" | "clientCompany" | "managerClientId" | "product" | "managerProductId">>;
+export type ContactUpdate = Partial<Pick<Contact, "name" | "clientCompany" | "managerClientId" | "product" | "managerProductId" | "isRobot">>;
 
 export async function updateContact(id: number, body: ContactUpdate): Promise<Contact> {
   const { data } = await api.put<Contact>(`/contacts/${id}`, body);
