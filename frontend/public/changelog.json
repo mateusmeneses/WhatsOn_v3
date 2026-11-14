@@ -2,6 +2,15 @@
   "atualizadoEm": "2026-11-14",
   "versoes": [
     {
+      "versao": "2026.11.14.2",
+      "data": "14/11/2026",
+      "titulo": "Envios em lote saem espaçados",
+      "novidades": [],
+      "melhorias": [
+        "Mensagens enviadas pela API (como as cobranças) e as mensagens agendadas agora saem uma de cada vez, com 4 a 8 segundos entre elas em cada conexão. Isso evita que o WhatsApp trave depois de uma rajada de envios. As respostas dos atendentes continuam saindo na hora."
+      ]
+    },
+    {
       "versao": "2026.11.14.1",
       "data": "14/11/2026",
       "titulo": "Campo Solicitante de volta",

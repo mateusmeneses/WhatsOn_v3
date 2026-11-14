@@ -94,7 +94,7 @@ async function sendToTicket(connection: Connection, rawNumber: string, items: Ou
   const contact = await resolveContact(connection, rawNumber);
   const ticket = await apiTicket(connection, contact);
   const messages: Message[] = [];
-  for (const item of items) messages.push(await createOutgoingMessage(ticket, item));
+  for (const item of items) messages.push(await createOutgoingMessage(ticket, { ...item, batch: true }));
   return { ticketId: ticket.id, contactId: contact.id, number: contact.number, messages: messages.map(summary) };
 }
 

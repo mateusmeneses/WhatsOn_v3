@@ -10,6 +10,8 @@ export interface OutgoingInput {
   quotedMessageId?: number | null;
   sentByUserId?: number | null;
   isBot?: boolean;
+  /** Envio em lote (API externa, agendado): sai espaçado dos outros envios em lote da conexão. */
+  batch?: boolean;
 }
 
 const TYPE_LABEL: Record<MessageType, string> = {
@@ -49,7 +51,7 @@ export async function createOutgoingMessage(ticket: Ticket, input: OutgoingInput
   emitMessage(message, "message:new");
   await emitTicket(ticket.id);
   try {
-    await enqueueOutbound(message.id, ticket.id);
+    await enqueueOutbound(message.id, ticket.id, { batchConnectionId: input.batch ? ticket.connectionId : null });
   } catch (err) {
     logger.error({ err, messageId: message.id }, "failed to enqueue outbound message");
     await Message.update({ ack: "failed" }, { where: { id: message.id } });

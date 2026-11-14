@@ -84,7 +84,7 @@ async function sendOne(row: ScheduledMessage): Promise<void> {
   try {
     if (await isCompanyBlocked(row.companyId)) throw new Error("Empresa bloqueada");
     const ticket = await targetTicket(row);
-    const message = await createOutgoingMessage(ticket, { body: row.body, sentByUserId: row.userId });
+    const message = await createOutgoingMessage(ticket, { body: row.body, sentByUserId: row.userId, batch: true });
     await row.update({ status: "sent", messageId: message.id, error: null });
   } catch (err) {
     logger.error({ err, scheduledId: row.id }, "failed to send scheduled message");

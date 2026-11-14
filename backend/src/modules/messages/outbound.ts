@@ -9,15 +9,52 @@ import { emitMessage, emitMessageDeleted } from "../tickets/ticket.events";
 import { OutboundMediaType, waAddress } from "../whatsapp/provider";
 import { getProvider } from "../whatsapp/registry";
 import { logger } from "../../shared/logger";
+import { getRedis } from "../../shared/redis";
 import { retryInline } from "../../shared/retry";
 
 export interface OutboundJob {
   messageId: number;
 }
 
-export async function enqueueOutbound(messageId: number, ticketId: number): Promise<void> {
+export interface EnqueueOptions {
+  /** Envio em lote (API externa, agendado): espaçado dos outros lotes da mesma conexão. */
+  batchConnectionId?: number | null;
+}
+
+/**
+ * Reserva atômica do próximo horário livre da conexão: devolve o horário reservado (ms) e empurra o próximo
+ * para depois dele + intervalo. A chave expira sozinha um minuto depois do último horário reservado.
+ */
+const RESERVE_SLOT = `
+local now = tonumber(ARGV[1])
+local gap = tonumber(ARGV[2])
+local nextFree = tonumber(redis.call('GET', KEYS[1]) or '0')
+local slot = math.max(now, nextFree)
+redis.call('SET', KEYS[1], slot + gap, 'PX', slot + gap - now + 60000)
+return slot
+`;
+
+export const batchSlotKey = (connectionId: number) => `outbound:batch-slot:${connectionId}`;
+
+function batchGapMs(): number {
+  const min = env.OUTBOUND_BATCH_MIN_MS;
+  const max = Math.max(min, env.OUTBOUND_BATCH_MAX_MS);
+  return Math.round(min + Math.random() * (max - min));
+}
+
+/** Atraso (ms) para o próximo envio em lote da conexão; 0 quando o intervalo está desligado ou a fila livre. */
+export async function reserveBatchDelay(connectionId: number, now = Date.now()): Promise<number> {
+  const gap = batchGapMs();
+  if (gap <= 0) return 0;
+  const slot = Number(await getRedis().eval(RESERVE_SLOT, 1, batchSlotKey(connectionId), now, gap));
+  return Math.max(0, slot - now);
+}
+
+export async function enqueueOutbound(messageId: number, ticketId: number, opts: EnqueueOptions = {}): Promise<void> {
   const shard = shardFor(String(ticketId), env.OUTBOUND_SHARDS);
-  await getQueue(QueueNames.outbound(shard)).add("send", { messageId });
+  // Lote vai como job atrasado: o worker do shard continua livre para as respostas de atendimento.
+  const delay = opts.batchConnectionId ? await reserveBatchDelay(opts.batchConnectionId) : 0;
+  await getQueue(QueueNames.outbound(shard)).add("send", { messageId }, delay > 0 ? { delay } : undefined);
 }
 
 async function setSent(id: number, providerMessageId: string): Promise<void> {
