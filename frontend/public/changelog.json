@@ -7,7 +7,7 @@
       "titulo": "Envios em lote saem espaçados",
       "novidades": [],
       "melhorias": [
-        "Mensagens enviadas pela API (como as cobranças) e as mensagens agendadas agora saem uma de cada vez, com 4 a 8 segundos entre elas em cada conexão. Isso evita que o WhatsApp trave depois de uma rajada de envios. As respostas dos atendentes continuam saindo na hora."
+        "Mensagens enviadas pela API (como as cobranças) e as mensagens agendadas agora saem uma de cada vez, com 4 segundos a 1 minuto entre elas em cada conexão. Isso evita que o WhatsApp trave depois de uma rajada de envios. As respostas dos atendentes continuam saindo na hora."
       ]
     },
     {
