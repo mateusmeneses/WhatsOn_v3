@@ -2,6 +2,15 @@
   "atualizadoEm": "2026-11-14",
   "versoes": [
     {
+      "versao": "2026.11.14.4",
+      "data": "14/11/2026",
+      "titulo": "Intervalo entre envios em lote volta a 4–8 s",
+      "novidades": [],
+      "melhorias": [
+        "O intervalo entre as mensagens enviadas pela API (como as cobranças) e as agendadas voltou a ser de 4 a 8 segundos em cada conexão."
+      ]
+    },
+    {
       "versao": "2026.11.14.3",
       "data": "14/11/2026",
       "titulo": "Intervalo maior entre envios em lote",

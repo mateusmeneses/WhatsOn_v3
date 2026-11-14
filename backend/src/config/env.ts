@@ -41,7 +41,7 @@ const schema = z.object({
    * Respostas de atendente, bot e Claudia não passam por esse intervalo. 0 e 0 desligam.
    */
   OUTBOUND_BATCH_MIN_MS: z.preprocess(emptyAsUndefined, z.coerce.number().int().min(0).default(4000)),
-  OUTBOUND_BATCH_MAX_MS: z.preprocess(emptyAsUndefined, z.coerce.number().int().min(0).default(60000)),
+  OUTBOUND_BATCH_MAX_MS: z.preprocess(emptyAsUndefined, z.coerce.number().int().min(0).default(8000)),
   /** Requisições por minuto por token na API externa (/api/v1). */
   EXTERNAL_API_RATE_LIMIT: z.coerce.number().int().min(1).default(60),
   PARTNER_API_RATE_LIMIT: z.coerce.number().int().min(1).default(60),
