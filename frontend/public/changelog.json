@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-11-13",
+  "atualizadoEm": "2026-11-14",
   "versoes": [
+    {
+      "versao": "2026.11.14.1",
+      "data": "14/11/2026",
+      "titulo": "Campo Solicitante de volta",
+      "novidades": [],
+      "melhorias": [
+        "Em Abrir OS e Registrar no Manager, o campo volta a se chamar Solicitante (antes aparecia Técnico)."
+      ]
+    },
     {
       "versao": "2026.11.13.2",
       "data": "13/11/2026",
