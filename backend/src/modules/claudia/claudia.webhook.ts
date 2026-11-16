@@ -70,6 +70,8 @@ export interface ClaudiaConfig {
   format: "v1" | "v2";
   secret: string | null;
   includeText: boolean;
+  includePhone: boolean;
+  includeAttachmentUrl: boolean;
   /** Quanto a conexão precisa ficar fora para virar aviso. */
   connectionGraceMs: number;
   environment: string;
@@ -142,6 +144,8 @@ export function claudiaConfig(): ClaudiaConfig | null {
     format,
     secret: env.CLAUDIA_WEBHOOK_SECRET ?? null,
     includeText: env.CLAUDIA_WEBHOOK_INCLUIR_TEXTO === "true",
+    includePhone: env.CLAUDIA_WEBHOOK_INCLUIR_TELEFONE === "true",
+    includeAttachmentUrl: env.CLAUDIA_WEBHOOK_INCLUIR_ANEXO_URL === "true",
     connectionGraceMs: format === "v2" ? env.CLAUDIA_CONEXAO_MINUTOS * 60_000 : CONNECTION_GRACE_MS,
     environment: env.CLAUDIA_AMBIENTE,
     economy: env.CLAUDIA_WEBHOOK_MODO === "economico",

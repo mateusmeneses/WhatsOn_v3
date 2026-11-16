@@ -78,6 +78,10 @@ const schema = z.object({
   CLAUDIA_WEBHOOK_SECRET: z.preprocess(emptyAsUndefined, z.string().min(16).optional()),
   /** v2: inclui o texto das mensagens em mensagens_recentes (desligado: só tipo, origem, hora e anexos). */
   CLAUDIA_WEBHOOK_INCLUIR_TEXTO: z.preprocess(emptyAsUndefined, z.enum(["true", "false"]).default("false")),
+  /** v2: acrescenta contato.telefone (número completo, só dígitos) além de telefone_final. Para o CRM casar o cliente. */
+  CLAUDIA_WEBHOOK_INCLUIR_TELEFONE: z.preprocess(emptyAsUndefined, z.enum(["true", "false"]).default("false")),
+  /** v2: acrescenta anexo_url (URL absoluta do arquivo) em cada mensagem de mensagens_recentes com anexo. */
+  CLAUDIA_WEBHOOK_INCLUIR_ANEXO_URL: z.preprocess(emptyAsUndefined, z.enum(["true", "false"]).default("false")),
   /** v2: queda da conexão só vira conexao_prolongada depois deste tempo fora. */
   CLAUDIA_CONEXAO_MINUTOS: z.preprocess(emptyAsUndefined, z.coerce.number().int().positive().default(10)),
   /**

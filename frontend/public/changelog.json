@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-11-14",
+  "atualizadoEm": "2026-11-16",
   "versoes": [
+    {
+      "versao": "2026.11.16.1",
+      "data": "16/11/2026",
+      "titulo": "Avisos v2 prontos para o CRM Multicomercio",
+      "novidades": [
+        "Os avisos de mensagens (webhook v2) podem trazer o telefone completo do contato e o link dos anexos, para o CRM Multicomercio identificar o cliente e baixar os arquivos. As duas opções vêm desligadas e são ativadas na configuração do servidor."
+      ],
+      "melhorias": []
+    },
     {
       "versao": "2026.11.14.4",
       "data": "14/11/2026",

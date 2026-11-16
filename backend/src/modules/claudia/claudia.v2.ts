@@ -1,4 +1,5 @@
 import { Op } from "sequelize";
+import { env } from "../../config/env";
 import { ClaudiaEventLog, Company, Contact, Message, Queue, Ticket, TicketLog, TicketStatus, User } from "../../models";
 import { BOT_PATH_SEPARATOR } from "../chatbot/engine";
 import { isOpen } from "../queues/schedule";
@@ -75,6 +76,7 @@ async function recentMessages(cfg: ClaudiaConfig, ticketId: number, eventId: str
     texto: cfg.includeText ? m.body || null : null,
     anexos: m.mediaUrl ? 1 : 0,
     anexo: m.mediaUrl ? attachmentKind(m) : null,
+    ...(cfg.includeAttachmentUrl ? { anexo_url: m.mediaUrl ? `${env.BACKEND_PUBLIC_URL}${m.mediaUrl}` : null } : {}),
   }));
 }
 
@@ -181,6 +183,7 @@ export async function buildV2Body(cfg: ClaudiaConfig, p: ClaudiaPayload, now = n
     body.contato = {
       nome: contact.name,
       telefone_final: contact.number.replace(/\D/g, "").slice(-4),
+      ...(cfg.includePhone ? { telefone: contact.number.replace(/\D/g, "") } : {}),
       cadastrado: Boolean(contact.clientCompany || contact.managerClientId),
       automatico: contact.isRobot,
     };

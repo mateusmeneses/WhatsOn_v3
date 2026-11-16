@@ -143,6 +143,23 @@ describe("claudia webhook v2", () => {
     expect(body.mensagens_recentes.map((m: { texto: string }) => m.texto)).toEqual(["Como emito NF?"]);
   });
 
+  it("full phone and attachment url only when configured (CRM)", async () => {
+    const s = await setup();
+    env.CLAUDIA_WEBHOOK_INCLUIR_TELEFONE = "true";
+    env.CLAUDIA_WEBHOOK_INCLUIR_ANEXO_URL = "true";
+    try {
+      await s.contact.update({ number: "5579999991133" });
+      await deliver(s.connection, textMessage({ from: "5579999991133", text: "oi" }));
+      const { body } = await send((await jobs())[0]);
+      expect(body.contato.telefone).toBe("5579999991133");
+      expect(body.contato.telefone_final).toBe("1133");
+      expect(body.mensagens_recentes[0]).toHaveProperty("anexo_url", null);
+    } finally {
+      env.CLAUDIA_WEBHOOK_INCLUIR_TELEFONE = "false";
+      env.CLAUDIA_WEBHOOK_INCLUIR_ANEXO_URL = "false";
+    }
+  });
+
   it("same message → one notice with every event; post-close thanks → apenas_reacao", async () => {
     const s = await setup();
     const old = await createTicket({ companyId: s.company.id, contactId: s.contact.id, connectionId: s.connection.id, status: "open", userId: s.tech.id });
