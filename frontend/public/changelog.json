@@ -2,6 +2,15 @@
   "atualizadoEm": "2026-11-25",
   "versoes": [
     {
+      "versao": "2026.11.25.2",
+      "data": "25/11/2026",
+      "titulo": "Conexão com o WhatsApp mais estável",
+      "novidades": [],
+      "melhorias": [
+        "Corrigida a queda da conexão a cada 50 minutos, que fazia algumas conexões pararem de receber mensagens ou recebê-las com horas de atraso."
+      ]
+    },
+    {
       "versao": "2026.11.25.1",
       "data": "25/11/2026",
       "titulo": "Mensagens atrasadas com a hora original",
