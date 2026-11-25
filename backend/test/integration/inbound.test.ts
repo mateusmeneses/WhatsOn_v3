@@ -344,5 +344,24 @@ describe("inbound pipeline", () => {
       expect(await Ticket.findOne()).toMatchObject({ status: "bot" });
       expect(await Message.count({ where: { isBot: true } })).toBe(1);
     });
+
+    it("grava a mensagem atrasada com a hora original do WhatsApp, não com a hora da chegada", async () => {
+      const { connection } = await scenario();
+      const sentAt = hoursAgo(13);
+      await deliver(connection, textMessage({ id: "OLD3", text: "Boa tarde", timestamp: sentAt }));
+      await deliver(connection, textMessage({ id: "OLD4", fromMe: true, text: "tenha uma boa tarde", timestamp: sentAt + 60 }));
+      const client = await Message.findOne({ where: { providerMessageId: "OLD3" } });
+      const ours = await Message.findOne({ where: { providerMessageId: "OLD4" } });
+      expect(client!.createdAt.getTime()).toBe(sentAt * 1000);
+      expect(ours!.createdAt.getTime()).toBe((sentAt + 60) * 1000);
+    });
+
+    it("mensagem recente fica com a hora da chegada", async () => {
+      const { connection } = await scenario();
+      const before = Date.now();
+      await deliver(connection, textMessage({ id: "NEW2", text: "Oi", timestamp: Math.floor(Date.now() / 1000) - 30 }));
+      const message = await Message.findOne({ where: { providerMessageId: "NEW2" } });
+      expect(message!.createdAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
+    });
   });
 });

@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-11-16",
+  "atualizadoEm": "2026-11-25",
   "versoes": [
+    {
+      "versao": "2026.11.25.1",
+      "data": "25/11/2026",
+      "titulo": "Mensagens atrasadas com a hora original",
+      "novidades": [],
+      "melhorias": [
+        "Quando o WhatsApp entrega mensagens com atraso (depois de uma queda da conexão), elas passam a aparecer com a data e a hora em que foram enviadas, e não como se tivessem acabado de chegar."
+      ]
+    },
     {
       "versao": "2026.11.16.1",
       "data": "16/11/2026",

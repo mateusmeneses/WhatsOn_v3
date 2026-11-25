@@ -22,8 +22,17 @@ const ECHO_WINDOW_MS = 120_000;
  */
 export const STALE_MESSAGE_SECONDS = 600;
 
-export const isStaleMessage = (ev: InboundMessage, nowMs = Date.now()): boolean =>
-  !ev.fromMe && Number.isFinite(ev.timestamp) && nowMs / 1000 - ev.timestamp > STALE_MESSAGE_SECONDS;
+const arrivedLate = (ev: InboundMessage, nowMs: number): boolean =>
+  Number.isFinite(ev.timestamp) && nowMs / 1000 - ev.timestamp > STALE_MESSAGE_SECONDS;
+
+export const isStaleMessage = (ev: InboundMessage, nowMs = Date.now()): boolean => !ev.fromMe && arrivedLate(ev, nowMs);
+
+/**
+ * Hora em que a mensagem vai para o banco. Atrasada (a Evolution entrega em rajadas, horas depois, após cada
+ * reconexão): a hora original do WhatsApp, para não parecer que chegou agora. No ao vivo, a hora da chegada.
+ */
+export const messageCreatedAt = (ev: InboundMessage, nowMs = Date.now()): Date | undefined =>
+  arrivedLate(ev, nowMs) ? new Date(ev.timestamp * 1000) : undefined;
 
 async function upsertContact(companyId: number, ev: InboundMessage): Promise<Contact> {
   const pushName = !ev.fromMe && ev.pushName ? ev.pushName : null;
@@ -189,6 +198,7 @@ export async function handleInboundMessage(
     : await findOrCreateTicket(connection, contact, ev.fromMe, isStaleMessage(ev));
   const senderName = ev.isGroup && !ev.fromMe ? (ev.senderName ?? ev.senderNumber ?? null) : null;
   const quotedMessageId = await resolveQuoted(connection.id, ev.quotedProviderMessageId);
+  const originalAt = messageCreatedAt(ev);
 
   let message: Message;
   let tookOver = false;
@@ -211,6 +221,7 @@ export async function handleInboundMessage(
           isBot: false,
           senderName,
           senderNumber: ev.isGroup && !ev.fromMe ? (ev.senderNumber ?? null) : null,
+          ...(originalAt ? { createdAt: originalAt } : {}),
         },
         { transaction },
       );
