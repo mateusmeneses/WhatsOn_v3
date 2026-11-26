@@ -1,6 +1,8 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { BookUser, Search } from "lucide-react";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BookUser, MessageCircle, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,12 +10,14 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { errorMessage } from "@/lib/apiError";
+import { ticketKeys } from "@/features/tickets/ticketsApi";
+import { errorCode, errorMessage } from "@/lib/apiError";
 import { timeAgo } from "@/lib/duration";
 import { formatPhone, initials } from "@/lib/format";
 import { useDebounced } from "@/lib/useDebounced";
 import type { Contact } from "@/types/api";
-import { contactKeys, fetchContacts, fetchContactStats, type ContactStats } from "./contactsApi";
+import { ChooseConnectionDialog } from "./ChooseConnectionDialog";
+import { contactKeys, fetchContacts, fetchContactStats, startConversation, type ContactStats } from "./contactsApi";
 import { EditContactDialog } from "./EditContactDialog";
 
 export function ContactsPage() {
@@ -21,6 +25,25 @@ export function ContactsPage() {
   const debounced = useDebounced(search.trim());
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<Contact | null>(null);
+  const [choosingFor, setChoosingFor] = useState<Contact | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const conversation = useMutation({
+    mutationFn: ({ contact, connectionId }: { contact: Contact; connectionId?: number }) =>
+      startConversation(contact.id, connectionId),
+    onSuccess: (ticket) => {
+      queryClient.setQueryData(ticketKeys.detail(ticket.id), ticket);
+      void queryClient.invalidateQueries({ queryKey: ticketKeys.lists });
+      void queryClient.invalidateQueries({ queryKey: ticketKeys.summary });
+      setChoosingFor(null);
+      navigate(`/atendimento/${ticket.id}?aba=${ticket.status}`);
+    },
+    onError: (err, { contact }) => {
+      if (errorCode(err) === "CONNECTION_REQUIRED") setChoosingFor(contact);
+      else toast.error(errorMessage(err));
+    },
+  });
 
   useEffect(() => setPage(1), [debounced]);
 
@@ -44,7 +67,10 @@ export function ContactsPage() {
       <PageHeader title="Contatos" description="Pessoas que já falaram com a empresa pelo WhatsApp." />
       <div className="space-y-4 p-6">
         <div className="relative max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden />
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
+            aria-hidden
+          />
           <Input
             className="pl-9"
             placeholder="Buscar por nome, número ou empresa"
@@ -70,7 +96,9 @@ export function ContactsPage() {
                   <th className="px-5 py-3 font-medium">Empresa / Produto</th>
                   <th className="px-5 py-3 text-right font-medium">Atendimentos</th>
                   <th className="px-5 py-3 font-medium">Último contato</th>
-                  <th className="px-5 py-3"><span className="sr-only">Ações</span></th>
+                  <th className="px-5 py-3">
+                    <span className="sr-only">Ações</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -96,15 +124,29 @@ export function ContactsPage() {
                       )}
                     </td>
                     <ContactHistoryCells stats={stats.data?.find((x) => x.id === contact.id)} />
-                    <td className="px-5 py-3 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Editar ${contact.name}`}
-                        onClick={() => setEditing(contact)}
-                      >
-                        Editar
-                      </Button>
+                    <td className="px-5 py-3">
+                      <span className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Conversar com ${contact.name}`}
+                          loading={
+                            conversation.isPending && conversation.variables?.contact.id === contact.id && !choosingFor
+                          }
+                          onClick={() => conversation.mutate({ contact })}
+                        >
+                          <MessageCircle className="h-4 w-4" aria-hidden />
+                          Conversar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Editar ${contact.name}`}
+                          onClick={() => setEditing(contact)}
+                        >
+                          Editar
+                        </Button>
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -117,22 +159,29 @@ export function ContactsPage() {
           <Button size="sm" variant="secondary" disabled={page === 1} onClick={() => setPage((p) => p - 1)}>
             Anterior
           </Button>
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={!query.data?.hasMore}
-            onClick={() => setPage((p) => p + 1)}
-          >
+          <Button size="sm" variant="secondary" disabled={!query.data?.hasMore} onClick={() => setPage((p) => p + 1)}>
             Próxima
           </Button>
         </div>
       </div>
       {editing && <EditContactDialog contact={editing} onClose={() => setEditing(null)} />}
+      {choosingFor && (
+        <ChooseConnectionDialog
+          contact={choosingFor}
+          loading={conversation.isPending}
+          onChoose={(connectionId) => conversation.mutate({ contact: choosingFor, connectionId })}
+          onClose={() => setChoosingFor(null)}
+        />
+      )}
     </div>
   );
 }
 
-const ACTIVE_LABEL = { bot: "No bot", pending: "Aguardando", open: "Em atendimento" } as const;
+const ACTIVE_LABEL = {
+  bot: "No bot",
+  pending: "Aguardando",
+  open: "Em atendimento",
+} as const;
 
 function ContactHistoryCells({ stats }: { stats?: ContactStats }) {
   if (!stats) {
@@ -149,7 +198,11 @@ function ContactHistoryCells({ stats }: { stats?: ContactStats }) {
       <td className="px-5 py-3 text-ink-muted">
         <span className="flex items-center gap-2">
           {stats.lastContactAt ? timeAgo(stats.lastContactAt) : "—"}
-          {stats.activeStatus && <Badge tone={stats.activeStatus === "open" ? "success" : "warning"}>{ACTIVE_LABEL[stats.activeStatus]}</Badge>}
+          {stats.activeStatus && (
+            <Badge tone={stats.activeStatus === "open" ? "success" : "warning"}>
+              {ACTIVE_LABEL[stats.activeStatus]}
+            </Badge>
+          )}
         </span>
       </td>
     </>

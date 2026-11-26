@@ -439,3 +439,67 @@ export async function ticketSummary(auth: AuthContext): Promise<TicketSummary> {
   ]);
   return { pending, mine, unread: (pendingUnread || 0) + (mineUnread || 0) };
 }
+
+/**
+ * Abre conversa com o contato a partir da tela de Contatos.
+ * Conexão: a informada; sem ela, a do último atendimento do contato ou a única da empresa.
+ * Já existe atendimento em andamento nessa conexão: devolve ele (se o usuário puder ver).
+ * Senão cria um novo, já em atendimento com quem pediu, sem passar pelo bot.
+ */
+export async function startConversation(auth: AuthContext, contactId: number, input: { connectionId?: number }) {
+  const contact = await Contact.findOne({ where: { id: contactId, companyId: auth.companyId, deletedAt: null } });
+  if (!contact) throw notFound("Contato");
+  if (contact.isGroup) throw new AppError("CONTACT_IS_GROUP", 409, "Conversa de grupo abre pela aba Grupos");
+
+  const connection = await resolveConversationConnection(auth.companyId, contact.id, input.connectionId);
+  const where = { companyId: auth.companyId, contactId: contact.id, connectionId: connection.id, status: { [Op.ne]: "closed" } };
+
+  const existing = await Ticket.findOne({ where, include: [{ model: User, attributes: ["id", "name"] }] });
+  if (existing) return visibleActiveTicket(auth, existing);
+
+  let ticket: Ticket;
+  try {
+    ticket = await Ticket.create({
+      companyId: auth.companyId,
+      contactId: contact.id,
+      connectionId: connection.id,
+      status: "open",
+      userId: auth.userId,
+      queueId: connection.defaultQueueId,
+    });
+  } catch (err) {
+    if (!(err instanceof UniqueConstraintError)) throw err;
+    const raced = await Ticket.findOne({ where, include: [{ model: User, attributes: ["id", "name"] }] });
+    if (!raced) throw err;
+    return visibleActiveTicket(auth, raced);
+  }
+  await logTicket(ticket, "created", { userId: auth.userId });
+  await emitTicket(ticket.id);
+  return loadTicket(ticket.id);
+}
+
+async function resolveConversationConnection(companyId: number, contactId: number, connectionId?: number): Promise<Connection> {
+  if (connectionId) {
+    const chosen = await Connection.findOne({ where: { id: connectionId, companyId } });
+    if (!chosen) throw notFound("Conexão");
+    return chosen;
+  }
+  const last = await Ticket.findOne({
+    where: { companyId, contactId },
+    include: [{ model: Connection, required: true }],
+    order: [["id", "DESC"]],
+  });
+  if (last?.connection) return last.connection;
+  const all = await Connection.findAll({ where: { companyId }, limit: 2 });
+  if (all.length === 1) return all[0];
+  if (all.length === 0) throw new AppError("NO_CONNECTION", 409, "Cadastre uma conexão do WhatsApp primeiro");
+  throw new AppError("CONNECTION_REQUIRED", 400, "Escolha por qual conexão falar com o contato");
+}
+
+async function visibleActiveTicket(auth: AuthContext, ticket: Ticket) {
+  if (!canView(auth, await loadAgentScope(auth), ticket)) {
+    const by = ticket.user ? ` com ${ticket.user.name}` : "";
+    throw new AppError("TICKET_ACTIVE_EXISTS", 409, `Este contato já tem um atendimento em andamento${by}`);
+  }
+  return loadTicket(ticket.id);
+}

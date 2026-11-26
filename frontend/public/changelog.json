@@ -1,6 +1,15 @@
 {
-  "atualizadoEm": "2026-11-25",
+  "atualizadoEm": "2026-11-26",
   "versoes": [
+    {
+      "versao": "2026.11.26.1",
+      "data": "26/11/2026",
+      "titulo": "Conversar com o cliente pela tela de Contatos",
+      "novidades": [
+        "Na tela de Contatos, o botão Conversar abre o atendimento com o cliente direto no chat: se já houver um em andamento, ele é aberto; senão, um novo começa com você. Quando o contato nunca falou com a empresa e há mais de uma conexão, você escolhe por qual número falar."
+      ],
+      "melhorias": []
+    },
     {
       "versao": "2026.11.25.2",
       "data": "25/11/2026",

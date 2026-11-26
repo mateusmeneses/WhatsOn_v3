@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { idParam, pageParam } from "../../shared/http";
 import { currentAuth, isAuth } from "../auth/auth.middleware";
+import { startConversation } from "../tickets/tickets.service";
 import { contactStats, deleteContact, getContactOr404, listContacts, updateContact } from "./contacts.service";
 
 export const contactRoutes = Router();
@@ -52,4 +53,12 @@ contactRoutes.put("/:id", async (req, res) => {
 contactRoutes.delete("/:id", async (req, res) => {
   await deleteContact(currentAuth(req).companyId, idParam(req));
   res.status(204).end();
+});
+
+const conversationSchema = z.object({ connectionId: z.number().int().positive().optional() });
+
+/** Abre (ou reaproveita) o atendimento com o contato; devolve o ticket para a tela abrir o chat. */
+contactRoutes.post("/:id/conversation", async (req, res) => {
+  const input = conversationSchema.parse(req.body ?? {});
+  res.json(await startConversation(currentAuth(req), idParam(req), input));
 });
